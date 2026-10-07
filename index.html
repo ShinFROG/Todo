@@ -644,6 +644,34 @@ const store = {
   del(k) { try { localStorage.removeItem(k); } catch {} },
 };
 const loadJSON = (k, def) => { try { const v = store.get(k); return v ? JSON.parse(v) : def; } catch { return def; } };
+// ログイン情報は IndexedDB にも置く（localStorage だけが消えたときに戻せるように）。失敗しても何もしない
+const vault = (() => {
+  const open = () => new Promise((ok, ng) => {
+    const r = indexedDB.open('todo', 1);
+    r.onupgradeneeded = () => r.result.createObjectStore('kv');
+    r.onsuccess = () => ok(r.result);
+    r.onerror = () => ng(r.error);
+  });
+  const run = (mode, fn) => open().then((db) => new Promise((ok, ng) => {
+    const tx = db.transaction('kv', mode);
+    const req = fn(tx.objectStore('kv'));
+    tx.oncomplete = () => { db.close(); ok(req.result); };
+    tx.onerror = tx.onabort = () => { db.close(); ng(tx.error); };
+  }));
+  return {
+    get: (k) => run('readonly', (o) => o.get(k)).catch(() => null),
+    set: (k, v) => run('readwrite', (o) => o.put(v, k)).catch(() => {}),
+    del: (k) => run('readwrite', (o) => o.delete(k)).catch(() => {}),
+  };
+})();
+function saveLogin(c) {
+  store.set(KEY.token, c.token);
+  store.set(KEY.repo, c.repo);
+  store.set(KEY.path, c.path);
+  return vault.set('login', { token: c.token, repo: c.repo, path: c.path });
+}
+const validLogin = (c) => !!c && typeof c.token === 'string' && !!c.token && typeof c.repo === 'string' && !!parseTarget(c.repo)
+  && typeof c.path === 'string' && !!c.path;
 const saveJSON = (k, v) => store.set(k, JSON.stringify(v));
 
 const uid = () => Date.now().toString(36) + Math.random().toString(36).slice(2, 8);
@@ -2973,9 +3001,7 @@ async function connect() {
       cfg = null;
       return showSetup(['repo'], '公開リポジトリには接続しない');
     }
-    store.set(KEY.token, token);
-    store.set(KEY.repo, repo);
-    store.set(KEY.path, path);
+    saveLogin(cfg);
     rememberLogin($('repo').value.trim(), token);
     await showApp(); // 入力欄が消えるので、ブラウザが「パスワードを保存しますか？」と聞く
     $('token').value = '';
@@ -3039,6 +3065,7 @@ async function showApp() {
 }
 function logout(bad, detail) {
   for (const k of [KEY.token, KEY.cache, KEY.pending, KEY.timer, KEY.cal]) store.del(k);
+  vault.del('login');
   setCal(null, 'none');
   cfg = null;
   Object.assign(st, { base: null, sha: null, loaded: false, pending: [], syncing: false });
@@ -3056,8 +3083,24 @@ function logout(bad, detail) {
  * ========================================================================= */
 $('setup').addEventListener('submit', (ev) => ev.preventDefault());
 $('setup').addEventListener('submit', () => { if (!$('setup').classList.contains('busy')) connect(); });
+// 保存したパスワード（キーチェーンなど）で 2 つの欄が埋まったら、Enter を待たずに接続する。
+// 同じ値で失敗したときは繰り返さない
+let autoTried = '';
+let autoTimer = 0;
+function autoConnect() {
+  clearTimeout(autoTimer);
+  autoTimer = setTimeout(() => {
+    const token = $('token').value.trim();
+    const key = $('repo').value.trim() + '\n' + token;
+    if ($('setup').hidden || $('setup').classList.contains('busy') || key === autoTried) return;
+    if (!parseTarget($('repo').value) || !/^(github_pat_\w{40,}|gh[pousr]_\w{30,})$/.test(token)) return;
+    autoTried = key;
+    connect();
+  }, 250);
+}
 for (const id of FIELDS) {
-  $(id).addEventListener('input', () => $(id).classList.remove('bad'));
+  $(id).addEventListener('input', () => { $(id).classList.remove('bad'); autoConnect(); });
+  $(id).addEventListener('change', autoConnect);
   $(id).addEventListener('keydown', (ev) => {
     if (ev.key === 'Enter' && !ev.isComposing && ev.keyCode !== 229) { // 日本語入力の確定では送らない
       ev.preventDefault();
@@ -3262,16 +3305,33 @@ window.addEventListener('beforeunload', (ev) => {
   applyAccent();
   // ホーム画面に追加したときにオフラインでも開けるようにする（GitHub API の通信には関与しない）
   if ('serviceWorker' in navigator && location.protocol !== 'file:') navigator.serviceWorker.register('sw.js').catch(() => {});
-  const token = store.get(KEY.token);
-  const repo = store.get(KEY.repo);
-  const path = store.get(KEY.path) || 'todos.json';
-  if (repo) $('repo').value = path === 'todos.json' ? repo : `${repo}/${path}`;
-  if (token && repo) {
-    cfg = { token, repo, path };
+  const start = (c) => {
+    cfg = c;
+    $('repo').value = c.path === 'todos.json' ? c.repo : `${c.repo}/${c.path}`;
     showApp();
-  } else {
-    showSetup();
+  };
+  const saved = { token: store.get(KEY.token), repo: store.get(KEY.repo), path: store.get(KEY.path) || 'todos.json' };
+  if (saved.repo) $('repo').value = saved.path === 'todos.json' ? saved.repo : `${saved.repo}/${saved.path}`;
+  try { localStorage.setItem('todo.probe', '1'); localStorage.removeItem('todo.probe'); } catch (e) { console.warn('この画面では端末に保存できません', e); }
+  if (validLogin(saved)) {
+    start(saved);
+    vault.get('login').then((v) => { if (!validLogin(v) || v.token !== saved.token || v.repo !== saved.repo || v.path !== saved.path) saveLogin(saved); });
+    return;
   }
+  // localStorage が空なら IndexedDB の控えから戻す（少し待っても返事がなければ入力欄を出す）
+  let settled = false;
+  const fallback = setTimeout(() => { settled = true; showSetup(); }, 1500);
+  vault.get('login').then((v) => {
+    if (settled) return;
+    settled = true;
+    clearTimeout(fallback);
+    if (validLogin(v)) {
+      saveLogin(v);
+      start({ token: v.token, repo: v.repo, path: v.path });
+    } else {
+      showSetup();
+    }
+  });
 })();
 </script>
 </body>
