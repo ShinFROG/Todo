@@ -374,6 +374,24 @@
   .sheet-item .val { color: var(--muted); font-size: 14px; }
   .sheet-item input[type=date] { width: auto; min-height: 36px; padding: 4px 8px; }
   /* クイック追加 */
+  /* Google カレンダーの予定 */
+  .allday { display: flex; flex-wrap: wrap; gap: 6px; margin-top: 12px; }
+  .ad-chip {
+    display: inline-flex; align-items: center; gap: 6px; padding: 4px 12px; border-radius: 999px; font-size: 13px; font-weight: 600;
+    text-decoration: none; color: var(--text); background: color-mix(in srgb, var(--col) 16%, transparent);
+  }
+  .ad-chip::before { content: ""; width: 8px; height: 8px; border-radius: 50%; background: var(--col); }
+  .tl-item.ev .tl-pill { background: color-mix(in srgb, var(--col) 22%, var(--bg)); border: 2px solid var(--col); }
+  .ev-card { display: flex; gap: 10px; padding: 10px 0; color: inherit; text-decoration: none; min-width: 0; }
+  .ev-card > .ic { width: 22px; height: 22px; margin: 1px 4px 0 3px; color: var(--col); }
+  .ev-card .body { cursor: pointer; }
+  .ev-card .title { font-weight: 600; }
+  .ev-list { margin: 2px 0 2px; }
+  .ev-row { display: flex; align-items: baseline; gap: 10px; padding: 6px 2px; font-size: 14px; color: inherit; text-decoration: none; }
+  .ev-row .t { width: 92px; flex: none; color: var(--muted); font-variant-numeric: tabular-nums; font-size: 13px; }
+  .ev-row .d { width: 8px; height: 8px; border-radius: 50%; background: var(--col); flex: none; align-self: center; }
+  .ev-row .n { flex: 1; min-width: 0; overflow-wrap: anywhere; }
+  .ev-row .l { color: var(--muted); font-size: 12px; }
   .qa-ctx { font-size: 12px; color: var(--muted); font-weight: 700; margin-bottom: 6px; }
   .qa input#qaInput { font-size: 18px; border: 0; box-shadow: none; padding: 6px 2px; background: transparent; min-height: 40px; }
   .qa textarea { border: 0; box-shadow: none; padding: 2px 2px; background: transparent; min-height: 0; font-size: 15px; color: var(--muted); }
@@ -569,7 +587,7 @@ const API = 'https://api.github.com';
 const KEY = {
   token: 'todo.token', repo: 'todo.repo', path: 'todo.path',
   cache: 'todo.cache', pending: 'todo.pending', timer: 'todo.timer', view: 'todo.view',
-  accent: 'todo.accent', sound: 'todo.sound',
+  accent: 'todo.accent', sound: 'todo.sound', cal: 'todo.cal',
 };
 const $ = (id) => document.getElementById(id);
 
@@ -1031,6 +1049,9 @@ async function gh(method, url, body) {
   }
   return json;
 }
+function contentsUrlFor(path) {
+  return `/repos/${cfg.repo}/contents/${path.split('/').map(encodeURIComponent).join('/')}`;
+}
 function contentsUrl() {
   return `/repos/${cfg.repo}/contents/${cfg.path.split('/').map(encodeURIComponent).join('/')}`;
 }
@@ -1144,7 +1165,7 @@ async function reload(quiet) {
     const old = st.sha;
     await fetchBase();
     if (!quiet || st.sha !== old) render();
-    if (!quiet) setSync('fresh');
+    if (!quiet) { setSync('fresh'); fetchCalendar(); }
   } catch (e) {
     if (e.status === 401) return logout(['token'], explain(e));
     if (!quiet) setSync(e instanceof TypeError ? 'offline' : 'error', e);
@@ -1368,6 +1389,7 @@ function group(title, list, T, opts = {}) {
   return h('section', { class: 'group', id: opts.id || null },
     title ? h('div', { class: 'group-h' + (opts.cls ? ' ' + opts.cls : '') }, h('h3', null, title),
       list.length ? h('span', { class: 'count' }, String(list.length)) : null, h('span', { class: 'sp' }), opts.action || null) : null,
+    opts.pre || null,
     list.length ? taskList(list, T, opts) : null);
 }
 const stat = (value, label) => h('div', { class: 'stat' }, h('b', null, value), h('span', null, label));
@@ -1414,7 +1436,12 @@ function renderMain(d, T, model) {
       const doneToday = d.todos.filter((t) => t.done && t.doneAt && localYmd(t.doneAt) === T).sort((a, b) => cmp(b.doneAt, a.doneAt));
       const total = list.length + doneToday.length;
       if (total) extra = h('div', { class: 'ring-sm', title: `今日 ${doneToday.length}/${total} 完了` }, `${doneToday.length}/${total}`, ringSvg(doneToday.length / total, 44, 5));
-      nodes.push(planBar(list, d, T));
+      const evs = eventsOn(T);
+      nodes.push(planBar(list, d, T, evs));
+      if (evs.allDay.length) {
+        nodes.push(h('div', { class: 'allday', 'aria-label': '終日の予定' }, evs.allDay.map((ev) =>
+          h('a', { class: 'ad-chip', href: gcalDayUrl(T), target: '_blank', rel: 'noopener noreferrer', style: `--col:${calColor(ev.cal)}`, title: 'Google カレンダーで開く' }, ev.title))));
+      }
       const inboxN = act.filter((t) => isInbox(t, T)).length;
       if (inboxN) {
         nodes.push(h('div', { class: 'nudge' }, icon('inbox'), `受信箱に未整理が ${inboxN} 件`,
@@ -1430,12 +1457,12 @@ function renderMain(d, T, model) {
           action: h('button', { class: 'link-btn', type: 'button', onclick: () => moveToToday(late) }, 'すべて今日に'),
         }));
       }
-      if (timed.length) nodes.push(h('section', { class: 'group' }, h('div', { class: 'group-h' }, h('h3', null, 'タイムライン')), timeline(timed, T)));
-      if (untimed.length) nodes.push(group(timed.length || late.length ? 'いつでも' : '', untimed, T, { plan: true }));
+      if (timed.length || evs.timed.length) nodes.push(h('section', { class: 'group' }, h('div', { class: 'group-h' }, h('h3', null, 'タイムライン')), timeline(timed, evs.timed, T)));
+      if (untimed.length) nodes.push(group(timed.length || late.length || evs.timed.length ? 'いつでも' : '', untimed, T, { plan: true }));
       if (!list.length) {
         nodes.push(doneToday.length
           ? emptyState('done', '今日のタスクはすべて完了', 'おつかれさまでした。')
-          : emptyState('today', '今日の予定はまだありません', '「今日の計画」から、今日やることを選びましょう。'));
+          : emptyState('today', '今日のタスクはまだありません', '「今日の計画」から、今日やることを選びましょう。'));
       }
       if (doneToday.length) {
         nodes.push(h('section', { class: 'group' },
@@ -1452,7 +1479,7 @@ function renderMain(d, T, model) {
       for (let i = 1; i <= 14; i++) {
         const dd = addDays(Td, i);
         const k = ymd(dd);
-        const n = list.filter((t) => t.due === k).length;
+        const n = list.filter((t) => t.due === k).length + (() => { const e = eventsOn(k); return e.allDay.length + e.timed.length; })();
         strip.append(h('button', {
           class: 'day-chip' + (dd.getDay() === 6 ? ' sat' : dd.getDay() === 0 ? ' sun' : '') + (n ? ' has' : ''), type: 'button', role: 'listitem',
           'aria-label': `${fmtShort(k)} ${n}件`,
@@ -1463,7 +1490,8 @@ function renderMain(d, T, model) {
       for (let i = 1; i <= 14; i++) {
         const k = ymd(addDays(Td, i));
         const items = list.filter((t) => t.due === k).sort(byDay);
-        nodes.push(group(`${fmtShort(k)}  ${relWord(k, T)}`, items, T, { id: 'day-' + k, cls: items.length ? '' : 'faint' }));
+        const evList = evRows(eventsOn(k), k);
+        nodes.push(group(`${fmtShort(k)}  ${relWord(k, T)}`, items, T, { id: 'day-' + k, cls: items.length || evList ? '' : 'faint', pre: evList }));
       }
       const end = ymd(addDays(Td, 14));
       const months = new Map();
@@ -1637,45 +1665,133 @@ function renderMain(d, T, model) {
   } else c.replaceChildren(...nodes);
 }
 
-function planBar(list, d, T) {
+/* =========================================================================
+ * Google カレンダー
+ * データ用リポジトリの calendar.json（GitHub Actions が定期的に書き出す）を読むだけ。
+ * ブラウザから Google には一切つながない
+ * ========================================================================= */
+let CAL = { events: [], calendars: [], updatedAt: null, state: 'none', fetchedAt: 0 };
+const calPath = () => cfg.path.replace(/[^/]*$/, 'calendar.json');
+function setCal(data, state) {
+  const ok = (e) => e && typeof e.title === 'string' && typeof e.start === 'string' && typeof e.end === 'string';
+  CAL = {
+    events: Array.isArray(data?.events) ? data.events.filter(ok) : [],
+    calendars: Array.isArray(data?.calendars) ? data.calendars : [],
+    updatedAt: data?.updatedAt || null, state, fetchedAt: CAL.fetchedAt,
+  };
+}
+async function fetchCalendar() {
+  if (!cfg) return;
+  CAL.fetchedAt = Date.now();
+  try {
+    const f = await gh('GET', contentsUrlFor(calPath()));
+    let b64 = f.content;
+    if (!b64 && f.sha && f.size > 0) b64 = (await gh('GET', `/repos/${cfg.repo}/git/blobs/${f.sha}`)).content;
+    const data = JSON.parse((b64 && b64decode(b64)) || '{}');
+    setCal(data, 'ok');
+    saveJSON(KEY.cal, { key: cfgKey(), data });
+  } catch (e) {
+    if (e.status !== 404) { console.warn('calendar:', explain(e)); return; } // 前回の内容を使い続ける
+    setCal(null, 'none');
+    store.del(KEY.cal);
+  }
+  render();
+}
+const CAL_COLORS = ['var(--c7)', 'var(--c3)', 'var(--c5)', 'var(--c4)', 'var(--c1)', 'var(--c2)'];
+function calColor(cid) { const i = CAL.calendars.findIndex((c) => c.id === cid); return CAL_COLORS[Math.max(0, i) % CAL_COLORS.length]; }
+function calName(cid) { return CAL.calendars.find((c) => c.id === cid)?.name || 'カレンダー'; }
+function gcalDayUrl(day) { const [y, m, d] = day.split('-').map(Number); return `https://calendar.google.com/calendar/r/day/${y}/${m}/${d}`; }
+// その日の予定（終日 / 時刻あり）。日をまたぐ予定はその日の分だけに切る
+function eventsOn(day) {
+  const out = { allDay: [], timed: [] };
+  for (const ev of CAL.events) {
+    if (ev.allDay) { if (ev.start <= day && day < ev.end) out.allDay.push(ev); continue; }
+    const s = new Date(ev.start);
+    const e = new Date(ev.end);
+    if (isNaN(s) || isNaN(e)) continue;
+    const sd = ymd(s);
+    const ed = e > s ? ymd(new Date(e.getTime() - 1)) : sd;
+    if (day < sd || day > ed) continue;
+    const sm = sd === day ? s.getHours() * 60 + s.getMinutes() : 0;
+    const em = ed === day && ymd(e) === day ? e.getHours() * 60 + e.getMinutes() : 1440;
+    out.timed.push({ ...ev, sm, em: Math.max(em, sm) });
+  }
+  out.timed.sort((a, b) => a.sm - b.sm || a.em - b.em);
+  return out;
+}
+// 予定で埋まっている時間（重なりは 1 回だけ数える）
+function busyMinutes(timed) {
+  let sum = 0, curS = -1, curE = -1;
+  for (const { sm, em } of timed) {
+    if (sm > curE) { sum += curE - curS; curS = sm; curE = em; } else curE = Math.max(curE, em);
+  }
+  return sum + (curE - curS);
+}
+const hmEnd = (m) => (m >= 1440 ? '24:00' : minToHm(m));
+function evRows(evs, day) {
+  if (!evs.allDay.length && !evs.timed.length) return null;
+  const row = (ev, when) => h('a', { class: 'ev-row', href: gcalDayUrl(day), target: '_blank', rel: 'noopener noreferrer', style: `--col:${calColor(ev.cal)}`, title: 'Google カレンダーで開く' },
+    h('span', { class: 't' }, when), h('span', { class: 'd' }), h('span', { class: 'n' }, ev.title), ev.location ? h('span', { class: 'l' }, ev.location) : null);
+  return h('div', { class: 'ev-list' },
+    evs.allDay.map((ev) => row(ev, '終日')),
+    evs.timed.map((ev) => row(ev, `${minToHm(ev.sm)}–${hmEnd(ev.em)}`)));
+}
+
+function planBar(list, d, T, evs) {
   const cap = Number.isFinite(d.meta.capacity) ? d.meta.capacity : 360;
+  const busy = busyMinutes(evs.timed);
+  const avail = Math.max(0, cap - busy); // 予定（会議など）の時間は作業に使えない
   const est = list.reduce((s, t) => s + (t.estimate || 0), 0);
-  const over = est > cap;
+  const over = est > avail;
   const nSug = planSuggestions(d, T).reduce((s, g) => s + g[1].length, 0);
   return h('div', null,
-    list.length ? h('div', { class: 'plan' + (over ? ' over' : ''), title: '見積もりの合計 / 1 日の作業可能時間' },
-      h('div', { class: 'meter', role: 'meter', 'aria-label': '見積もりの合計 / 作業可能時間', 'aria-valuemin': '0', 'aria-valuemax': String(cap), 'aria-valuenow': String(Math.min(est, cap)) },
-        h('div', { class: 'fill', style: `width:${cap ? Math.min(100, est / cap * 100) : 0}%` })),
-      h('span', { class: 'plan-text' }, `${fmtMin(est)} / ${fmtMin(cap)}${over ? `（${fmtMin(est - cap)} 超過）` : ''}`)) : null,
+    list.length ? h('div', { class: 'plan' + (over ? ' over' : ''), title: '見積もりの合計 / 作業に使える時間（1 日の作業可能時間 − 予定）' },
+      h('div', { class: 'meter', role: 'meter', 'aria-label': '見積もりの合計 / 作業に使える時間', 'aria-valuemin': '0', 'aria-valuemax': String(avail), 'aria-valuenow': String(Math.min(est, avail)) },
+        h('div', { class: 'fill', style: `width:${avail ? Math.min(100, est / avail * 100) : 100}%` })),
+      h('span', { class: 'plan-text' }, `${fmtMin(est)} / ${fmtMin(avail)}${over ? `（${fmtMin(est - avail)} 超過）` : ''}`)) : null,
+    busy && list.length ? h('div', { class: 'hint', style: 'margin-top:4px' }, `予定 ${fmtMin(busy)}を除いた時間で計算しています`) : null,
     h('div', { class: 'row', style: 'margin-top:12px' },
       h('button', { class: 'pill-btn', type: 'button', onclick: openPlan }, icon('sparkle'), '今日の計画',
         nSug ? h('span', { class: 'count', style: 'color:inherit;opacity:.75' }, String(nSug)) : null)));
 }
 
-// 時刻のあるタスクを 1 日の流れとして並べる（空き時間と現在時刻も出す）
-function timeline(items, T) {
+// 時刻のあるタスクとカレンダーの予定を 1 日の流れとして並べる（空き時間と現在時刻も出す）
+function timeline(items, events, T) {
   const now = new Date();
   const nowMin = now.getHours() * 60 + now.getMinutes();
   const out = [];
   let prevEnd = null;
   let nowDone = false;
   const nowLine = () => h('div', { class: 'tl-now', 'aria-label': '現在時刻' }, h('span', null, minToHm(nowMin)), h('span', { class: 'tl-rail' }), h('div', { class: 'bar' }));
-  for (const t of items) {
-    const start = hmToMin(t.time);
-    const dur = t.estimate || 30;
-    const end = start + dur;
+  const entries = [
+    ...items.map((t) => ({ t, start: hmToMin(t.time), end: hmToMin(t.time) + (t.estimate || 30) })),
+    ...events.map((ev) => ({ ev, start: ev.sm, end: ev.em })),
+  ].sort((a, b) => a.start - b.start || (a.ev ? -1 : 1));
+  for (const { t, ev, start, end } of entries) {
+    const dur = end - start;
     if (prevEnd != null && start - prevEnd >= 30) {
       if (!nowDone && nowMin >= prevEnd && nowMin < start) { out.push(nowLine()); nowDone = true; }
       out.push(h('div', { class: 'tl-gap' }, h('span'), h('span', { class: 'tl-rail' }), h('span', null, `空き ${fmtMin(start - prevEnd)}`)));
     }
     if (!nowDone && nowMin < start) { out.push(nowLine()); nowDone = true; }
-    const [emo] = splitEmoji(t.title);
     const hgt = Math.round(Math.max(60, Math.min(200, dur * 1.1)));
+    prevEnd = prevEnd == null ? end : Math.max(prevEnd, end);
+    if (ev) {
+      out.push(h('div', { class: 'tl-item ev', style: `--h:${hgt}px;--col:${calColor(ev.cal)}` },
+        h('div', { class: 'tl-time' }, minToHm(start), h('small', null, hmEnd(end))),
+        h('div', { class: 'tl-rail' }, h('span', { class: 'tl-pill', 'aria-hidden': 'true' })),
+        h('a', { class: 'ev-card', href: gcalDayUrl(T), target: '_blank', rel: 'noopener noreferrer', title: 'Google カレンダーで開く' },
+          icon('calendar'),
+          h('div', { class: 'body' },
+            h('div', { class: 'title' }, ev.title),
+            h('div', { class: 'meta' }, h('span', { class: 'mchip' }, calName(ev.cal)), ev.location ? h('span', { class: 'mchip' }, ev.location) : null)))));
+      continue;
+    }
+    const [emo] = splitEmoji(t.title);
     out.push(h('div', { class: 'tl-item' + (t.done ? ' done' : ''), style: `--h:${hgt}px;--col:${taskColor(t)}` },
       h('div', { class: 'tl-time' }, t.time, h('small', null, minToHm(end))),
       h('div', { class: 'tl-rail' }, h('span', { class: 'tl-pill', 'aria-hidden': 'true' }, emo || '')),
       h('ul', { class: 'tasks' }, taskRow(t, T, { plan: true, hideDate: true, noEmoji: !!emo }))));
-    prevEnd = prevEnd == null ? end : Math.max(prevEnd, end);
   }
   if (!nowDone) out.push(nowLine());
   return h('div', { class: 'timeline' }, out);
@@ -1888,9 +2004,10 @@ function planBody() {
   const today = DATA.todos.filter((t) => isToday(t, T));
   const cap = Number.isFinite(DATA.meta.capacity) ? DATA.meta.capacity : 360;
   const est = today.reduce((s, t) => s + (t.estimate || 0), 0);
+  const busy = busyMinutes(eventsOn(T).timed);
   const body = [
     sheetHead('今日の計画'),
-    h('p', { class: 'hint', style: 'margin-top:-4px' }, `今日 ${today.length} 件 · 見積もり ${fmtMin(est)} / 作業可能 ${fmtMin(cap)}`),
+    h('p', { class: 'hint', style: 'margin-top:-4px' }, `今日 ${today.length} 件 · 見積もり ${fmtMin(est)} / 使える時間 ${fmtMin(Math.max(0, cap - busy))}${busy ? `（予定 ${fmtMin(busy)}）` : ''}`),
   ];
   if (!planGroups.length) body.push(emptyState('done', '提案できるタスクはありません', '期限の近いもの・優先度の高いもの・受信箱から提案します。'));
   for (const [name, ids] of planGroups) {
@@ -2471,7 +2588,8 @@ function openHelp() {
     rows([
       ['受信箱', '思いついたらまず書き出す。毎日、日付・プロジェクト・「いつか」を決めて空にする'],
       ['今日', '本当にやると決めたことだけ。見積もりの合計が作業可能時間に収まるようにする'],
-      ['タイムライン', '時刻を決めたタスクは 1 日の流れとして並び、空き時間が見える'],
+      ['タイムライン', '時刻を決めたタスクと Google カレンダーの予定が 1 日の流れとして並び、空き時間が見える'],
+      ['Google カレンダー', '予定は 1 時間ごとに取り込まれる（データ用リポジトリの calendar.json）。会議などの時間は作業に使える時間から自動で引かれる'],
       ['マトリクス', '「重要だが緊急でない」ことに時間を確保する'],
       ['集中', '25 分集中して 5 分休む。かかった時間はタスクに記録される'],
       ['週次レビュー', '週に一度、全体を見直して頭を空にする'],
@@ -2508,6 +2626,9 @@ function openSettings() {
         : perm === 'denied' ? h('span', { class: 'muted' }, 'ブラウザで拒否')
           : perm === 'unsupported' ? h('span', { class: 'muted' }, '非対応')
             : h('button', { type: 'button', onclick: () => { askNotify(); closeSheet(); } }, '許可する')),
+    h('div', { class: 'set-row' }, h('span', { class: 'lbl' }, 'Google カレンダー'),
+      h('span', { class: 'muted', style: 'font-size:14px;text-align:right' }, CAL.state === 'ok'
+        ? `${CAL.events.length} 件${CAL.updatedAt ? `（${fmtStamp(CAL.updatedAt)} 更新）` : ''}` : '未設定')),
     h('div', { class: 'set-row' }, h('span', { class: 'lbl' }, 'データ'),
       h('a', { href: `https://github.com/${cfg.repo}/commits/HEAD/${cfg.path}`, target: '_blank', rel: 'noopener noreferrer' }, '変更履歴')),
     h('p', { class: 'hint' }, 'ホーム画面に追加すると、アプリのように全画面で使えます（iPhone は共有ボタン →「ホーム画面に追加」）。'),
@@ -2584,6 +2705,8 @@ async function showApp() {
     st.loaded = true;
   }
   st.pending = (loadJSON(KEY.pending, []) || []).filter((op) => op && typeof op.t === 'string');
+  const calCache = loadJSON(KEY.cal, null);
+  if (calCache && calCache.key === cfgKey()) setCal(calCache.data, 'ok');
   render();
   tick();
   setSync('loading');
@@ -2591,13 +2714,15 @@ async function showApp() {
     await fetchBase();
     render();
     if (st.pending.length) sync(); else setSync('fresh');
+    fetchCalendar();
   } catch (e) {
     if (e.status === 401) return logout(['token'], explain(e));
     setSync(e instanceof TypeError ? 'offline' : 'error', e);
   }
 }
 function logout(bad, detail) {
-  for (const k of [KEY.token, KEY.cache, KEY.pending, KEY.timer]) store.del(k);
+  for (const k of [KEY.token, KEY.cache, KEY.pending, KEY.timer, KEY.cal]) store.del(k);
+  setCal(null, 'none');
   cfg = null;
   Object.assign(st, { base: null, sha: null, loaded: false, pending: [], syncing: false });
   clearTimeout(st.timer);
@@ -2791,10 +2916,12 @@ document.addEventListener('visibilitychange', () => {
   if (document.visibilityState !== 'visible' || !cfg) return;
   tick();
   if (st.pending.length) sync(); else reload(true);
+  if (Date.now() - CAL.fetchedAt > 5 * 60000) fetchCalendar();
 });
 setInterval(() => {
   if (!cfg || document.visibilityState !== 'visible') return;
   if (st.pending.length) sync(); else reload(true);
+  if (Date.now() - CAL.fetchedAt > 5 * 60000) fetchCalendar(); // 予定は 1 時間ごとにしか変わらないので 5 分おきで十分
   if (renderedDay !== todayYmd() || view.type === 'today') render(); // 今日のタイムラインの現在時刻も進める
 }, 60000);
 setInterval(tick, 1000);
