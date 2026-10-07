@@ -6,7 +6,7 @@
 <meta name="referrer" content="no-referrer">
 <!-- 外部スクリプトは一切読み込まない。通信先は GitHub API のみに制限する -->
 <meta http-equiv="Content-Security-Policy" content="default-src 'none'; script-src 'unsafe-inline'; style-src 'unsafe-inline'; connect-src https://api.github.com; img-src data:; base-uri 'none'; form-action 'none'">
-<title>Todo</title>
+<title></title>
 <style>
   :root {
     --bg: #f6f7f9; --card: #fff; --text: #1d2330; --muted: #6b7280;
@@ -41,7 +41,6 @@
   .row { display: flex; gap: 8px; }
   .row input { flex: 1; }
   .note { font-size: 13px; color: var(--muted); }
-  .error { color: var(--danger); font-size: 14px; margin-top: 10px; white-space: pre-wrap; }
   ul { list-style: none; margin: 16px 0 0; padding: 0; }
   li { display: flex; align-items: center; gap: 10px; padding: 10px 2px; border-top: 1px solid var(--line); }
   li:first-child { border-top: 0; }
@@ -55,47 +54,40 @@
   #status.err { color: var(--danger); }
   #status.ok { color: var(--ok); }
   a { color: var(--accent); }
+  #setup { display: flex; flex-direction: column; gap: 12px; max-width: 360px; margin: 18vh auto 0; }
+  #setup input { background: var(--card); }
+  #setup input.bad { border-color: var(--danger); outline: 2px solid var(--danger); outline-offset: -1px; }
+  #setup.busy { opacity: .5; pointer-events: none; }
   [hidden] { display: none !important; }
 </style>
 </head>
 <body>
 <main>
-  <h1>Todo</h1>
-
-  <!-- 初回設定 -->
-  <section id="setup" class="card" hidden>
-    <p class="note" style="margin-top:0">
-      データは非公開リポジトリに保存されます。このページ自体にはデータは含まれません。
-      接続には、データ用リポジトリだけを対象にした fine-grained personal access token
-      （Contents: Read and write）が必要です。トークンはこの端末のブラウザ内にだけ保存されます。
-    </p>
-    <form id="setupForm">
-      <label for="repo">データ用リポジトリ（owner/repo）</label>
-      <input id="repo" type="text" placeholder="owner/repo" autocomplete="off" spellcheck="false" required>
-      <label for="path">ファイル</label>
-      <input id="path" type="text" placeholder="例: data.json" autocomplete="off" spellcheck="false" required>
-      <label for="token">トークン</label>
-      <input id="token" type="password" autocomplete="off" spellcheck="false" required placeholder="github_pat_...">
-      <div style="margin-top:16px"><button class="primary" id="connectBtn">接続する</button></div>
-      <div id="setupError" class="error" hidden></div>
-    </form>
-  </section>
+  <!-- 初回設定: 上から owner/repo・ファイルのパス・トークン。どれかの欄で Enter を押すと接続する -->
+  <form id="setup" hidden>
+    <input id="repo" type="text" autocomplete="off" autocapitalize="off" spellcheck="false">
+    <input id="path" type="text" autocomplete="off" autocapitalize="off" spellcheck="false">
+    <input id="token" type="password" autocomplete="off" spellcheck="false" enterkeyhint="go">
+  </form>
 
   <!-- Todo 本体 -->
-  <section id="app" class="card" hidden>
-    <form id="addForm" class="row">
-      <input id="newTitle" type="text" placeholder="やることを追加" autocomplete="off" required>
-      <button class="primary">追加</button>
-    </form>
-    <ul id="list"></ul>
-    <div class="bar">
-      <span id="status"></span>
-      <span>
-        <button class="link" id="reloadBtn" type="button">再読み込み</button>
-        <button class="link" id="retryBtn" type="button" hidden>再試行</button>
-        <a class="note" id="fileLink" target="_blank" rel="noopener noreferrer">GitHub で見る</a>
-        <button class="link" id="logoutBtn" type="button">接続解除</button>
-      </span>
+  <section id="app" hidden>
+    <h1>Todo</h1>
+    <div class="card">
+      <form id="addForm" class="row">
+        <input id="newTitle" type="text" placeholder="やることを追加" autocomplete="off" required>
+        <button class="primary">追加</button>
+      </form>
+      <ul id="list"></ul>
+      <div class="bar">
+        <span id="status"></span>
+        <span>
+          <button class="link" id="reloadBtn" type="button">再読み込み</button>
+          <button class="link" id="retryBtn" type="button" hidden>再試行</button>
+          <a class="note" id="fileLink" target="_blank" rel="noopener noreferrer">GitHub で見る</a>
+          <button class="link" id="logoutBtn" type="button">接続解除</button>
+        </span>
+      </div>
     </div>
   </section>
 </main>
@@ -322,14 +314,24 @@ function setStatus(text, kind) {
   s.className = kind || '';
 }
 
-function showSetup(message) {
+// 設定画面には文字を出さない。失敗したら怪しい欄を赤枠にし、詳細はコンソールにだけ出す
+const FIELDS = ['repo', 'path', 'token'];
+function showSetup(bad = [], detail) {
+  document.title = '';
   $('app').hidden = true;
   $('setup').hidden = false;
-  $('setupError').hidden = !message;
-  $('setupError').textContent = message || '';
+  for (const id of FIELDS) $(id).classList.toggle('bad', bad.includes(id));
+  if (detail) console.warn(detail);
+}
+function badFields(e) {
+  if (e instanceof TypeError) return FIELDS; // 通信できない
+  if (e.status === 401 || e.status === 403) return ['token'];
+  if (e.status === 404) return ['repo', 'token']; // 名前違い、またはトークンの対象外
+  return FIELDS;
 }
 
 async function showApp() {
+  document.title = 'Todo';
   $('setup').hidden = true;
   $('app').hidden = false;
   $('fileLink').href = `https://github.com/${cfg.repo}/commits/HEAD/${cfg.path}`;
@@ -341,7 +343,7 @@ async function showApp() {
   } catch (e) {
     if (e.status === 401) {
       store.del(KEY.token);
-      showSetup(explain(e));
+      showSetup(['token'], explain(e));
       return;
     }
     setStatus('読み込めませんでした: ' + explain(e), 'err');
@@ -349,19 +351,22 @@ async function showApp() {
 }
 
 // ---- イベント
-$('setupForm').addEventListener('submit', async (ev) => {
-  ev.preventDefault();
+async function connect() {
   const repo = $('repo').value.trim().replace(/^https:\/\/github\.com\//, '').replace(/\/+$/, '');
   const path = $('path').value.trim().replace(/^\/+/, '');
   const token = $('token').value.trim();
-  if (!/^[\w.-]+\/[\w.-]+$/.test(repo)) return showSetup('リポジトリは owner/repo の形で入力してください。');
+  const bad = [];
+  if (!/^[\w.-]+\/[\w.-]+$/.test(repo)) bad.push('repo');
+  if (!path) bad.push('path');
+  if (!token) bad.push('token');
+  if (bad.length) return showSetup(bad);
   cfg = { token, repo, path };
-  $('connectBtn').disabled = true;
+  $('setup').classList.add('busy');
   try {
     const info = await gh('GET', `/repos/${repo}`);
     if (!info.private) {
       cfg = null;
-      return showSetup('このリポジトリは公開されています。個人データは非公開リポジトリに置いてください。');
+      return showSetup(['repo'], '公開リポジトリには接続しない');
     }
     store.set(KEY.token, token);
     store.set(KEY.repo, repo);
@@ -370,11 +375,23 @@ $('setupForm').addEventListener('submit', async (ev) => {
     await showApp();
   } catch (e) {
     cfg = null;
-    showSetup(explain(e));
+    showSetup(badFields(e), explain(e));
   } finally {
-    $('connectBtn').disabled = false;
+    $('setup').classList.remove('busy');
   }
-});
+}
+
+$('setup').addEventListener('submit', (ev) => ev.preventDefault());
+for (const id of FIELDS) {
+  $(id).addEventListener('input', () => $(id).classList.remove('bad'));
+  $(id).addEventListener('keydown', (ev) => {
+    // 日本語入力の変換確定の Enter では送らない
+    if (ev.key === 'Enter' && !ev.isComposing && ev.keyCode !== 229) {
+      ev.preventDefault();
+      connect();
+    }
+  });
+}
 
 $('addForm').addEventListener('submit', (ev) => {
   ev.preventDefault();
