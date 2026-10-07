@@ -375,19 +375,23 @@
   .sheet-item input[type=date] { width: auto; min-height: 36px; padding: 4px 8px; }
   /* クイック追加 */
   /* ルーティン（タップで埋めていく） */
-  .rt-grid { display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); gap: 8px; margin-top: 8px; }
-  @media (min-width: 600px) { .rt-grid { grid-template-columns: repeat(auto-fill, minmax(108px, 1fr)); } }
-  .rt-wrap { position: relative; }
+  /* マスはすべて同じ大きさ（行の高さを固定し、名前は 2 行まで） */
+  .rt-grid { display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); grid-auto-rows: 104px; gap: 8px; margin-top: 8px; }
+  @media (min-width: 600px) { .rt-grid { grid-template-columns: repeat(auto-fill, minmax(112px, 1fr)); } }
+  .rt-wrap { position: relative; min-width: 0; height: 100%; }
   .rt {
-    position: relative; width: 100%; min-height: 88px; padding: 12px 4px 8px; border-radius: 16px;
-    border: 1.5px solid var(--line); background: var(--card);
-    display: flex; flex-direction: column; align-items: center; gap: 4px; text-align: center;
+    position: relative; width: 100%; height: 100%; min-height: 0; padding: 8px 4px; border-radius: 16px;
+    border: 1.5px solid var(--line); background: var(--card); overflow: hidden;
+    display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 3px; text-align: center;
     transition: background .18s, border-color .18s, transform .1s;
   }
   .rt:active { transform: scale(.94); }
   .rt-emo { font-size: 26px; line-height: 30px; }
-  .rt-t { font-size: 12px; line-height: 1.3; font-weight: 700; overflow-wrap: anywhere; text-wrap: balance; word-break: auto-phrase; }
-  .rt-s { font-size: 11px; color: var(--muted); font-variant-numeric: tabular-nums; }
+  .rt-t {
+    font-size: 12px; line-height: 1.3; font-weight: 700; overflow-wrap: anywhere; text-wrap: balance; word-break: auto-phrase;
+    display: -webkit-box; -webkit-box-orient: vertical; -webkit-line-clamp: 2; overflow: hidden; max-width: 100%;
+  }
+  .rt-s { font-size: 11px; line-height: 14px; min-height: 14px; color: var(--muted); font-variant-numeric: tabular-nums; }
   .rt.on { background: var(--accent); border-color: var(--accent); color: var(--accent-ink); }
   .rt.on .rt-s { color: inherit; opacity: .85; }
   .rt.on::after { content: "✓"; position: absolute; top: 5px; right: 9px; font-size: 13px; font-weight: 800; }
@@ -569,11 +573,12 @@
 </style>
 </head>
 <body>
-<!-- 初回設定: 上から owner/repo・ファイルのパス・トークン。どれかの欄で Enter を押すと接続する -->
-<form id="setup" hidden>
-  <input id="repo" type="text" autocomplete="off" autocapitalize="off" spellcheck="false">
-  <input id="path" type="text" autocomplete="off" autocapitalize="off" spellcheck="false">
-  <input id="token" type="password" autocomplete="off" spellcheck="false" enterkeyhint="go">
+<!-- 初回設定: 上が接続先（owner/repo/ファイル）、下がトークン。どちらかの欄で Enter を押すと接続する。
+     ブラウザのパスワード保存（iCloud キーチェーンなど）に入るよう、通常のログインフォームの形にしてある -->
+<form id="setup" hidden method="post" action="#">
+  <input id="repo" name="username" type="text" autocomplete="username" autocapitalize="off" autocorrect="off" spellcheck="false">
+  <input id="token" name="password" type="password" autocomplete="current-password" spellcheck="false" enterkeyhint="go">
+  <button type="submit" hidden tabindex="-1" aria-hidden="true"></button>
 </form>
 
 <div id="app" hidden>
@@ -1238,10 +1243,11 @@ async function reload(quiet) {
     const old = st.sha;
     await fetchBase();
     if (!quiet || st.sha !== old) render();
-    if (!quiet) { setSync('fresh'); fetchCalendar(); }
+    if (!quiet) { setSync('fresh'); fetchCalendar(); } else if (syncState === 'offline' || syncState === 'error') setSync('fresh'); // つながったら知らせを消す
   } catch (e) {
-    if (e.status === 401) return logout(['token'], explain(e));
-    if (!quiet) setSync(e instanceof TypeError ? 'offline' : 'error', e);
+    // 裏での読み込みが一時的に失敗しても、トークンは消さない。手動で読み直して 401 のときだけ入力欄に戻す
+    if (e.status === 401 && !quiet) return reauth(explain(e));
+    setSync(e instanceof TypeError ? 'offline' : 'error', e);
   }
 }
 function setSync(state, err) {
@@ -1258,6 +1264,7 @@ function setSync(state, err) {
   $('retryBtn').hidden = !(state === 'error' || state === 'offline');
   syncState = state;
   syncText = text;
+  syncErrStatus = (state === 'error' && err && err.status) || 0;
   renderSyncPill(state);
 }
 
@@ -1295,6 +1302,7 @@ let logDays = 30;
 let showProjectDone = false;
 let showTodayDone = false;
 let syncState = 'loading';
+let syncErrStatus = 0;
 let syncText = '';
 const MAIN_TABS = ['today', 'upcoming', 'inbox'];
 
@@ -1832,7 +1840,7 @@ function routineSection(d, T) {
         class: 'rt' + (on ? ' on' : ''), type: 'button', 'aria-pressed': String(on), 'data-rid': r.id, title: r.note || r.title,
         'aria-label': r.title + (r.note ? `（${r.note}）` : ''), onclick: () => toggleRoutine(r.id),
       }, h('span', { class: 'rt-emo', 'aria-hidden': 'true' }, r.emoji || '✓'), h('span', { class: 'rt-t' }, r.title),
-        streak >= 2 ? h('span', { class: 'rt-s' }, `🔥 ${streak}日`) : null),
+        h('span', { class: 'rt-s' }, streak >= 2 ? `🔥 ${streak}日` : '')),
       r.link ? h('a', { class: 'rt-link', href: r.link, target: '_blank', rel: 'noopener noreferrer', 'aria-label': `${r.title} を開く`, title: '開く' }, icon('arrow')) : null);
   })));
 }
@@ -2927,7 +2935,14 @@ function openSettings() {
  * 初回設定・接続
  * 設定画面には文字を出さない。失敗したら怪しい欄を赤枠にし、詳細はコンソールにだけ出す
  * ========================================================================= */
-const FIELDS = ['repo', 'path', 'token'];
+const FIELDS = ['repo', 'token'];
+// 「owner/repo/ファイル」を分ける。ファイルを省くと todos.json。GitHub の URL を貼っても受け付ける
+function parseTarget(v) {
+  let parts = v.trim().replace(/^https?:\/\/github\.com\//, '').split('/').filter(Boolean);
+  if (['blob', 'tree'].includes(parts[2])) parts = [...parts.slice(0, 2), ...parts.slice(4)];
+  if (parts.length < 2 || !parts.slice(0, 2).every((x) => /^[\w.-]+$/.test(x))) return null;
+  return { repo: parts.slice(0, 2).join('/'), path: parts.slice(2).join('/') || 'todos.json' };
+}
 function showSetup(bad = [], detail) {
   document.title = '';
   $('app').hidden = true;
@@ -2943,14 +2958,13 @@ function badFields(e) {
   return FIELDS;
 }
 async function connect() {
-  const repo = $('repo').value.trim().replace(/^https:\/\/github\.com\//, '').replace(/\/+$/, '');
-  const path = $('path').value.trim().replace(/^\/+/, '');
+  const target = parseTarget($('repo').value);
   const token = $('token').value.trim();
   const bad = [];
-  if (!/^[\w.-]+\/[\w.-]+$/.test(repo)) bad.push('repo');
-  if (!path) bad.push('path');
+  if (!target) bad.push('repo');
   if (!token) bad.push('token');
   if (bad.length) return showSetup(bad);
+  const { repo, path } = target;
   cfg = { token, repo, path };
   $('setup').classList.add('busy');
   try {
@@ -2962,14 +2976,35 @@ async function connect() {
     store.set(KEY.token, token);
     store.set(KEY.repo, repo);
     store.set(KEY.path, path);
+    rememberLogin($('repo').value.trim(), token);
+    await showApp(); // 入力欄が消えるので、ブラウザが「パスワードを保存しますか？」と聞く
     $('token').value = '';
-    await showApp();
   } catch (e) {
     cfg = null;
     showSetup(badFields(e), explain(e));
   } finally {
     $('setup').classList.remove('busy');
   }
+}
+// ログイン情報をブラウザに保存してもらう（Chrome などは明示的に保存できる。Safari はフォームの送信を見て保存を提案する）。
+// 端末内の保存も、容量が足りなくなったときに消されにくいよう申請しておく
+function rememberLogin(id, password) {
+  try { if (window.PasswordCredential) navigator.credentials.store(new PasswordCredential({ id, password, name: 'Todo' })).catch(() => {}); } catch {}
+  try { navigator.storage?.persist?.().catch(() => {}); } catch {}
+}
+// トークンが通らなかったときは、消さずに入力欄へ戻す（Enter で再試行、または貼り直す）。
+// 未保存の変更や前回の内容は端末に残したままにする
+function reauth(detail) {
+  const token = cfg?.token || store.get(KEY.token) || '';
+  cfg = null;
+  Object.assign(st, { base: null, sha: null, loaded: false, pending: [], syncing: false });
+  clearTimeout(st.timer);
+  closeDetail();
+  closeSheet();
+  closeFocusMode();
+  $('content').replaceChildren();
+  showSetup(['token'], detail);
+  $('token').value = token;
 }
 async function showApp() {
   $('setup').hidden = true;
@@ -2998,7 +3033,7 @@ async function showApp() {
     maybeSeedRoutines();
     fetchCalendar();
   } catch (e) {
-    if (e.status === 401) return logout(['token'], explain(e));
+    if (e.status === 401) return reauth(explain(e));
     setSync(e instanceof TypeError ? 'offline' : 'error', e);
   }
 }
@@ -3020,12 +3055,14 @@ function logout(bad, detail) {
  * イベント
  * ========================================================================= */
 $('setup').addEventListener('submit', (ev) => ev.preventDefault());
+$('setup').addEventListener('submit', () => { if (!$('setup').classList.contains('busy')) connect(); });
 for (const id of FIELDS) {
   $(id).addEventListener('input', () => $(id).classList.remove('bad'));
   $(id).addEventListener('keydown', (ev) => {
     if (ev.key === 'Enter' && !ev.isComposing && ev.keyCode !== 229) { // 日本語入力の確定では送らない
       ev.preventDefault();
-      connect();
+      // フォームとして送信する（パスワードの保存を提案してもらうため）。送信そのものは止めて、接続だけ行う
+      if ($('setup').requestSubmit) $('setup').requestSubmit(); else connect();
     }
   });
 }
@@ -3040,7 +3077,10 @@ $('settingsBtn').append(icon('gear'));
 $('retryBtn').append(icon('sync'));
 $('helpBtn').addEventListener('click', openHelp);
 $('settingsBtn').addEventListener('click', openSettings);
-const retry = () => (st.pending.length ? sync() : reload(false));
+const retry = () => {
+  if (syncErrStatus === 401) return reauth(explain({ status: 401 })); // トークンの問題は入力欄で直す
+  return st.pending.length ? sync() : reload(false);
+};
 $('retryBtn').addEventListener('click', retry);
 $('syncPill').addEventListener('click', retry);
 $('undoBtn').addEventListener('click', undo);
@@ -3224,10 +3264,9 @@ window.addEventListener('beforeunload', (ev) => {
   if ('serviceWorker' in navigator && location.protocol !== 'file:') navigator.serviceWorker.register('sw.js').catch(() => {});
   const token = store.get(KEY.token);
   const repo = store.get(KEY.repo);
-  const path = store.get(KEY.path);
-  if (repo) $('repo').value = repo;
-  if (path) $('path').value = path;
-  if (token && repo && path) {
+  const path = store.get(KEY.path) || 'todos.json';
+  if (repo) $('repo').value = path === 'todos.json' ? repo : `${repo}/${path}`;
+  if (token && repo) {
     cfg = { token, repo, path };
     showApp();
   } else {
