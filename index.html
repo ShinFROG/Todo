@@ -2,127 +2,778 @@
 <html lang="ja">
 <head>
 <meta charset="utf-8">
-<meta name="viewport" content="width=device-width, initial-scale=1">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
 <meta name="referrer" content="no-referrer">
+<meta name="robots" content="noindex, nofollow">
+<meta name="apple-mobile-web-app-capable" content="yes">
 <!-- 外部スクリプトは一切読み込まない。通信先は GitHub API のみに制限する -->
 <meta http-equiv="Content-Security-Policy" content="default-src 'none'; script-src 'unsafe-inline'; style-src 'unsafe-inline'; connect-src https://api.github.com; img-src data:; base-uri 'none'; form-action 'none'">
 <title></title>
 <style>
   :root {
-    --bg: #f6f7f9; --card: #fff; --text: #1d2330; --muted: #6b7280;
-    --line: #e3e6eb; --accent: #2563eb; --danger: #c2410c; --ok: #15803d;
+    color-scheme: light;
+    --bg: #f7f7f5; --side: #efefec; --card: #ffffff; --raise: #ffffff;
+    --text: #1c1c1a; --muted: #6b6a66; --faint: #a3a29c; --line: #e4e3df;
+    --accent: #2a78d6; --accent-ink: #ffffff; --accent-soft: rgba(42, 120, 214, .12);
+    --danger: #c63b3a; --ok: #0f8a3c; --warn: #b26a00;
+    --p1: #e34948; --p2: #eb6834; --p3: #2a78d6;
+    --c1: #2a78d6; --c2: #eb6834; --c3: #1baf7a; --c4: #eda100;
+    --c5: #e87ba4; --c6: #008300; --c7: #4a3aa7; --c8: #e34948;
+    --shadow: 0 10px 30px rgba(0, 0, 0, .14);
+    --radius: 10px;
   }
   @media (prefers-color-scheme: dark) {
     :root {
-      --bg: #12151b; --card: #1b2029; --text: #e6e9ef; --muted: #9aa3b2;
-      --line: #2b323e; --accent: #6b9cff; --danger: #fb923c; --ok: #4ade80;
+      color-scheme: dark;
+      --bg: #161615; --side: #1d1d1c; --card: #222221; --raise: #2b2b29;
+      --text: #ecebe6; --muted: #a8a79f; --faint: #75746e; --line: #34332f;
+      --accent: #5598e7; --accent-ink: #0b0b0b; --accent-soft: rgba(85, 152, 231, .18);
+      --danger: #ef6b6a; --ok: #3ccf6e; --warn: #f0a63a;
+      --p1: #e66767; --p2: #d95926; --p3: #3987e5;
+      --c1: #3987e5; --c2: #d95926; --c3: #199e70; --c4: #c98500;
+      --c5: #d55181; --c6: #008300; --c7: #9085e9; --c8: #e66767;
+      --shadow: 0 10px 30px rgba(0, 0, 0, .5);
     }
   }
   * { box-sizing: border-box; }
+  html, body { margin: 0; }
   body {
-    margin: 0; background: var(--bg); color: var(--text);
-    font: 16px/1.5 system-ui, -apple-system, "Hiragino Sans", "Noto Sans JP", sans-serif;
+    background: var(--bg); color: var(--text); -webkit-text-size-adjust: 100%;
+    font: 15px/1.5 system-ui, -apple-system, "Hiragino Sans", "Noto Sans JP", sans-serif;
   }
-  main { max-width: 640px; margin: 0 auto; padding: 24px 16px 48px; }
-  h1 { font-size: 22px; margin: 0 0 16px; }
-  .card { background: var(--card); border: 1px solid var(--line); border-radius: 12px; padding: 16px; }
-  label { display: block; font-size: 13px; color: var(--muted); margin: 12px 0 4px; }
-  input[type=text], input[type=password] {
-    width: 100%; padding: 10px 12px; font: inherit; color: inherit;
-    background: var(--bg); border: 1px solid var(--line); border-radius: 8px;
+  button, input, select, textarea { font: inherit; color: inherit; }
+  input[type=text], input[type=password], input[type=search], input[type=number],
+  input[type=date], input[type=time], select, textarea {
+    width: 100%; padding: 8px 10px; background: var(--card);
+    border: 1px solid var(--line); border-radius: 8px; outline: none;
   }
-  button {
-    font: inherit; padding: 10px 14px; border-radius: 8px; cursor: pointer;
-    border: 1px solid var(--line); background: var(--card); color: var(--text);
-  }
-  button.primary { background: var(--accent); border-color: var(--accent); color: #fff; }
-  button.link { border: 0; background: none; padding: 4px 6px; color: var(--muted); font-size: 14px; }
-  button:disabled { opacity: .5; cursor: default; }
-  .row { display: flex; gap: 8px; }
-  .row input { flex: 1; }
-  .note { font-size: 13px; color: var(--muted); }
-  ul { list-style: none; margin: 16px 0 0; padding: 0; }
-  li { display: flex; align-items: center; gap: 10px; padding: 10px 2px; border-top: 1px solid var(--line); }
-  li:first-child { border-top: 0; }
-  li input[type=checkbox] { width: 20px; height: 20px; flex: none; }
-  li .title { flex: 1; overflow-wrap: anywhere; }
-  li.done .title { color: var(--muted); text-decoration: line-through; }
-  li .del { color: var(--muted); }
-  .empty { color: var(--muted); padding: 16px 0 4px; text-align: center; }
-  .bar { display: flex; flex-wrap: wrap; align-items: center; justify-content: space-between; gap: 8px; margin-top: 12px; }
-  #status { font-size: 13px; color: var(--muted); }
-  #status.err { color: var(--danger); }
-  #status.ok { color: var(--ok); }
+  input:focus, select:focus, textarea:focus { border-color: var(--accent); box-shadow: 0 0 0 3px var(--accent-soft); }
+  textarea { resize: vertical; min-height: 90px; line-height: 1.6; }
+  button { cursor: pointer; border: 1px solid var(--line); background: var(--card); border-radius: 8px; padding: 7px 12px; }
+  button:focus-visible, [tabindex]:focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; }
   a { color: var(--accent); }
-  #setup { display: flex; flex-direction: column; gap: 12px; max-width: 360px; margin: 18vh auto 0; }
-  #setup input { background: var(--card); }
+  [hidden] { display: none !important; }
+  .ic { display: inline-flex; width: 18px; height: 18px; flex: none; }
+  .ic svg { width: 100%; height: 100%; }
+  .btn-primary { background: var(--accent); border-color: var(--accent); color: var(--accent-ink); }
+  .btn-danger { color: var(--danger); }
+  .icon-btn {
+    border: 0; background: transparent; padding: 6px; border-radius: 6px;
+    color: var(--muted); display: inline-flex; align-items: center; gap: 4px;
+  }
+  .icon-btn:hover { background: var(--accent-soft); color: var(--text); }
+  .icon-btn.on { color: var(--warn); }
+  .link-btn { border: 0; background: none; padding: 0; color: var(--accent); font-size: 13px; }
+
+  /* ---- 初回設定（文字なし） ---- */
+  #setup { display: flex; flex-direction: column; gap: 12px; max-width: 360px; margin: 18vh auto 0; padding: 0 16px; }
+  #setup input { background: var(--card); padding: 10px 12px; }
   #setup input.bad { border-color: var(--danger); outline: 2px solid var(--danger); outline-offset: -1px; }
   #setup.busy { opacity: .5; pointer-events: none; }
-  [hidden] { display: none !important; }
+
+  /* ---- 全体の配置 ---- */
+  #app { display: grid; grid-template-columns: 250px minmax(0, 1fr); min-height: 100vh; min-height: 100dvh; }
+  #side {
+    position: sticky; top: 0; height: 100vh; height: 100dvh; overflow-y: auto;
+    background: var(--side); border-right: 1px solid var(--line);
+    padding: 14px 10px; display: flex; flex-direction: column; gap: 2px;
+  }
+  #main { min-width: 0; padding: 20px 24px 160px; }
+  .inner { max-width: 760px; margin: 0 auto; }
+  #scrim { display: none; position: fixed; inset: 0; background: rgba(0, 0, 0, .35); z-index: 25; }
+  @media (min-width: 801px) { .only-mobile { display: none !important; } }
+  @media (max-width: 800px) {
+    #app { grid-template-columns: minmax(0, 1fr); }
+    #side {
+      position: fixed; z-index: 30; left: 0; top: 0; bottom: 0; width: 280px; max-width: 85vw;
+      transform: translateX(-105%); transition: transform .18s ease; box-shadow: var(--shadow);
+    }
+    body.drawer #side { transform: none; }
+    body.drawer #scrim { display: block; }
+    #main { padding: 12px 16px 160px; }
+  }
+
+  /* ---- サイドバー ---- */
+  .side-search { position: relative; margin-bottom: 8px; }
+  .side-search input { background: var(--card); }
+  .nav-item {
+    display: flex; align-items: center; gap: 10px; width: 100%; border: 0; background: transparent;
+    padding: 6px 10px; border-radius: 8px; text-align: left; color: var(--text);
+  }
+  .nav-item:hover { background: color-mix(in srgb, var(--text) 6%, transparent); }
+  .nav-item.on { background: var(--accent-soft); color: var(--accent); font-weight: 600; }
+  .nav-label { flex: 1; min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+  .count { font-size: 12px; color: var(--muted); font-variant-numeric: tabular-nums; font-weight: 400; }
+  .count.alert { color: var(--danger); font-weight: 700; }
+  .nav-sec { font-size: 11px; color: var(--muted); font-weight: 700; letter-spacing: .04em; margin: 14px 10px 2px; }
+  .pdot { width: 9px; height: 9px; border-radius: 50%; display: inline-block; flex: none; }
+  .nav-item .pdot { margin: 0 4px; }
+  .side-foot { margin-top: auto; padding-top: 12px; display: flex; align-items: center; gap: 2px; }
+  .sync { font-size: 12px; color: var(--muted); flex: 1; min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; padding-left: 6px; }
+  .sync.error { color: var(--danger); }
+  .sync.offline, .sync.dirty { color: var(--warn); }
+
+  /* ---- 見出し・クイック追加 ---- */
+  .top { display: flex; align-items: center; gap: 10px; margin-bottom: 14px; min-height: 40px; }
+  .top h1 { font-size: 22px; margin: 0; line-height: 1.2; overflow-wrap: anywhere; }
+  .top .sub { font-size: 13px; color: var(--muted); }
+  .top .grow { flex: 1; min-width: 0; }
+  #quick { display: flex; gap: 8px; }
+  #quick input { flex: 1; min-width: 0; padding: 10px 12px; }
+  .chips { display: flex; flex-wrap: wrap; gap: 6px; margin-top: 6px; }
+  .qchip {
+    font-size: 12px; padding: 2px 9px; border-radius: 999px; background: var(--accent-soft);
+    display: inline-flex; gap: 4px; align-items: center;
+  }
+  .qchip .ic { width: 13px; height: 13px; }
+
+  /* ---- タスク一覧 ---- */
+  .group { margin-top: 20px; }
+  .group-h { display: flex; align-items: baseline; gap: 8px; margin: 0 0 4px; padding: 0 6px; }
+  .group-h h3 { font-size: 13px; margin: 0; color: var(--muted); font-weight: 700; }
+  .group-h.late h3 { color: var(--danger); }
+  .group-h .sp { flex: 1; }
+  .group-h.faint h3 { color: var(--faint); font-weight: 600; }
+  .tasks { list-style: none; margin: 0; padding: 0; }
+  .task { display: flex; align-items: flex-start; gap: 10px; padding: 8px 6px; border-bottom: 1px solid var(--line); border-radius: 6px; }
+  .task:hover { background: color-mix(in srgb, var(--accent) 5%, transparent); }
+  .task.sel { background: var(--accent-soft); }
+  .check {
+    flex: none; width: 20px; height: 20px; margin-top: 2px; padding: 0; border-radius: 50%;
+    border: 2px solid var(--faint); background: transparent; position: relative;
+  }
+  .check.p1 { border-color: var(--p1); background: color-mix(in srgb, var(--p1) 14%, transparent); }
+  .check.p2 { border-color: var(--p2); background: color-mix(in srgb, var(--p2) 14%, transparent); }
+  .check.p3 { border-color: var(--p3); background: color-mix(in srgb, var(--p3) 14%, transparent); }
+  .check:hover::after, .task.done .check::after {
+    content: ""; position: absolute; left: 5px; top: 1px; width: 5px; height: 10px;
+    border: solid var(--muted); border-width: 0 2px 2px 0; transform: rotate(45deg);
+  }
+  .task.done .check { background: var(--faint); border-color: var(--faint); }
+  .task.done .check::after { border-color: var(--card); }
+  .body { flex: 1; min-width: 0; cursor: pointer; outline: none; }
+  .title { overflow-wrap: anywhere; }
+  .task.done .title { color: var(--muted); text-decoration: line-through; }
+  .meta { display: flex; flex-wrap: wrap; gap: 2px 10px; font-size: 12.5px; color: var(--muted); margin-top: 1px; }
+  .mchip { display: inline-flex; align-items: center; gap: 3px; border: 0; background: none; padding: 0; color: inherit; font-size: inherit; }
+  .mchip .ic { width: 13px; height: 13px; }
+  button.mchip:hover { color: var(--text); text-decoration: underline; }
+  .mchip.late { color: var(--danger); font-weight: 600; }
+  .mchip.today { color: var(--ok); font-weight: 600; }
+  .mchip.sun { color: var(--warn); }
+  .acts { display: flex; gap: 0; opacity: 0; }
+  .task:hover .acts, .task.sel .acts, .task:focus-within .acts { opacity: 1; }
+  @media (hover: none) { .acts { opacity: 1; } }
+  .empty { color: var(--muted); text-align: center; padding: 36px 12px; font-size: 14px; }
+  .nudge { display: flex; align-items: center; gap: 8px; margin-top: 12px; font-size: 13px; color: var(--muted); }
+
+  /* ---- カード・統計・グラフ ---- */
+  .card { background: var(--card); border: 1px solid var(--line); border-radius: var(--radius); padding: 14px; margin-top: 14px; }
+  .stats { display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); gap: 8px; }
+  .stat b { display: block; font-size: 20px; line-height: 1.3; font-variant-numeric: tabular-nums; }
+  .stat span { font-size: 12px; color: var(--muted); }
+  @media (max-width: 480px) { .stats { grid-template-columns: repeat(2, minmax(0, 1fr)); row-gap: 12px; } }
+  .meter { height: 6px; background: var(--line); border-radius: 3px; margin-top: 12px; overflow: hidden; }
+  .meter .fill { height: 100%; background: var(--accent); border-radius: 3px; }
+  .meter.over .fill { background: var(--danger); }
+  .hint { font-size: 13px; color: var(--muted); margin: 8px 0 0; }
+  .hint.warn { color: var(--danger); }
+  .chart { margin-top: 16px; }
+  .chart-h { font-size: 12px; color: var(--muted); margin-bottom: 6px; }
+  .bars { height: 88px; display: grid; grid-template-columns: repeat(14, minmax(0, 1fr)); gap: 2px; border-bottom: 1px solid var(--line); }
+  .bar-col { display: flex; flex-direction: column; justify-content: flex-end; align-items: center; height: 100%; cursor: default; border-radius: 4px; }
+  .bar-col:hover { background: color-mix(in srgb, var(--text) 5%, transparent); }
+  .bar { width: min(16px, 70%); background: var(--accent); border-radius: 4px 4px 0 0; }
+  .bar-val { font-size: 11px; color: var(--text); font-variant-numeric: tabular-nums; }
+  .bar-labels { display: grid; grid-template-columns: repeat(14, minmax(0, 1fr)); gap: 2px; font-size: 11px; color: var(--muted); text-align: center; margin-top: 3px; }
+  #tip {
+    position: fixed; z-index: 60; pointer-events: none; background: var(--text); color: var(--bg);
+    font-size: 12px; padding: 4px 8px; border-radius: 6px; white-space: nowrap;
+  }
+
+  /* ---- マトリクス ---- */
+  .matrix { display: grid; grid-template-columns: minmax(0, 1fr) minmax(0, 1fr); gap: 12px; margin-top: 14px; }
+  @media (max-width: 700px) { .matrix { grid-template-columns: minmax(0, 1fr); } }
+  .quad { margin-top: 0; padding: 10px 10px 4px; border-top-width: 4px; }
+  .quad.q1 { border-top-color: var(--p1); }
+  .quad.q2 { border-top-color: var(--p3); }
+  .quad.q3 { border-top-color: var(--p2); }
+  .quad.q4 { border-top-color: var(--faint); }
+  .quad-h { display: flex; align-items: baseline; gap: 8px; padding: 0 6px 4px; }
+  .quad-h h3 { margin: 0; font-size: 15px; }
+  .quad-h span { font-size: 12px; color: var(--muted); }
+  .quad .tasks { max-height: 380px; overflow-y: auto; }
+  .quad .task:last-child { border-bottom: 0; }
+
+  /* ---- レビュー ---- */
+  .step { margin-top: 22px; }
+  .step-h { display: flex; gap: 10px; align-items: baseline; }
+  .step-n {
+    width: 24px; height: 24px; border-radius: 50%; background: var(--accent-soft); color: var(--accent);
+    display: inline-flex; align-items: center; justify-content: center; font-size: 13px; font-weight: 700; flex: none;
+  }
+  .step-h h3 { margin: 0; font-size: 15px; }
+  .step-h p { margin: 0; font-size: 13px; color: var(--muted); }
+
+  /* ---- 詳細パネル ---- */
+  #detail {
+    position: fixed; z-index: 20; top: 0; right: 0; bottom: 0; width: 420px; max-width: 100%;
+    background: var(--card); border-left: 1px solid var(--line); box-shadow: var(--shadow);
+    overflow-y: auto; padding: 12px 18px 140px;
+  }
+  @media (min-width: 1280px) { body.detail-open #main { padding-right: 444px; } #detail { box-shadow: none; } }
+  @media (max-width: 800px) { #detail { width: 100%; border-left: 0; z-index: 35; } }
+  .d-head { display: flex; align-items: center; gap: 2px; margin: 0 -6px 4px; }
+  .d-head .sp { flex: 1; }
+  .d-title { font-size: 18px; font-weight: 600; }
+  .field { margin-top: 16px; }
+  .f-label { font-size: 12px; color: var(--muted); margin-bottom: 5px; font-weight: 700; display: block; }
+  .row { display: flex; gap: 8px; align-items: center; }
+  .row > * { min-width: 0; }
+  .mini { display: flex; flex-wrap: wrap; gap: 6px; margin-top: 6px; }
+  .mini button { padding: 3px 11px; font-size: 13px; border-radius: 999px; }
+  button[aria-pressed=true] { background: var(--accent); color: var(--accent-ink); border-color: var(--accent); }
+  .icon-btn[aria-pressed=true] { background: transparent; color: var(--warn); }
+  .d-head .icon-btn[aria-pressed=true] { color: var(--ok); }
+  .seg { display: flex; }
+  .seg button { flex: 1; border-radius: 0; margin-left: -1px; padding: 6px 4px; font-size: 14px; }
+  .seg button:first-child { border-radius: 8px 0 0 8px; margin-left: 0; }
+  .seg button:last-child { border-radius: 0 8px 8px 0; }
+  .wd { display: flex; gap: 4px; margin-top: 8px; }
+  .wd button { flex: 1; padding: 4px 0; font-size: 13px; }
+  .cl-item { display: flex; gap: 8px; align-items: center; margin-top: 6px; }
+  .cl-item input[type=checkbox] { width: 18px; height: 18px; flex: none; }
+  .cl-item input[type=text] { padding: 5px 8px; }
+  .cl-item.done input[type=text] { color: var(--muted); text-decoration: line-through; }
+  .links { margin-top: 6px; }
+  .links a { display: block; font-size: 13px; overflow-wrap: anywhere; }
+  .d-foot { margin-top: 20px; font-size: 12px; color: var(--muted); line-height: 1.8; }
+  .toggles { display: flex; flex-wrap: wrap; gap: 6px; margin-top: 10px; }
+  .toggles button { display: inline-flex; align-items: center; gap: 5px; border-radius: 999px; padding: 4px 12px; font-size: 13px; }
+  .toggles .ic { width: 15px; height: 15px; }
+
+  /* ---- タイマー・通知・ダイアログ ---- */
+  #focusBar {
+    position: fixed; z-index: 40; left: 50%; transform: translateX(-50%);
+    bottom: calc(14px + env(safe-area-inset-bottom)); background: var(--text); color: var(--bg);
+    border-radius: 14px; padding: 6px 8px 6px 16px; display: flex; align-items: center; gap: 10px;
+    box-shadow: var(--shadow); max-width: calc(100% - 24px);
+  }
+  .fb-kind { font-size: 12px; opacity: .75; white-space: nowrap; }
+  .fb-time { font-size: 20px; font-weight: 700; font-variant-numeric: tabular-nums; }
+  .fb-title { min-width: 0; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; max-width: 38vw; font-size: 13px; opacity: .85; }
+  #focusBar .icon-btn { color: inherit; }
+  #focusBar .icon-btn:hover { background: color-mix(in srgb, var(--bg) 18%, transparent); }
+  #toast {
+    position: fixed; z-index: 45; left: 50%; transform: translateX(-50%); bottom: calc(76px + env(safe-area-inset-bottom));
+    background: var(--raise); border: 1px solid var(--line); box-shadow: var(--shadow); border-radius: 10px;
+    padding: 6px 6px 6px 14px; display: flex; gap: 10px; align-items: center; max-width: calc(100% - 24px); font-size: 14px;
+  }
+  #toastMsg { min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+  #overlay {
+    position: fixed; inset: 0; z-index: 50; background: rgba(0, 0, 0, .4);
+    display: flex; align-items: flex-start; justify-content: center; padding: 6vh 16px; overflow-y: auto;
+  }
+  .dialog { background: var(--card); border-radius: 14px; padding: 18px 20px 20px; width: 100%; max-width: 600px; box-shadow: var(--shadow); }
+  .dialog h2 { margin: 0 0 6px; font-size: 18px; }
+  .dialog h3 { margin: 18px 0 6px; font-size: 14px; color: var(--muted); }
+  .kv { width: 100%; border-collapse: collapse; font-size: 14px; }
+  .kv td { padding: 4px 6px; border-bottom: 1px solid var(--line); vertical-align: top; }
+  .kv td:first-child { white-space: nowrap; color: var(--muted); }
+  kbd {
+    font: 12px ui-monospace, SFMono-Regular, Menlo, monospace; padding: 1px 6px; border-radius: 5px;
+    border: 1px solid var(--line); background: var(--bg);
+  }
+  .dlg-foot { display: flex; gap: 8px; justify-content: flex-end; margin-top: 18px; flex-wrap: wrap; }
 </style>
 </head>
 <body>
-<main>
-  <!-- 初回設定: 上から owner/repo・ファイルのパス・トークン。どれかの欄で Enter を押すと接続する -->
-  <form id="setup" hidden>
-    <input id="repo" type="text" autocomplete="off" autocapitalize="off" spellcheck="false">
-    <input id="path" type="text" autocomplete="off" autocapitalize="off" spellcheck="false">
-    <input id="token" type="password" autocomplete="off" spellcheck="false" enterkeyhint="go">
-  </form>
+<!-- 初回設定: 上から owner/repo・ファイルのパス・トークン。どれかの欄で Enter を押すと接続する -->
+<form id="setup" hidden>
+  <input id="repo" type="text" autocomplete="off" autocapitalize="off" spellcheck="false">
+  <input id="path" type="text" autocomplete="off" autocapitalize="off" spellcheck="false">
+  <input id="token" type="password" autocomplete="off" spellcheck="false" enterkeyhint="go">
+</form>
 
-  <!-- Todo 本体 -->
-  <section id="app" hidden>
-    <h1>Todo</h1>
-    <div class="card">
-      <form id="addForm" class="row">
-        <input id="newTitle" type="text" placeholder="やることを追加" autocomplete="off" required>
-        <button class="primary">追加</button>
-      </form>
-      <ul id="list"></ul>
-      <div class="bar">
-        <span id="status"></span>
-        <span>
-          <button class="link" id="reloadBtn" type="button">再読み込み</button>
-          <button class="link" id="retryBtn" type="button" hidden>再試行</button>
-          <a class="note" id="fileLink" target="_blank" rel="noopener noreferrer">GitHub で見る</a>
-          <button class="link" id="logoutBtn" type="button">接続解除</button>
-        </span>
-      </div>
+<div id="app" hidden>
+  <aside id="side" aria-label="メニュー">
+    <div class="side-search">
+      <input id="search" type="search" placeholder="検索（/）" autocomplete="off" aria-label="検索">
     </div>
-  </section>
-</main>
+    <nav id="nav"></nav>
+    <div class="side-foot">
+      <span id="sync" class="sync" role="status"></span>
+      <button id="retryBtn" class="icon-btn" type="button" hidden title="再試行" aria-label="再試行"></button>
+      <button id="helpBtn" class="icon-btn" type="button" title="使い方（?）" aria-label="使い方"></button>
+      <button id="settingsBtn" class="icon-btn" type="button" title="設定" aria-label="設定"></button>
+    </div>
+  </aside>
+
+  <main id="main">
+    <div class="inner">
+      <header class="top">
+        <button id="menuBtn" class="icon-btn only-mobile" type="button" aria-label="メニュー"></button>
+        <div class="grow">
+          <h1 id="viewTitle"></h1>
+          <div id="viewSub" class="sub"></div>
+        </div>
+      </header>
+      <form id="quick" autocomplete="off">
+        <input id="quickInput" type="text" placeholder="タスクを追加　例: 明日15時 資料作成 #仕事 !1" aria-label="タスクを追加" enterkeyhint="done">
+        <button class="btn-primary">追加</button>
+      </form>
+      <div id="quickChips" class="chips" aria-live="polite"></div>
+      <div id="content"></div>
+    </div>
+  </main>
+</div>
+
+<aside id="detail" hidden aria-label="タスクの詳細"></aside>
+<div id="focusBar" hidden role="timer"></div>
+<div id="toast" hidden role="status"><span id="toastMsg"></span><button id="undoBtn" type="button">元に戻す</button></div>
+<div id="overlay" hidden></div>
+<div id="scrim"></div>
+<div id="tip" hidden></div>
+<datalist id="projList"></datalist>
 
 <script>
 'use strict';
 
+/* =========================================================================
+ * 基本
+ * ========================================================================= */
 const API = 'https://api.github.com';
-const KEY = { token: 'todo.token', repo: 'todo.repo', path: 'todo.path' };
+const KEY = {
+  token: 'todo.token', repo: 'todo.repo', path: 'todo.path',
+  cache: 'todo.cache', pending: 'todo.pending', timer: 'todo.timer', view: 'todo.view',
+};
 const $ = (id) => document.getElementById(id);
 
-// ---- localStorage は使えない環境（プライベートモード等）もあるので必ず try で包む
+// localStorage は使えない環境（プライベートモード等）もあるので必ず try で包む
 const store = {
   get(k) { try { return localStorage.getItem(k); } catch { return null; } },
   set(k, v) { try { localStorage.setItem(k, v); } catch {} },
   del(k) { try { localStorage.removeItem(k); } catch {} },
 };
+const loadJSON = (k, def) => { try { const v = store.get(k); return v ? JSON.parse(v) : def; } catch { return def; } };
+const saveJSON = (k, v) => store.set(k, JSON.stringify(v));
 
+const uid = () => Date.now().toString(36) + Math.random().toString(36).slice(2, 8);
+const nowIso = () => new Date().toISOString();
+const clone = (x) => JSON.parse(JSON.stringify(x));
+const cmp = (a, b) => (a < b ? -1 : a > b ? 1 : 0);
+
+// DOM を組み立てる小さな関数。文字列は必ずテキストとして入る（HTML として解釈されない）
+function h(tag, props, ...kids) {
+  const e = document.createElement(tag);
+  if (props) {
+    for (const [k, v] of Object.entries(props)) {
+      if (v == null || v === false) continue;
+      if (k === 'class') e.className = v;
+      else if (k === 'value') e.value = v;
+      else if (k.startsWith('on') && typeof v === 'function') e.addEventListener(k.slice(2), v);
+      else if (typeof v === 'boolean' && k in e) e[k] = v;
+      else e.setAttribute(k, v === true ? '' : String(v));
+    }
+  }
+  for (const k of kids.flat(Infinity)) {
+    if (k == null || k === false) continue;
+    e.append(k instanceof Node ? k : String(k));
+  }
+  return e;
+}
+
+// アイコンは固定の SVG（利用者の入力は入らない）
+const ICONS = {
+  inbox: '<path d="M3 13h5l1.5 3h5l1.5-3h5"/><path d="M5.5 5h13L21 13v6H3v-6z"/>',
+  sun: '<circle cx="12" cy="12" r="4"/><path d="M12 2v2M12 20v2M4.9 4.9l1.4 1.4M17.7 17.7l1.4 1.4M2 12h2M20 12h2M4.9 19.1l1.4-1.4M17.7 6.3l1.4-1.4"/>',
+  calendar: '<rect x="3" y="5" width="18" height="16" rx="2"/><path d="M3 10h18M8 3v4M16 3v4"/>',
+  list: '<path d="M8 6h13M8 12h13M8 18h13M3.5 6h.01M3.5 12h.01M3.5 18h.01"/>',
+  box: '<path d="M3 7h18v4H3z"/><path d="M5 11v9h14v-9M10 15h4"/>',
+  grid: '<rect x="3" y="3" width="8" height="8" rx="1.5"/><rect x="13" y="3" width="8" height="8" rx="1.5"/><rect x="3" y="13" width="8" height="8" rx="1.5"/><rect x="13" y="13" width="8" height="8" rx="1.5"/>',
+  review: '<path d="M4 12a8 8 0 1 0 2.5-5.8"/><path d="M4 4v5h5"/>',
+  check: '<circle cx="12" cy="12" r="9"/><path d="M8 12.5l2.5 2.5L16 9.5"/>',
+  tag: '<path d="M3 12V3h9l9 9-9 9z"/><circle cx="7.5" cy="7.5" r="1.5"/>',
+  play: '<path d="M7 4.5v15l12-7.5z"/>',
+  pause: '<path d="M8 5v14M16 5v14"/>',
+  stop: '<rect x="6" y="6" width="12" height="12" rx="1.5"/>',
+  skip: '<path d="M5 5l10 7-10 7z"/><path d="M19 5v14"/>',
+  repeat: '<path d="M17 2l4 4-4 4"/><path d="M3 11V9a3 3 0 0 1 3-3h15"/><path d="M7 22l-4-4 4-4"/><path d="M21 13v2a3 3 0 0 1-3 3H3"/>',
+  note: '<path d="M5 3h10l4 4v14H5z"/><path d="M9 11h6M9 15h6"/>',
+  clock: '<circle cx="12" cy="12" r="9"/><path d="M12 7v5l3 2"/>',
+  timer: '<circle cx="12" cy="13" r="8"/><path d="M12 9v4M9 2h6"/>',
+  menu: '<path d="M3 6h18M3 12h18M3 18h18"/>',
+  x: '<path d="M6 6l12 12M18 6L6 18"/>',
+  gear: '<circle cx="12" cy="12" r="3"/><path d="M12 2v3M12 19v3M4.2 4.2l2.1 2.1M17.7 17.7l2.1 2.1M2 12h3M19 12h3M4.2 19.8l2.1-2.1M17.7 6.3l2.1-2.1"/>',
+  help: '<circle cx="12" cy="12" r="9"/><path d="M9.5 9a2.5 2.5 0 1 1 3.5 2.3c-.7.3-1 .9-1 1.7M12 17h.01"/>',
+  sync: '<path d="M20 11a8 8 0 0 0-14.3-4.9L4 8"/><path d="M4 3v5h5"/><path d="M4 13a8 8 0 0 0 14.3 4.9L20 16"/><path d="M20 21v-5h-5"/>',
+  checklist: '<path d="M4 6l1.5 1.5L8 5M4 12l1.5 1.5L8 11M4 18l1.5 1.5L8 17M11 6h9M11 12h9M11 18h9"/>',
+  trash: '<path d="M4 7h16M9 7V4h6v3M6 7l1 13h10l1-13"/>',
+  copy: '<rect x="8" y="8" width="12" height="12" rx="2"/><path d="M16 8V4H4v12h4"/>',
+  flag: '<path d="M5 21V4h11l-2 4 2 4H5"/>',
+  folder: '<path d="M3 6a1 1 0 0 1 1-1h5l2 2h9a1 1 0 0 1 1 1v10a1 1 0 0 1-1 1H4a1 1 0 0 1-1-1z"/>',
+};
+function icon(name) {
+  const s = document.createElement('span');
+  s.className = 'ic';
+  s.innerHTML = `<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">${ICONS[name]}</svg>`;
+  return s;
+}
+
+/* =========================================================================
+ * 日付
+ * ========================================================================= */
+const WD = ['日', '月', '火', '水', '木', '金', '土'];
+const pad = (n) => String(n).padStart(2, '0');
+const ymd = (d) => `${d.getFullYear()}-${pad(d.getMonth() + 1)}-${pad(d.getDate())}`;
+const parseYmd = (s) => { const [y, m, d] = s.split('-').map(Number); return new Date(y, m - 1, d); };
+const addDays = (d, n) => new Date(d.getFullYear(), d.getMonth(), d.getDate() + n);
+const todayYmd = () => ymd(new Date());
+const localYmd = (iso) => ymd(new Date(iso));
+const mondayOf = (d) => addDays(d, -((d.getDay() + 6) % 7));
+const daysBetween = (a, b) => Math.round((parseYmd(b) - parseYmd(a)) / 864e5);
+function monthDate(y, m, day) {
+  const last = new Date(y, m + 1, 0).getDate();
+  return new Date(y, m, Math.min(day, last));
+}
+function validDate(y, m, d) {
+  const x = new Date(y, m - 1, d);
+  return x.getFullYear() === y && x.getMonth() === m - 1 && x.getDate() === d ? x : null;
+}
+function fmtShort(s) { const d = parseYmd(s); return `${d.getMonth() + 1}/${d.getDate()}(${WD[d.getDay()]})`; }
+function fmtDate(s, T) {
+  const n = daysBetween(T, s);
+  if (n === 0) return '今日';
+  if (n === 1) return '明日';
+  if (n === -1) return '昨日';
+  const d = parseYmd(s);
+  return d.getFullYear() === parseYmd(T).getFullYear() ? fmtShort(s) : `${d.getFullYear()}/${fmtShort(s)}`;
+}
+function relWord(s, T) {
+  const n = daysBetween(T, s);
+  return n === 0 ? '今日' : n === 1 ? '明日' : n === 2 ? '明後日' : n > 0 ? `${n}日後` : `${-n}日前`;
+}
+function fmtFull(s) { const d = parseYmd(s); return `${d.getMonth() + 1}月${d.getDate()}日（${WD[d.getDay()]}）`; }
+function fmtMin(m) {
+  m = Math.round(m || 0);
+  if (m < 60) return `${m}分`;
+  return `${Math.floor(m / 60)}時間${m % 60 ? `${m % 60}分` : ''}`;
+}
+function fmtStamp(iso) {
+  if (!iso) return '';
+  const d = new Date(iso);
+  return `${d.getFullYear()}/${d.getMonth() + 1}/${d.getDate()} ${pad(d.getHours())}:${pad(d.getMinutes())}`;
+}
+
+/* =========================================================================
+ * 繰り返し
+ * ========================================================================= */
+// { unit: 'day'|'week'|'month'|'year', every: n, days?: [0-6], day?: 1-31 }
+function normRepeat(r) {
+  if (!r || typeof r !== 'object' || !['day', 'week', 'month', 'year'].includes(r.unit)) return null;
+  const o = { unit: r.unit, every: Math.max(1, Math.min(99, parseInt(r.every, 10) || 1)) };
+  if (r.unit === 'week' && Array.isArray(r.days)) {
+    const days = [...new Set(r.days.map(Number).filter((n) => n >= 0 && n <= 6))].sort((a, b) => a - b);
+    if (days.length) o.days = days;
+  }
+  if (r.unit === 'month' && r.day) o.day = Math.max(1, Math.min(31, parseInt(r.day, 10) || 1));
+  return o;
+}
+// 曜日・日付の指定が無い繰り返しに、基準日から補う
+function completeRule(rule, base) {
+  const r = normRepeat(rule);
+  if (!r) return null;
+  if (r.unit === 'week' && !r.days) r.days = [base.getDay()];
+  if (r.unit === 'month' && !r.day) r.day = base.getDate();
+  return r;
+}
+function firstDue(rule, T) {
+  if (rule.unit === 'week' && rule.days?.length) {
+    for (let i = 0; i < 7; i++) { const d = addDays(T, i); if (rule.days.includes(d.getDay())) return d; }
+  }
+  if (rule.unit === 'month' && rule.day) {
+    const d = monthDate(T.getFullYear(), T.getMonth(), rule.day);
+    return d >= T ? d : monthDate(T.getFullYear(), T.getMonth() + 1, rule.day);
+  }
+  return T;
+}
+function stepDate(d, r) {
+  switch (r.unit) {
+    case 'day': return addDays(d, r.every);
+    case 'week':
+      if (r.days?.length) {
+        for (let i = 1; i <= 7; i++) {
+          const c = addDays(d, i);
+          if (!r.days.includes(c.getDay())) continue;
+          const crossed = mondayOf(c).getTime() !== mondayOf(d).getTime();
+          return r.every > 1 && crossed ? addDays(c, 7 * (r.every - 1)) : c;
+        }
+      }
+      return addDays(d, 7 * r.every);
+    case 'month': return monthDate(d.getFullYear(), d.getMonth() + r.every, r.day || d.getDate());
+    case 'year': return monthDate(d.getFullYear() + r.every, d.getMonth(), d.getDate());
+  }
+  return addDays(d, 1);
+}
+// 次回の日付。期限切れのまま完了した場合は、今日より後の最初の回にする
+function nextDue(from, rule, today) {
+  let d = stepDate(parseYmd(from), rule);
+  for (let i = 0; i < 2000 && ymd(d) <= today; i++) d = stepDate(d, rule);
+  return ymd(d);
+}
+function describeRepeat(r) {
+  if (!r) return '';
+  const n = r.every;
+  switch (r.unit) {
+    case 'day': return n === 1 ? '毎日' : `${n}日ごと`;
+    case 'week': {
+      const key = (r.days || []).join(',');
+      if (n === 1 && key === '1,2,3,4,5') return '平日';
+      if (n === 1 && key === '0,6') return '毎週末';
+      const head = n === 1 ? '毎週' : n === 2 ? '隔週' : `${n}週ごと`;
+      const days = (r.days || []).slice().sort((a, b) => ((a + 6) % 7) - ((b + 6) % 7)).map((x) => WD[x]).join('・');
+      return days ? `${head} ${days}` : head;
+    }
+    case 'month': return (n === 1 ? '毎月' : `${n}か月ごと`) + (r.day ? (r.day >= 31 ? ' 末日' : ` ${r.day}日`) : '');
+    case 'year': return n === 1 ? '毎年' : `${n}年ごと`;
+  }
+  return '';
+}
+
+/* =========================================================================
+ * クイック追加の解析（Todoist 風）
+ * 空白で区切った語ごとに判定する。日付などに当てはまらない語はタイトルになる
+ * ========================================================================= */
+const toHalf = (s) => s.replace(/[\uFF01-\uFF5E]/g, (c) => String.fromCharCode(c.charCodeAt(0) - 0xFEE0)).replace(/〜/g, '~');
+
+function parseDateWord(s, T) {
+  let m;
+  if (/^(今日|きょう|today)$/i.test(s)) return T;
+  if (/^(明日|あした|あす|tomorrow)$/i.test(s)) return addDays(T, 1);
+  if (/^(明後日|あさって)$/.test(s)) return addDays(T, 2);
+  if ((m = s.match(/^(\d{1,3})日後$/))) return addDays(T, +m[1]);
+  if ((m = s.match(/^(\d{1,2})週間後$/))) return addDays(T, 7 * m[1]);
+  if ((m = s.match(/^(\d{1,2})[かヶケカ]?月後$/))) return monthDate(T.getFullYear(), T.getMonth() + +m[1], T.getDate());
+  if (s === '来週') return addDays(mondayOf(T), 7);
+  if (s === '週末' || s === '今週末') return addDays(T, (6 - T.getDay() + 7) % 7);
+  if (s === '来週末') return addDays(mondayOf(T), 12);
+  if (s === '来月') return new Date(T.getFullYear(), T.getMonth() + 1, 1);
+  if (s === '月末') return new Date(T.getFullYear(), T.getMonth() + 1, 0);
+  if ((m = s.match(/^(今週|来週|再来週)?([日月火水木金土])曜日?$/))) {
+    const wd = WD.indexOf(m[2]);
+    if (!m[1]) return addDays(T, (wd - T.getDay() + 7) % 7);
+    return addDays(mondayOf(T), { 今週: 0, 来週: 7, 再来週: 14 }[m[1]] + (wd + 6) % 7);
+  }
+  if ((m = s.match(/^(\d{4})[-/年](\d{1,2})[-/月](\d{1,2})日?$/))) return validDate(+m[1], +m[2], +m[3]);
+  if ((m = s.match(/^(\d{1,2})[/月](\d{1,2})日?$/))) {
+    const d = validDate(T.getFullYear(), +m[1], +m[2]);
+    return d && d < T ? validDate(T.getFullYear() + 1, +m[1], +m[2]) : d;
+  }
+  if ((m = s.match(/^(\d{1,2})日$/))) {
+    const d = validDate(T.getFullYear(), T.getMonth() + 1, +m[1]);
+    if (d && d >= T) return d;
+    const nm = new Date(T.getFullYear(), T.getMonth() + 1, 1);
+    return validDate(nm.getFullYear(), nm.getMonth() + 1, +m[1]);
+  }
+  return null;
+}
+function parseTimeWord(s) {
+  let m, hh, mm = 0;
+  if ((m = s.match(/^(午前|午後|朝|夜)?(\d{1,2})時(半|(\d{1,2})分?)?$/))) {
+    hh = +m[2];
+    mm = m[3] === '半' ? 30 : m[4] ? +m[4] : 0;
+    if ((m[1] === '午後' || m[1] === '夜') && hh < 12) hh += 12;
+    if (m[1] === '午前' && hh === 12) hh = 0;
+  } else if ((m = s.match(/^(\d{1,2}):(\d{2})$/))) {
+    hh = +m[1]; mm = +m[2];
+  } else if ((m = s.match(/^(\d{1,2})(?::(\d{2}))?(am|pm)$/i))) {
+    hh = (+m[1] % 12) + (m[3].toLowerCase() === 'pm' ? 12 : 0); mm = m[2] ? +m[2] : 0;
+  } else return null;
+  return hh < 24 && mm < 60 ? `${pad(hh)}:${pad(mm)}` : null;
+}
+function parseDateTime(s, T) {
+  const d = parseDateWord(s, T);
+  if (d) return { date: d };
+  const tm = parseTimeWord(s);
+  if (tm) return { time: tm };
+  for (let i = s.length - 1; i > 0; i--) {
+    const d2 = parseDateWord(s.slice(0, i), T);
+    const t2 = d2 && parseTimeWord(s.slice(i));
+    if (t2) return { date: d2, time: t2 };
+  }
+  return null;
+}
+function parseRepeatWord(s) {
+  let m;
+  if (s === '毎日') return { unit: 'day', every: 1 };
+  if (s === '平日' || s === '毎平日') return { unit: 'week', every: 1, days: [1, 2, 3, 4, 5] };
+  if (s === '毎週末') return { unit: 'week', every: 1, days: [0, 6] };
+  if ((m = s.match(/^(毎週|隔週)([日月火水木金土][日月火水木金土・,、]*?)(曜日?)?$/))) {
+    const days = [...new Set([...m[2]].map((c) => WD.indexOf(c)).filter((n) => n >= 0))].sort((a, b) => a - b);
+    return { unit: 'week', every: m[1] === '隔週' ? 2 : 1, days };
+  }
+  if (s === '毎週') return { unit: 'week', every: 1 };
+  if (s === '隔週') return { unit: 'week', every: 2 };
+  if (s === '毎月') return { unit: 'month', every: 1 };
+  if (s === '毎月末') return { unit: 'month', every: 1, day: 31 };
+  if ((m = s.match(/^毎月(\d{1,2})日$/)) && +m[1] >= 1 && +m[1] <= 31) return { unit: 'month', every: 1, day: +m[1] };
+  if (s === '毎年') return { unit: 'year', every: 1 };
+  if ((m = s.match(/^(\d{1,2})(日|週間?|[かヶケカ]?月|年)(ごと|毎|おき)$/))) {
+    const n = +m[1] + (m[3] === 'おき' ? 1 : 0);
+    const unit = m[2] === '日' ? 'day' : m[2].startsWith('週') ? 'week' : m[2] === '年' ? 'year' : 'month';
+    if (n >= 1) return { unit, every: Math.min(n, 99) };
+  }
+  return null;
+}
+function parseQuick(text, T) {
+  const r = { words: [], tags: [], priority: 0, project: null, date: null, time: null, repeat: null, estimate: null, someday: false };
+  for (const raw of text.trim().split(/[\s\u3000]+/).filter(Boolean)) {
+    const s = toHalf(raw);
+    let m;
+    if (raw.length > 1 && raw[0] === '\\') { r.words.push(raw.slice(1)); continue; } // \明日 → 文字のまま
+    if (s.length > 1 && s[0] === '#') { r.project = raw.slice(1); continue; }
+    if (s.length > 1 && s[0] === '@') { if (!r.tags.includes(raw.slice(1))) r.tags.push(raw.slice(1)); continue; }
+    if ((m = s.match(/^!([1-3])$/))) { r.priority = +m[1]; continue; }
+    if ((m = s.match(/^~(\d+(?:\.\d+)?)(m|min|分|h|時間)?$/i))) {
+      const v = +m[1] * (/^(h|時間)$/i.test(m[2] || '') ? 60 : 1);
+      if (v > 0) { r.estimate = Math.round(v); continue; }
+    }
+    if (s === 'いつか') { r.someday = true; continue; }
+    const rep = parseRepeatWord(s);
+    if (rep) { r.repeat = rep; continue; }
+    let hit = false; // 繰り返し＋時刻（例: 毎週月曜9時）
+    for (let i = s.length - 1; i > 1 && !hit; i--) {
+      const rp = parseRepeatWord(s.slice(0, i));
+      const tm = rp && parseTimeWord(s.slice(i));
+      if (tm) { r.repeat = rp; r.time = tm; hit = true; }
+    }
+    if (hit) continue;
+    const dt = parseDateTime(s, T);
+    if (dt) { if (dt.date) r.date = dt.date; if (dt.time) r.time = dt.time; continue; }
+    r.words.push(raw);
+  }
+  r.title = r.words.join(' ');
+  return r;
+}
+
+/* =========================================================================
+ * データ
+ * ========================================================================= */
+const YMD_RE = /^\d{4}-\d{2}-\d{2}$/;
+const HM_RE = /^\d{2}:\d{2}$/;
+function emptyData() { return { version: 2, meta: {}, todos: [] }; }
+function normTask(t) {
+  const created = typeof t.createdAt === 'string' ? t.createdAt : nowIso();
+  return {
+    ...t, // 知らない項目も消さずに残す
+    id: String(t.id || uid()),
+    title: String(t.title ?? ''),
+    notes: typeof t.notes === 'string' ? t.notes : '',
+    done: !!t.done,
+    createdAt: created,
+    updatedAt: typeof t.updatedAt === 'string' ? t.updatedAt : created,
+    doneAt: t.done ? (typeof t.doneAt === 'string' ? t.doneAt : created) : null,
+    due: YMD_RE.test(t.due) ? t.due : null,
+    time: HM_RE.test(t.time) ? t.time : null,
+    repeat: normRepeat(t.repeat),
+    project: typeof t.project === 'string' && t.project.trim() ? t.project.trim() : null,
+    tags: Array.isArray(t.tags) ? [...new Set(t.tags.map((x) => String(x).trim()).filter(Boolean))] : [],
+    priority: [1, 2, 3].includes(t.priority) ? t.priority : 0,
+    myDay: YMD_RE.test(t.myDay) ? t.myDay : null,
+    someday: !!t.someday,
+    estimate: Number.isFinite(t.estimate) && t.estimate > 0 ? Math.round(t.estimate) : null,
+    checklist: Array.isArray(t.checklist)
+      ? t.checklist.filter((c) => c && typeof c.text === 'string').map((c) => ({ id: String(c.id || uid()), text: c.text, done: !!c.done }))
+      : [],
+    focus: Array.isArray(t.focus)
+      ? t.focus.filter((f) => f && Number.isFinite(f.min)).map((f) => ({ id: String(f.id || uid()), at: String(f.at || created), min: f.min }))
+      : [],
+  };
+}
+function normalize(d) {
+  if (!d || typeof d !== 'object' || !Array.isArray(d.todos)) return emptyData();
+  return {
+    ...d,
+    version: 2,
+    meta: d.meta && typeof d.meta === 'object' && !Array.isArray(d.meta) ? d.meta : {},
+    todos: d.todos.filter((t) => t && typeof t === 'object').map(normTask),
+  };
+}
+
+// 変更は「操作」として記録する。他の端末の変更とぶつかったら、最新の内容に操作を適用し直す。
+// どの操作も id で対象を特定し、条件が合わなければ何もしない（二重に適用しても壊れない）
+function findT(d, id) { return d.todos.find((x) => x.id === id); }
+function applyOp(d, op) {
+  switch (op.t) {
+    case 'add':
+      if (!findT(d, op.task.id)) d.todos.push(normTask(op.task));
+      break;
+    case 'patch': {
+      const t = findT(d, op.id);
+      if (t) Object.assign(t, op.set, { updatedAt: op.at });
+      break;
+    }
+    case 'del':
+      d.todos = d.todos.filter((x) => x.id !== op.id);
+      break;
+    case 'complete': {
+      const t = findT(d, op.id);
+      if (!t || t.done) break;
+      if (op.next) {
+        if (t.due !== op.from) break; // 他の端末で既に次回へ進んでいる
+        if (!findT(d, op.logId)) {
+          d.todos.push(normTask({ ...clone(t), id: op.logId, repeat: null, done: true, doneAt: op.at, updatedAt: op.at, focus: [] }));
+        }
+        Object.assign(t, { due: op.next, myDay: null, updatedAt: op.at, checklist: t.checklist.map((c) => ({ ...c, done: false })) });
+      } else {
+        Object.assign(t, { done: true, doneAt: op.at, updatedAt: op.at });
+      }
+      break;
+    }
+    case 'focus': {
+      const t = findT(d, op.id);
+      if (t && !t.focus.some((f) => f.id === op.session.id)) t.focus.push(op.session);
+      break;
+    }
+    case 'restore': {
+      const rm = new Set(op.remove || []);
+      d.todos = d.todos.filter((x) => !rm.has(x.id));
+      for (const snap of op.tasks || []) {
+        const i = d.todos.findIndex((x) => x.id === snap.id);
+        if (i >= 0) d.todos[i] = normTask(snap); else d.todos.push(normTask(snap));
+      }
+      break;
+    }
+    case 'renameProject':
+      for (const t of d.todos) if (t.project === op.from) { t.project = op.to || null; t.updatedAt = op.at; }
+      break;
+    case 'meta':
+      d.meta = { ...d.meta, ...op.set };
+      break;
+  }
+  return d;
+}
+const OP_LABEL = { add: '追加', patch: '更新', del: '削除', complete: '完了', focus: '集中記録', restore: '元に戻す', renameProject: 'プロジェクト名変更', meta: '設定' };
+function commitMessage(ops) {
+  return ops.length === 1 ? `todo: ${OP_LABEL[ops[0].t] || '更新'}` : `todo: ${ops.length} 件の変更`;
+}
+
+/* =========================================================================
+ * GitHub API
+ * ========================================================================= */
 let cfg = null; // { token, repo, path }
+const cfgKey = () => `${cfg.repo}/${cfg.path}`;
 
-// ---- base64 <-> UTF-8 文字列（日本語を壊さないため TextEncoder を経由する）
 function b64encode(str) {
   const bytes = new TextEncoder().encode(str);
   let bin = '';
-  for (let i = 0; i < bytes.length; i += 0x8000) {
-    bin += String.fromCharCode.apply(null, bytes.subarray(i, i + 0x8000));
-  }
+  for (let i = 0; i < bytes.length; i += 0x8000) bin += String.fromCharCode.apply(null, bytes.subarray(i, i + 0x8000));
   return btoa(bin);
 }
 function b64decode(b64) {
   const bin = atob(b64.replace(/\s/g, ''));
   return new TextDecoder().decode(Uint8Array.from(bin, (c) => c.charCodeAt(0)));
 }
-
-// ---- GitHub API
 async function gh(method, url, body) {
   const res = await fetch(API + url, {
     method,
@@ -144,89 +795,98 @@ async function gh(method, url, body) {
   }
   return json;
 }
-
 function contentsUrl() {
-  const path = cfg.path.split('/').map(encodeURIComponent).join('/');
-  return `/repos/${cfg.repo}/contents/${path}`;
+  return `/repos/${cfg.repo}/contents/${cfg.path.split('/').map(encodeURIComponent).join('/')}`;
 }
-
 function explain(e) {
-  if (e instanceof TypeError) return 'GitHub に接続できませんでした（ネットワークを確認してください）。';
+  if (e instanceof TypeError) return 'GitHub に接続できません（オフライン？）';
+  if (e instanceof SyntaxError) return 'データファイルの JSON が壊れています';
   switch (e.status) {
-    case 401: return 'トークンが無効か、期限切れです。';
-    case 403: return 'トークンの権限が足りません（Contents: Read and write が必要です）。\n' + e.message;
-    case 404: return 'リポジトリが見つかりません。名前と、トークンの対象リポジトリに含まれているかを確認してください。';
-    default: return e.message;
+    case 401: return 'トークンが無効か期限切れです';
+    case 403: return 'トークンの権限が足りません（Contents: Read and write が必要）';
+    case 404: return 'リポジトリが見つかりません（名前、またはトークンの対象を確認）';
+    default: return e.message || String(e);
   }
 }
 
-// ---- データ
-// base: GitHub 上の最新として把握している内容 / sha: その版
-// pending: まだ保存していない操作。表示は base に pending を順に適用したもの。
-// 保存時に他の端末の変更とぶつかったら（409）、最新を読み直して pending を適用し直す。
-const st = { base: null, sha: null, pending: [], syncing: false };
+/* =========================================================================
+ * 同期
+ * base: GitHub 上の最新として把握している内容 / sha: その版 / pending: まだ保存していない操作
+ * 画面には base に pending を順に適用したものを表示する。
+ * pending と base はこの端末にも保存するので、オフラインやページを閉じても変更は消えない
+ * ========================================================================= */
+const st = { base: null, sha: null, loaded: false, pending: [], syncing: false, timer: null, gen: 0 };
+let DATA = emptyData();
 
-function emptyData() { return { version: 1, todos: [] }; }
-function normalize(d) {
-  if (!d || typeof d !== 'object' || !Array.isArray(d.todos)) return emptyData();
-  return d;
-}
-function clone(d) { return JSON.parse(JSON.stringify(d)); }
 function current() {
-  const d = clone(st.base);
-  for (const p of st.pending) p.op(d);
+  const d = clone(st.base || emptyData());
+  for (const op of st.pending) applyOp(d, op);
   return d;
 }
-
+function saveCache() {
+  if (cfg && st.loaded) saveJSON(KEY.cache, { key: cfgKey(), sha: st.sha, base: st.base });
+}
 async function fetchBase() {
+  const gen = st.gen; // 読み込み中に保存が終わったら、届いた内容は古いので捨てる
+  let base, sha;
   try {
     const f = await gh('GET', contentsUrl());
-    st.base = normalize(JSON.parse(b64decode(f.content)));
-    st.sha = f.sha;
+    let b64 = f.content;
+    // 1MB を超えるファイルは contents API が中身を返さないので blob API で取り直す
+    if (!b64 && f.sha && f.size > 0) b64 = (await gh('GET', `/repos/${cfg.repo}/git/blobs/${f.sha}`)).content;
+    const text = b64 ? b64decode(b64) : '';
+    base = text.trim() ? normalize(JSON.parse(text)) : emptyData();
+    sha = f.sha;
   } catch (e) {
     if (e.status !== 404) throw e;
-    st.base = emptyData(); // ファイルがまだ無い → 最初の保存で作成
-    st.sha = null;
+    base = emptyData(); // ファイルがまだ無い → 最初の保存で作成
+    sha = null;
   }
+  if (gen !== st.gen) return;
+  st.base = base;
+  st.sha = sha;
+  st.loaded = true;
+  saveCache();
 }
-
 function putFile(data, sha, message) {
   const body = { message, content: b64encode(JSON.stringify(data, null, 2) + '\n') };
   if (sha) body.sha = sha;
   return gh('PUT', contentsUrl(), body);
 }
-
-let syncTimer = null;
-function mutate(op, msg) {
-  st.pending.push({ op, msg });
+function mutate(ops) {
+  ops = Array.isArray(ops) ? ops : [ops];
+  const at = nowIso();
+  for (const op of ops) { op.at = op.at || at; st.pending.push(op); }
+  saveJSON(KEY.pending, st.pending);
   render();
-  setStatus('未保存の変更があります');
-  clearTimeout(syncTimer);
-  syncTimer = setTimeout(sync, 800); // 連続操作はまとめて 1 コミットにする
+  setSync('dirty');
+  clearTimeout(st.timer);
+  st.timer = setTimeout(sync, 800); // 連続した操作はまとめて 1 コミットにする
 }
-
 async function sync() {
-  if (st.syncing || !st.pending.length) return;
+  if (st.syncing || !st.pending.length || !cfg) return;
   st.syncing = true;
-  $('retryBtn').hidden = true;
   let conflicts = 0;
   try {
+    if (!st.loaded) await fetchBase();
     while (st.pending.length) {
       const batch = st.pending.slice();
-      const next = clone(st.base);
-      for (const p of batch) p.op(next);
-      const msg = batch.length === 1 ? batch[0].msg : `todo: ${batch.length} 件の変更`;
-      setStatus('保存中…');
+      const next = clone(st.base || emptyData());
+      for (const op of batch) applyOp(next, op);
+      next.version = 2;
+      setSync('saving');
       try {
-        const r = await putFile(next, st.sha, msg);
+        const r = await putFile(next, st.sha, commitMessage(batch));
         st.base = next;
         st.sha = r.content.sha;
+        st.gen++;
         st.pending.splice(0, batch.length);
+        saveJSON(KEY.pending, st.pending);
+        saveCache();
         conflicts = 0;
       } catch (e) {
-        // 409: 他の端末が先に更新した / 422: sha の指定が合わない
+        // 409: 他の端末が先に更新した / 422: sha の指定が合わない → 最新を読み直して適用し直す
         if ((e.status === 409 || e.status === 422) && ++conflicts <= 3) {
-          setStatus('他の変更を取り込み中…');
           await fetchBase();
           render();
           continue;
@@ -234,91 +894,945 @@ async function sync() {
         throw e;
       }
     }
-    setStatus('保存しました ' + new Date().toLocaleTimeString('ja-JP', { hour: '2-digit', minute: '2-digit' }), 'ok');
+    setSync('saved');
   } catch (e) {
-    setStatus('保存できませんでした: ' + explain(e), 'err');
-    $('retryBtn').hidden = false;
+    setSync(e instanceof TypeError ? 'offline' : 'error', e);
   } finally {
     st.syncing = false;
   }
 }
-
-async function reload() {
-  if (st.syncing || st.pending.length) return;
-  setStatus('読み込み中…');
+async function reload(quiet) {
+  if (!cfg || st.syncing || st.pending.length) return;
+  if (!quiet) setSync('loading');
   try {
+    const old = st.sha;
     await fetchBase();
-    render();
-    setStatus('最新です', 'ok');
+    if (!quiet || st.sha !== old) render();
+    if (!quiet) setSync('fresh');
   } catch (e) {
-    setStatus('読み込めませんでした: ' + explain(e), 'err');
+    if (e.status === 401) return logout(['token'], explain(e));
+    if (!quiet) setSync(e instanceof TypeError ? 'offline' : 'error', e);
   }
 }
-
-// ---- 操作（どれも id で対象を特定し、何度適用しても結果が同じになるようにしてある）
-function newId() {
-  return Date.now().toString(36) + Math.random().toString(36).slice(2, 8);
-}
-function addTodo(title) {
-  const t = { id: newId(), title, done: false, createdAt: new Date().toISOString() };
-  mutate((d) => { if (!d.todos.some((x) => x.id === t.id)) d.todos.push(t); }, 'todo: 追加');
-}
-function setDone(id, done) {
-  const at = done ? new Date().toISOString() : null;
-  mutate((d) => {
-    const t = d.todos.find((x) => x.id === id);
-    if (t) { t.done = done; t.doneAt = at; }
-  }, done ? 'todo: 完了' : 'todo: 未完了に戻す');
-}
-function removeTodo(id) {
-  mutate((d) => { d.todos = d.todos.filter((x) => x.id !== id); }, 'todo: 削除');
+function setSync(state, err) {
+  const s = $('sync');
+  const time = new Date().toLocaleTimeString('ja-JP', { hour: '2-digit', minute: '2-digit' });
+  const text = {
+    loading: '読み込み中…', dirty: '未保存の変更あり', saving: '保存中…',
+    saved: `保存済み ${time}`, fresh: `最新 ${time}`,
+    offline: 'オフライン（変更は端末に保存）', error: `エラー: ${err ? explain(err) : ''}`,
+  }[state];
+  s.textContent = text;
+  s.title = text;
+  s.className = 'sync ' + state;
+  $('retryBtn').hidden = !(state === 'error' || state === 'offline');
 }
 
-// ---- 表示
+/* =========================================================================
+ * 一覧の条件
+ * ========================================================================= */
+const isToday = (t, T) => !t.done && !t.someday && ((t.due && t.due <= T) || t.myDay === T);
+const isInbox = (t, T) => !t.done && !t.someday && !t.project && !t.due && t.myDay !== T;
+const isUpcoming = (t, T) => !t.done && !t.someday && !!t.due && t.due > T;
+const isAnytime = (t) => !t.done && !t.someday;
+const isLate = (t, T) => !t.done && !t.someday && !!t.due && t.due < T;
+const pr = (t) => t.priority || 4;
+const byDefault = (a, b) => pr(a) - pr(b) || cmp(a.due || '\uffff', b.due || '\uffff') || cmp(a.time || '\uffff', b.time || '\uffff') || cmp(a.createdAt, b.createdAt);
+const byDay = (a, b) => (a.time ? 0 : 1) - (b.time ? 0 : 1) || cmp(a.time || '', b.time || '') || pr(a) - pr(b) || cmp(a.createdAt, b.createdAt);
+const colorOf = (name) => { let x = 0; for (const c of name) x = (x * 31 + c.codePointAt(0)) >>> 0; return `var(--c${(x % 8) + 1})`; };
+function focusMinutes(d, pred) {
+  let s = 0;
+  for (const t of d.todos) for (const f of t.focus) if (pred(localYmd(f.at))) s += f.min;
+  return s;
+}
+
+/* =========================================================================
+ * 表示
+ * ========================================================================= */
+let view = { type: 'today' };
+let prevView = view;
+let selId = null;
+let detailId = null;
+let renderedDay = null;
+let logDays = 30;
+let showProjectDone = false;
+
+function sameView(a, b) { return a.type === b.type && a.name === b.name; }
+function setView(v) {
+  if (v.type !== 'search') {
+    view = v; prevView = v; saveJSON(KEY.view, v);
+    $('search').value = '';
+  } else view = v;
+  selId = null;
+  showProjectDone = false;
+  document.body.classList.remove('drawer');
+  render();
+  window.scrollTo(0, 0);
+}
+
 function render() {
-  const list = $('list');
-  list.textContent = '';
-  const todos = current().todos.slice().sort((a, b) => (a.done - b.done));
-  if (!todos.length) {
-    const li = document.createElement('div');
-    li.className = 'empty';
-    li.textContent = 'まだ何もありません';
-    list.append(li);
+  if ($('app').hidden) return;
+  DATA = current();
+  const T = todayYmd();
+  renderedDay = T;
+  renderNav(DATA, T);
+  renderMain(DATA, T);
+  renderDetail(false);
+  updateQuickChips();
+  const projs = [...new Set(DATA.todos.map((t) => t.project).filter(Boolean))].sort((a, b) => a.localeCompare(b, 'ja'));
+  $('projList').replaceChildren(...projs.map((p) => h('option', { value: p })));
+}
+
+function renderNav(d, T) {
+  const act = d.todos.filter((t) => !t.done);
+  const last = d.meta.lastReview;
+  const reviewDue = !last || daysBetween(last, T) >= 7;
+  const item = (v, label, ic, count, alert) => h('button', {
+    class: 'nav-item' + (sameView(v, view) ? ' on' : ''), type: 'button', 'aria-current': sameView(v, view) ? 'page' : null,
+    onclick: () => setView(v),
+  }, ic, h('span', { class: 'nav-label' }, label), count ? h('span', { class: 'count' + (alert ? ' alert' : '') }, String(count)) : null);
+
+  const nodes = [
+    item({ type: 'inbox' }, '受信箱', icon('inbox'), act.filter((t) => isInbox(t, T)).length),
+    item({ type: 'today' }, '今日', icon('sun'), act.filter((t) => isToday(t, T)).length, act.some((t) => isLate(t, T))),
+    item({ type: 'upcoming' }, '予定', icon('calendar'), act.filter((t) => isUpcoming(t, T)).length),
+    item({ type: 'anytime' }, 'すべて', icon('list'), act.filter(isAnytime).length),
+    item({ type: 'someday' }, 'いつか', icon('box'), act.filter((t) => t.someday).length),
+    h('div', { class: 'nav-sec' }, 'ふりかえり'),
+    item({ type: 'matrix' }, 'マトリクス', icon('grid')),
+    item({ type: 'review' }, '週次レビュー', icon('review'), reviewDue ? '●' : null, true),
+    item({ type: 'logbook' }, '完了ログ', icon('check')),
+  ];
+  const projects = new Map();
+  for (const t of act) if (t.project) projects.set(t.project, (projects.get(t.project) || 0) + 1);
+  if (view.type === 'project' && !projects.has(view.name)) projects.set(view.name, 0);
+  if (projects.size) {
+    nodes.push(h('div', { class: 'nav-sec' }, 'プロジェクト'));
+    for (const [name, n] of [...projects].sort((a, b) => a[0].localeCompare(b[0], 'ja'))) {
+      nodes.push(item({ type: 'project', name }, name, h('span', { class: 'pdot', style: `background:${colorOf(name)}` }), n));
+    }
+  }
+  const tags = new Map();
+  for (const t of act) for (const g of t.tags) tags.set(g, (tags.get(g) || 0) + 1);
+  if (view.type === 'tag' && !tags.has(view.name)) tags.set(view.name, 0);
+  if (tags.size) {
+    nodes.push(h('div', { class: 'nav-sec' }, 'タグ'));
+    for (const [name, n] of [...tags].sort((a, b) => a[0].localeCompare(b[0], 'ja'))) {
+      nodes.push(item({ type: 'tag', name }, name, icon('tag'), n));
+    }
+  }
+  $('nav').replaceChildren(...nodes);
+}
+
+function taskRow(t, T, opts = {}) {
+  const meta = [];
+  if (t.due) {
+    const cls = t.done ? '' : t.due < T ? ' late' : t.due === T ? ' today' : '';
+    meta.push(h('span', { class: 'mchip' + cls }, icon('calendar'), fmtDate(t.due, T) + (t.time ? ' ' + t.time : '')));
+  } else if (t.time) meta.push(h('span', { class: 'mchip' }, icon('clock'), t.time));
+  if (t.repeat) meta.push(h('span', { class: 'mchip' }, icon('repeat'), describeRepeat(t.repeat)));
+  if (!t.done && t.myDay === T && opts.view !== 'today') meta.push(h('span', { class: 'mchip sun' }, icon('sun'), '今日やる'));
+  if (t.checklist.length) meta.push(h('span', { class: 'mchip' }, icon('checklist'), `${t.checklist.filter((c) => c.done).length}/${t.checklist.length}`));
+  if (t.estimate) meta.push(h('span', { class: 'mchip' }, icon('timer'), fmtMin(t.estimate)));
+  const spent = t.focus.reduce((s, f) => s + f.min, 0);
+  if (spent) meta.push(h('span', { class: 'mchip', title: '集中した時間' }, icon('clock'), fmtMin(spent)));
+  if (t.notes.trim()) meta.push(h('span', { class: 'mchip', title: 'メモあり' }, icon('note')));
+  if (t.project && !(view.type === 'project' && view.name === t.project)) {
+    meta.push(h('button', { class: 'mchip', type: 'button', 'data-act': 'view', 'data-view': JSON.stringify({ type: 'project', name: t.project }) },
+      h('span', { class: 'pdot', style: `background:${colorOf(t.project)}` }), t.project));
+  }
+  for (const g of t.tags) {
+    meta.push(h('button', { class: 'mchip', type: 'button', 'data-act': 'view', 'data-view': JSON.stringify({ type: 'tag', name: g }) }, '@' + g));
+  }
+  const prioName = ['', '優先度 高', '優先度 中', '優先度 低'][t.priority];
+  return h('li', { class: 'task' + (t.done ? ' done' : '') + (t.id === selId ? ' sel' : ''), 'data-id': t.id },
+    h('button', {
+      class: `check p${t.priority}`, type: 'button', role: 'checkbox', 'aria-checked': String(t.done),
+      'aria-label': (t.done ? '未完了に戻す: ' : '完了にする: ') + t.title + (prioName ? `（${prioName}）` : ''), 'data-act': 'toggle',
+    }),
+    h('div', { class: 'body', 'data-act': 'open', tabindex: '0', role: 'button', 'aria-label': '詳細を開く: ' + t.title },
+      h('div', { class: 'title' }, t.title || '（無題）'),
+      meta.length ? h('div', { class: 'meta' }, meta) : null),
+    t.done ? null : h('div', { class: 'acts' },
+      h('button', { class: 'icon-btn' + (t.myDay === T ? ' on' : ''), type: 'button', 'data-act': 'myday', title: '今日やる（t）', 'aria-label': '今日やる', 'aria-pressed': String(t.myDay === T) }, icon('sun')),
+      h('button', { class: 'icon-btn', type: 'button', 'data-act': 'focus', title: '集中する（f）', 'aria-label': '集中タイマーを開始' }, icon('play'))));
+}
+function taskList(list, T, opts) { return h('ul', { class: 'tasks' }, list.map((t) => taskRow(t, T, opts))); }
+function group(title, list, T, opts = {}) {
+  return h('section', { class: 'group' },
+    title ? h('div', { class: 'group-h' + (opts.cls ? ' ' + opts.cls : '') }, h('h3', null, title),
+      list.length ? h('span', { class: 'count' }, String(list.length)) : null, h('span', { class: 'sp' }), opts.action || null) : null,
+    list.length ? taskList(list, T, opts) : null);
+}
+const empty = (text) => h('div', { class: 'empty' }, text);
+const stat = (value, label) => h('div', { class: 'stat' }, h('b', null, value), h('span', null, label));
+
+function renderMain(d, T) {
+  const c = $('content');
+  const act = d.todos.filter((t) => !t.done);
+  const Td = parseYmd(T);
+  const nodes = [];
+  let title = '', sub = '';
+
+  switch (view.type) {
+    case 'inbox': {
+      title = '受信箱'; sub = 'まだ整理していないタスク。日付・プロジェクト・「いつか」のどれかを決めると、ここから消えます';
+      const list = act.filter((t) => isInbox(t, T)).sort(byDefault);
+      nodes.push(list.length ? group('', list, T) : empty('受信箱は空です。思いついたことは上の欄にすぐ書き出しましょう。'));
+      break;
+    }
+    case 'today': {
+      title = '今日'; sub = fmtFull(T);
+      const list = act.filter((t) => isToday(t, T));
+      const late = list.filter((t) => isLate(t, T)).sort(byDefault);
+      const rest = list.filter((t) => !isLate(t, T)).sort(byDay);
+      nodes.push(planCard(list, d, T));
+      const inboxN = act.filter((t) => isInbox(t, T)).length;
+      if (inboxN) {
+        nodes.push(h('div', { class: 'nudge' }, icon('inbox'), `受信箱に未整理のタスクが ${inboxN} 件あります`,
+          h('button', { class: 'link-btn', type: 'button', onclick: () => setView({ type: 'inbox' }) }, '整理する')));
+      }
+      if (late.length) {
+        nodes.push(group('期限切れ', late, T, {
+          cls: 'late', view: 'today',
+          action: h('button', { class: 'link-btn', type: 'button', onclick: () => moveToToday(late) }, 'すべて今日に移動'),
+        }));
+      }
+      if (rest.length) nodes.push(group(late.length ? '今日' : '', rest, T, { view: 'today' }));
+      if (!list.length) nodes.push(empty('今日のタスクはありません。'));
+      break;
+    }
+    case 'upcoming': {
+      title = '予定'; sub = '日付の決まっているこれからのタスク';
+      const list = act.filter((t) => isUpcoming(t, T));
+      for (let i = 1; i <= 14; i++) {
+        const k = ymd(addDays(Td, i));
+        const items = list.filter((t) => t.due === k).sort(byDay);
+        if (!items.length && i > 7) continue;
+        nodes.push(group(`${fmtShort(k)}  ${relWord(k, T)}`, items, T, { cls: items.length ? '' : 'faint' }));
+      }
+      const end = ymd(addDays(Td, 14));
+      const later = list.filter((t) => t.due > end).sort((a, b) => cmp(a.due, b.due) || byDay(a, b));
+      const months = new Map();
+      for (const t of later) { const k = t.due.slice(0, 7); if (!months.has(k)) months.set(k, []); months.get(k).push(t); }
+      for (const [k, items] of months) {
+        const [y, m] = k.split('-').map(Number);
+        nodes.push(group(y === Td.getFullYear() ? `${m}月` : `${y}年${m}月`, items, T));
+      }
+      break;
+    }
+    case 'anytime': {
+      title = 'すべて'; sub = '「いつか」以外の未完了タスク（プロジェクト別）';
+      const list = act.filter(isAnytime);
+      const none = list.filter((t) => !t.project).sort(byDefault);
+      if (none.length) nodes.push(group('プロジェクトなし', none, T));
+      const names = [...new Set(list.map((t) => t.project).filter(Boolean))].sort((a, b) => a.localeCompare(b, 'ja'));
+      for (const n of names) nodes.push(group(n, list.filter((t) => t.project === n).sort(byDefault), T));
+      if (!list.length) nodes.push(empty('タスクはありません。'));
+      break;
+    }
+    case 'someday': {
+      title = 'いつか'; sub = '今は手を付けないけれど、忘れたくないこと。週次レビューで見直しましょう';
+      const list = act.filter((t) => t.someday).sort((a, b) => cmp(a.createdAt, b.createdAt));
+      nodes.push(list.length ? group('', list, T) : empty('「いつか」リストは空です。'));
+      break;
+    }
+    case 'matrix': {
+      title = 'マトリクス'; sub = '重要 = 優先度が高・中 ／ 緊急 = 期限が明日まで、または「今日やる」。数字キー 1〜3 で優先度を変えると移動します';
+      const list = act.filter(isAnytime);
+      const tom = ymd(addDays(Td, 1));
+      const imp = (t) => t.priority === 1 || t.priority === 2;
+      const urg = (t) => (!!t.due && t.due <= tom) || t.myDay === T;
+      const quads = [
+        ['q1', '今すぐやる', '重要 × 緊急', (t) => imp(t) && urg(t)],
+        ['q2', '計画してやる', '重要 × 緊急でない', (t) => imp(t) && !urg(t)],
+        ['q3', '手短に済ませる', '重要でない × 緊急', (t) => !imp(t) && urg(t)],
+        ['q4', 'やらない・後回し', '重要でない × 緊急でない', (t) => !imp(t) && !urg(t)],
+      ];
+      nodes.push(h('div', { class: 'matrix' }, quads.map(([cls, name, desc, f]) => {
+        const items = list.filter(f).sort(byDefault);
+        return h('section', { class: 'card quad ' + cls, 'data-quad': cls },
+          h('div', { class: 'quad-h' }, h('h3', null, name), h('span', null, desc), h('span', { class: 'count' }, String(items.length))),
+          items.length ? taskList(items, T) : h('div', { class: 'empty', style: 'padding:14px' }, 'なし'));
+      })));
+      break;
+    }
+    case 'review': {
+      title = '週次レビュー'; sub = '週に一度、全体を見直して頭を空にする時間（GTD）';
+      const last = d.meta.lastReview;
+      nodes.push(h('div', { class: 'card' }, last ? `前回のレビュー: ${fmtShort(last)}（${relWord(last, T)}）` : 'まだ一度もレビューしていません。'));
+      const old = ymd(addDays(Td, -14));
+      const mon = ymd(mondayOf(Td));
+      const doneWeek = d.todos.filter((t) => t.done && t.doneAt && localYmd(t.doneAt) >= mon).length;
+      const steps = [
+        ['受信箱を空にする', '日付・プロジェクト・「いつか」を決めるか、不要なら削除', act.filter((t) => isInbox(t, T)).sort(byDefault)],
+        ['期限切れを片付ける', '今日やるか、日付を付け直すか、手放す', act.filter((t) => isLate(t, T)).sort(byDefault)],
+        ['この先 1 週間の予定を確認する', '準備が必要なものはないか', act.filter((t) => isUpcoming(t, T) && t.due <= ymd(addDays(Td, 7))).sort((a, b) => cmp(a.due, b.due) || byDay(a, b))],
+        ['止まっているタスクを見直す', '2 週間以上動きのない、日付のないタスク', act.filter((t) => !t.someday && !t.due && localYmd(t.updatedAt) <= old).sort(byDefault)],
+        ['「いつか」リストを見直す', '今週から始めるものはないか', act.filter((t) => t.someday).sort((a, b) => cmp(a.createdAt, b.createdAt))],
+      ];
+      steps.forEach(([name, desc, items], i) => {
+        nodes.push(h('section', { class: 'step' },
+          h('div', { class: 'step-h' }, h('span', { class: 'step-n' }, String(i + 1)),
+            h('div', null, h('h3', null, `${name}（${items.length}）`), h('p', null, desc))),
+          items.length ? taskList(items, T) : null));
+      });
+      nodes.push(h('section', { class: 'step' },
+        h('div', { class: 'step-h' }, h('span', { class: 'step-n' }, '6'),
+          h('div', null, h('h3', null, '今週を振り返る'),
+            h('p', null, `今週の完了 ${doneWeek} 件・集中 ${fmtMin(focusMinutes(d, (k) => k >= mon && k <= T))}`)))));
+      nodes.push(h('div', { class: 'dlg-foot', style: 'justify-content:flex-start' },
+        h('button', { class: 'btn-primary', type: 'button', onclick: () => { mutate({ t: 'meta', set: { lastReview: T } }); toast('週次レビューを記録しました'); } }, 'レビューを完了する')));
+      break;
+    }
+    case 'logbook': {
+      title = '完了ログ'; sub = '終わらせたこと';
+      nodes.push(statsCard(d, T));
+      const done = d.todos.filter((t) => t.done).sort((a, b) => cmp(b.doneAt || '', a.doneAt || ''));
+      const since = ymd(addDays(Td, -logDays));
+      const days = new Map();
+      for (const t of done) {
+        const k = t.doneAt ? localYmd(t.doneAt) : '';
+        if (k < since) continue;
+        if (!days.has(k)) days.set(k, []);
+        days.get(k).push(t);
+      }
+      for (const [k, items] of days) nodes.push(group(`${fmtShort(k)}  ${relWord(k, T)}`, items, T));
+      const older = done.filter((t) => (t.doneAt ? localYmd(t.doneAt) : '') < since).length;
+      if (older) {
+        nodes.push(h('div', { class: 'nudge' }, `それより前に ${older} 件`,
+          h('button', { class: 'link-btn', type: 'button', onclick: () => { logDays += 60; render(); } }, 'さらに表示')));
+      }
+      if (!done.length) nodes.push(empty('まだ完了したタスクはありません。'));
+      break;
+    }
+    case 'project': {
+      title = view.name;
+      const all = d.todos.filter((t) => t.project === view.name);
+      const a = all.filter((t) => !t.done && !t.someday).sort(byDefault);
+      const sd = all.filter((t) => !t.done && t.someday).sort(byDefault);
+      const dn = all.filter((t) => t.done).sort((x, y) => cmp(y.doneAt || '', x.doneAt || ''));
+      sub = `${dn.length} / ${all.length} 完了`;
+      nodes.push(h('div', { class: 'card' },
+        h('div', { class: 'meter', style: 'margin-top:0' }, h('div', { class: 'fill', style: `width:${all.length ? dn.length / all.length * 100 : 0}%` })),
+        h('div', { class: 'mini' },
+          h('button', { type: 'button', onclick: () => renameProject(view.name) }, '名前を変更'),
+          dn.length ? h('button', { type: 'button', 'aria-pressed': String(showProjectDone), onclick: () => { showProjectDone = !showProjectDone; render(); } }, `完了済みを表示（${dn.length}）`) : null)));
+      if (a.length) nodes.push(group('', a, T));
+      if (sd.length) nodes.push(group('いつか', sd, T));
+      if (showProjectDone && dn.length) nodes.push(group('完了済み', dn, T));
+      if (!a.length && !sd.length) nodes.push(empty('このプロジェクトに未完了のタスクはありません。'));
+      break;
+    }
+    case 'tag': {
+      title = '@' + view.name;
+      const list = act.filter((t) => t.tags.includes(view.name)).sort(byDefault);
+      nodes.push(list.length ? group('', list, T) : empty('このタグの未完了タスクはありません。'));
+      break;
+    }
+    case 'search': {
+      title = '検索'; sub = '@タグ や #プロジェクト でも絞り込めます';
+      const words = view.q.toLowerCase().split(/[\s\u3000]+/).filter(Boolean);
+      const match = (t) => {
+        const hay = [t.title, t.notes, t.project || '', ...t.tags, ...t.checklist.map((x) => x.text)].join(' ').toLowerCase();
+        return words.every((w) => (w[0] === '@' && w.length > 1 ? t.tags.some((g) => g.toLowerCase().includes(w.slice(1)))
+          : w[0] === '#' && w.length > 1 ? (t.project || '').toLowerCase().includes(w.slice(1)) : hay.includes(w)));
+      };
+      const hits = d.todos.filter(match);
+      const a = hits.filter((t) => !t.done).sort(byDefault);
+      const dn = hits.filter((t) => t.done).sort((x, y) => cmp(y.doneAt || '', x.doneAt || '')).slice(0, 50);
+      if (a.length) nodes.push(group('未完了', a, T));
+      if (dn.length) nodes.push(group('完了済み', dn, T));
+      if (!hits.length) nodes.push(empty('見つかりませんでした。'));
+      break;
+    }
+  }
+  $('viewTitle').textContent = title;
+  $('viewSub').textContent = sub;
+  c.replaceChildren(...nodes);
+}
+
+function planCard(list, d, T) {
+  const cap = Number.isFinite(d.meta.capacity) ? d.meta.capacity : 360;
+  const est = list.reduce((s, t) => s + (t.estimate || 0), 0);
+  const noEst = list.filter((t) => !t.estimate).length;
+  const doneToday = d.todos.filter((t) => t.done && t.doneAt && localYmd(t.doneAt) === T).length;
+  const over = est - cap;
+  let hint = null;
+  if (over > 0) hint = h('p', { class: 'hint warn' }, `見積もりが作業可能時間を ${fmtMin(over)} 超えています。明日以降に回せるものはありませんか？`);
+  else if (noEst) hint = h('p', { class: 'hint' }, `見積もりのないタスクが ${noEst} 件あります。かかる時間を決めると計画が立てやすくなります。`);
+  else if (list.length) hint = h('p', { class: 'hint' }, '今日の計画は作業可能時間に収まっています。');
+  return h('div', { class: 'card plan' },
+    h('div', { class: 'stats' },
+      stat(fmtMin(est), '見積もり合計'), stat(fmtMin(cap), '作業可能時間'),
+      stat(String(doneToday), '今日の完了'), stat(fmtMin(focusMinutes(d, (k) => k === T)), '今日の集中')),
+    h('div', { class: 'meter' + (over > 0 ? ' over' : ''), role: 'meter', 'aria-label': '見積もり / 作業可能時間', 'aria-valuemin': '0', 'aria-valuemax': String(cap), 'aria-valuenow': String(Math.min(est, cap)) },
+      h('div', { class: 'fill', style: `width:${cap ? Math.min(100, est / cap * 100) : 0}%` })),
+    hint);
+}
+
+function statsCard(d, T) {
+  const Td = parseYmd(T);
+  const count = new Map();
+  for (const t of d.todos) if (t.done && t.doneAt) { const k = localYmd(t.doneAt); count.set(k, (count.get(k) || 0) + 1); }
+  const mon = ymd(mondayOf(Td));
+  let week = 0;
+  for (const [k, v] of count) if (k >= mon && k <= T) week += v;
+  let streak = 0;
+  for (let cur = count.get(T) ? Td : addDays(Td, -1); count.get(ymd(cur)); cur = addDays(cur, -1)) streak++;
+  const days = [];
+  for (let i = 13; i >= 0; i--) { const k = ymd(addDays(Td, -i)); days.push({ k, v: count.get(k) || 0 }); }
+  const max = Math.max(1, ...days.map((x) => x.v));
+  return h('div', { class: 'card' },
+    h('div', { class: 'stats' },
+      stat(String(count.get(T) || 0), '今日の完了'), stat(String(week), '今週の完了'),
+      stat(`${streak}日`, '連続で完了'), stat(fmtMin(focusMinutes(d, (k) => k >= mon && k <= T)), '今週の集中')),
+    h('div', { class: 'chart' },
+      h('div', { class: 'chart-h' }, '直近 14 日の完了数'),
+      h('div', { class: 'bars', role: 'img', 'aria-label': '直近14日の完了数: ' + days.map((x) => `${fmtShort(x.k)} ${x.v}件`).join('、') },
+        days.map((x) => h('div', { class: 'bar-col', tabindex: '0', 'data-tip': `${fmtShort(x.k)}  ${x.v}件` },
+          x.k === T && x.v ? h('span', { class: 'bar-val' }, String(x.v)) : null,
+          h('div', { class: 'bar', style: `height:${x.v / max * 100}%` })))),
+      h('div', { class: 'bar-labels', 'aria-hidden': 'true' },
+        days.map((x, i) => h('span', null, (13 - i) % 2 === 0 ? String(parseYmd(x.k).getDate()) : '')))));
+}
+
+/* =========================================================================
+ * クイック追加
+ * ========================================================================= */
+function taskFromQuick(text) {
+  const T = todayYmd();
+  const Td = parseYmd(T);
+  const r = parseQuick(text, Td);
+  const t = { id: uid(), createdAt: nowIso() };
+  if (r.title) {
+    let due = r.date ? ymd(r.date) : null;
+    if (r.time && !due) due = T;
+    if (r.repeat) {
+      t.repeat = completeRule(r.repeat, due ? parseYmd(due) : Td);
+      if (!due) due = ymd(firstDue(t.repeat, Td));
+    }
+    Object.assign(t, { title: r.title, due, time: r.time, project: r.project, tags: r.tags, priority: r.priority, estimate: r.estimate, someday: r.someday && !due });
+  } else {
+    t.title = text.trim(); // 日付などの語しか無いときは、そのままタイトルにする
+  }
+  // 今いる一覧に合わせて補う（今日の一覧で追加したら「今日やる」など）
+  if (view.type === 'project' && !t.project) t.project = view.name;
+  if (view.type === 'tag') t.tags = [...new Set([...(t.tags || []), view.name])];
+  if (view.type === 'today' && !t.due && !t.someday) t.myDay = T;
+  if (view.type === 'someday' && !t.due) t.someday = true;
+  return normTask(t);
+}
+function whereLabel(t, T) {
+  if (t.someday) return '「いつか」';
+  if ((t.due && t.due <= T) || t.myDay === T) return '今日';
+  if (t.due) return `予定（${fmtDate(t.due, T)}）`;
+  if (t.project) return t.project;
+  return '受信箱';
+}
+function updateQuickChips() {
+  const text = $('quickInput').value;
+  const box = $('quickChips');
+  if (!text.trim()) { box.replaceChildren(); return; }
+  const t = taskFromQuick(text);
+  const T = todayYmd();
+  const chip = (ic, label) => h('span', { class: 'qchip' }, icon(ic), label);
+  const chips = [];
+  if (t.due) chips.push(chip('calendar', fmtDate(t.due, T) + (t.time ? ' ' + t.time : '')));
+  if (t.repeat) chips.push(chip('repeat', describeRepeat(t.repeat)));
+  if (t.myDay) chips.push(chip('sun', '今日やる'));
+  if (t.project) chips.push(chip('folder', t.project));
+  for (const g of t.tags) chips.push(chip('tag', g));
+  if (t.priority) chips.push(chip('flag', '優先度 ' + ['', '高', '中', '低'][t.priority]));
+  if (t.estimate) chips.push(chip('timer', fmtMin(t.estimate)));
+  if (t.someday) chips.push(chip('box', 'いつか'));
+  box.replaceChildren(...chips);
+}
+
+/* =========================================================================
+ * 操作
+ * ========================================================================= */
+const findTask = (id) => DATA.todos.find((x) => x.id === id);
+function addFromQuick() {
+  const input = $('quickInput');
+  if (!input.value.trim()) return;
+  const t = taskFromQuick(input.value);
+  input.value = '';
+  selId = t.id;
+  mutate({ t: 'add', task: t });
+  toast(`「${t.title}」を${whereLabel(t, todayYmd())}に追加しました`, { t: 'restore', remove: [t.id] });
+}
+function toggleDone(id) {
+  const t = findTask(id);
+  if (!t) return;
+  const snap = clone(t);
+  const T = todayYmd();
+  if (t.done) {
+    mutate({ t: 'patch', id, set: { done: false, doneAt: null } });
+    toast('未完了に戻しました', { t: 'restore', tasks: [snap] });
+  } else if (t.repeat && t.due) {
+    const next = nextDue(t.due, t.repeat, T);
+    const logId = uid();
+    mutate({ t: 'complete', id, from: t.due, next, logId });
+    toast(`完了 · 次回は ${fmtDate(next, T)}`, { t: 'restore', tasks: [snap], remove: [logId] });
+  } else {
+    mutate({ t: 'complete', id });
+    toast(`「${t.title}」を完了しました`, { t: 'restore', tasks: [snap] });
+  }
+}
+function deleteTask(id) {
+  const t = findTask(id);
+  if (!t) return;
+  if (detailId === id) closeDetail();
+  mutate({ t: 'del', id });
+  toast(`「${t.title}」を削除しました`, { t: 'restore', tasks: [clone(t)] });
+}
+function toggleMyDay(id) {
+  const t = findTask(id);
+  if (!t || t.done) return;
+  const T = todayYmd();
+  mutate({ t: 'patch', id, set: t.myDay === T ? { myDay: null } : { myDay: T, someday: false } });
+}
+function toggleSomeday(id) {
+  const t = findTask(id);
+  if (!t || t.done) return;
+  const snap = clone(t);
+  mutate({ t: 'patch', id, set: { someday: !t.someday, myDay: null } });
+  toast(snap.someday ? '「いつか」から戻しました' : '「いつか」に移しました', { t: 'restore', tasks: [snap] });
+}
+function setPriority(id, p) {
+  const t = findTask(id);
+  if (t && t.priority !== p) mutate({ t: 'patch', id, set: { priority: p } });
+}
+function moveToToday(list) {
+  const T = todayYmd();
+  mutate(list.map((t) => ({ t: 'patch', id: t.id, set: { due: T } })));
+  toast(`${list.length} 件を今日に移動しました`, { t: 'restore', tasks: list.map(clone) });
+}
+function duplicateTask(id) {
+  const t = findTask(id);
+  if (!t) return;
+  const copy = { ...clone(t), id: uid(), done: false, doneAt: null, focus: [], createdAt: nowIso(), updatedAt: nowIso(), checklist: t.checklist.map((c) => ({ ...c, id: uid(), done: false })) };
+  mutate({ t: 'add', task: copy });
+  openDetail(copy.id);
+  toast('複製しました', { t: 'restore', remove: [copy.id] });
+}
+function renameProject(name) {
+  const to = prompt('新しいプロジェクト名', name);
+  if (to == null || !to.trim() || to.trim() === name) return;
+  mutate({ t: 'renameProject', from: name, to: to.trim() });
+  setView({ type: 'project', name: to.trim() });
+}
+
+// 元に戻す（直前の 1 操作）
+let lastUndo = null;
+let toastTimer = null;
+function toast(msg, undoOp) {
+  lastUndo = undoOp || null;
+  $('toastMsg').textContent = msg;
+  $('undoBtn').hidden = !undoOp;
+  $('toast').hidden = false;
+  clearTimeout(toastTimer);
+  toastTimer = setTimeout(() => { $('toast').hidden = true; }, undoOp ? 7000 : 3000);
+}
+function undo() {
+  if (!lastUndo) return;
+  const op = lastUndo;
+  lastUndo = null;
+  $('toast').hidden = true;
+  mutate(op);
+}
+
+/* =========================================================================
+ * 詳細パネル
+ * ========================================================================= */
+// 文字の入力は打ち終わって少し経ってから保存する（欄を離れたときは即保存）。
+// 欄を離れた瞬間に画面を作り直すと、その直後のクリックが失われるため
+const pendingEdits = new Map();
+function editLater(key, fn) {
+  const p = pendingEdits.get(key);
+  if (p) clearTimeout(p.timer);
+  pendingEdits.set(key, { fn, timer: setTimeout(() => flushEdit(key), 500) });
+}
+function flushEdit(key) {
+  const p = pendingEdits.get(key);
+  if (!p) return;
+  clearTimeout(p.timer);
+  pendingEdits.delete(key);
+  p.fn();
+}
+function flushEdits() { for (const k of [...pendingEdits.keys()]) flushEdit(k); }
+
+function openDetail(id) {
+  flushEdits();
+  detailId = id;
+  selId = id;
+  $('detail').hidden = false;
+  document.body.classList.add('detail-open');
+  renderDetail(true);
+  markSel();
+}
+function closeDetail() {
+  flushEdits();
+  detailId = null;
+  $('detail').hidden = true;
+  $('detail').replaceChildren();
+  document.body.classList.remove('detail-open');
+}
+function renderDetail(force) {
+  const p = $('detail');
+  if (!detailId) return;
+  const t = DATA.todos.find((x) => x.id === detailId);
+  if (!t) return closeDetail();
+  const ae = document.activeElement;
+  const typing = p.contains(ae) && (ae.tagName === 'TEXTAREA' || (ae.tagName === 'INPUT' && !['checkbox', 'button'].includes(ae.type)));
+  if (!force && typing) return; // 入力中は作り直さない
+  const focusKey = p.contains(ae) ? ae.dataset.f : null;
+  const scroll = p.scrollTop;
+
+  const T = todayYmd();
+  const Td = parseYmd(T);
+  // パネル内の値は最新のタスクから読む（作り直さずに続けて編集した場合に古い値で上書きしないため）
+  const cur = () => findTask(t.id) || t;
+  const set = (fields, rebuild = true) => { mutate({ t: 'patch', id: t.id, set: fields }); if (rebuild) renderDetail(true); };
+  const r = t.repeat;
+
+  const dateField = h('div', { class: 'field' },
+    h('label', { class: 'f-label', for: 'd-due' }, '日付・時刻'),
+    h('div', { class: 'row' },
+      h('input', { id: 'd-due', type: 'date', value: t.due || '', 'data-f': 'due',
+        onchange: (e) => { const v = e.target.value; set(v ? { due: v, someday: false } : { due: null, time: null, repeat: null }); } }),
+      h('input', { type: 'time', value: t.time || '', 'data-f': 'time', 'aria-label': '時刻',
+        onchange: (e) => { const v = e.target.value; set(v ? { time: v, ...(t.due ? {} : { due: T }) } : { time: null }); } })),
+    h('div', { class: 'mini' },
+      [['今日', T], ['明日', ymd(addDays(Td, 1))], ['来週', ymd(addDays(mondayOf(Td), 7))]].map(([label, v]) =>
+        h('button', { type: 'button', 'aria-pressed': String(t.due === v), onclick: () => set({ due: v, someday: false }) }, label)),
+      t.due ? h('button', { type: 'button', onclick: () => set({ due: null, time: null, repeat: null }) }, '日付なし') : null));
+
+  const repeatField = h('div', { class: 'field' },
+    h('label', { class: 'f-label', for: 'd-runit' }, '繰り返し'),
+    h('div', { class: 'row' },
+      r ? h('input', { type: 'number', min: '1', max: '99', value: String(r.every), 'data-f': 'revery', style: 'width:70px;flex:none', 'aria-label': '間隔',
+        onchange: (e) => { const rr = cur().repeat; if (rr) set({ repeat: normRepeat({ ...rr, every: e.target.value }) }, false); } }) : null,
+      h('select', { id: 'd-runit', 'data-f': 'runit',
+        onchange: (e) => {
+          const u = e.target.value;
+          if (!u) return set({ repeat: null });
+          const rule = completeRule({ unit: u, every: r ? r.every : 1 }, t.due ? parseYmd(t.due) : Td);
+          set({ repeat: rule, due: t.due || ymd(firstDue(rule, Td)), someday: false });
+        } },
+        [['', 'しない'], ['day', '日ごと'], ['week', '週ごと'], ['month', 'か月ごと'], ['year', '年ごと']].map(([v, l]) =>
+          h('option', { value: v, selected: (r ? r.unit : '') === v }, l)))),
+    r && r.unit === 'week' ? h('div', { class: 'wd', role: 'group', 'aria-label': '曜日' }, [1, 2, 3, 4, 5, 6, 0].map((wd) => {
+      const on = (r.days || []).includes(wd);
+      return h('button', { type: 'button', 'aria-pressed': String(on), onclick: () => {
+        const days = on ? r.days.filter((x) => x !== wd) : [...(r.days || []), wd];
+        if (days.length) set({ repeat: normRepeat({ ...r, days }) });
+      } }, WD[wd]);
+    })) : null,
+    r && r.unit === 'month' ? h('div', { class: 'row', style: 'margin-top:8px' },
+      h('input', { type: 'number', min: '1', max: '31', value: String(r.day || 1), 'data-f': 'rday', style: 'width:70px;flex:none', 'aria-label': '日',
+        onchange: (e) => { const rr = cur().repeat; if (rr) set({ repeat: normRepeat({ ...rr, day: e.target.value }) }, false); } }), h('span', { class: 'hint', style: 'margin:0' }, '日（31 = 月末）')) : null,
+    h('div', { class: 'mini' },
+      [['毎日', { unit: 'day', every: 1 }], ['平日', { unit: 'week', every: 1, days: [1, 2, 3, 4, 5] }], ['毎週', { unit: 'week', every: 1 }], ['毎月', { unit: 'month', every: 1 }]].map(([label, rule]) =>
+        h('button', { type: 'button', onclick: () => {
+          const rr = completeRule(rule, t.due ? parseYmd(t.due) : Td);
+          set({ repeat: rr, due: t.due || ymd(firstDue(rr, Td)), someday: false });
+        } }, label))),
+    r && t.due ? h('p', { class: 'hint' }, `${describeRepeat(r)} · 完了すると次回は ${fmtDate(nextDue(t.due, r, T), T)}`) : null);
+
+  const prioField = h('div', { class: 'field' },
+    h('div', { class: 'f-label' }, '優先度'),
+    h('div', { class: 'seg', role: 'group', 'aria-label': '優先度' }, [[0, 'なし'], [3, '低'], [2, '中'], [1, '高']].map(([v, l]) =>
+      h('button', { type: 'button', 'aria-pressed': String(t.priority === v), onclick: () => set({ priority: v }) }, l))));
+
+  const projField = h('div', { class: 'field' },
+    h('label', { class: 'f-label', for: 'd-proj' }, 'プロジェクト'),
+    h('input', { id: 'd-proj', type: 'text', list: 'projList', value: t.project || '', 'data-f': 'project', placeholder: 'なし',
+      onchange: (e) => set({ project: e.target.value.trim() || null }, false) }));
+
+  const tagField = h('div', { class: 'field' },
+    h('label', { class: 'f-label', for: 'd-tags' }, 'タグ（空白区切り）'),
+    h('input', { id: 'd-tags', type: 'text', value: t.tags.join(' '), 'data-f': 'tags', placeholder: '例: メール 電話',
+      onchange: (e) => set({ tags: [...new Set(e.target.value.split(/[\s,、\u3000]+/).map((s) => s.replace(/^[@＠]/, '')).filter(Boolean))] }, false) }));
+
+  const estField = h('div', { class: 'field' },
+    h('label', { class: 'f-label', for: 'd-est' }, '見積もり（分）'),
+    h('input', { id: 'd-est', type: 'number', min: '0', step: '5', value: t.estimate ? String(t.estimate) : '', 'data-f': 'estimate', style: 'width:120px',
+      onchange: (e) => { const v = Math.round(+e.target.value); set({ estimate: v > 0 ? v : null }, false); } }),
+    h('div', { class: 'mini' }, [15, 30, 60, 120].map((m) =>
+      h('button', { type: 'button', 'aria-pressed': String(t.estimate === m), onclick: () => set({ estimate: t.estimate === m ? null : m }) }, fmtMin(m)))));
+
+  const cl = t.checklist;
+  const curCl = () => cur().checklist;
+  const setCl = (list, rebuild = true) => set({ checklist: list }, rebuild);
+  const clField = h('div', { class: 'field' },
+    h('div', { class: 'f-label' }, `チェックリスト${cl.length ? `（${cl.filter((c) => c.done).length}/${cl.length}）` : ''}`),
+    cl.map((c) => h('div', { class: 'cl-item' + (c.done ? ' done' : '') },
+      h('input', { type: 'checkbox', checked: c.done, 'aria-label': '済み', onchange: () => setCl(curCl().map((x) => (x.id === c.id ? { ...x, done: !x.done } : x))) }),
+      h('input', { type: 'text', value: c.text, 'data-f': 'cl-' + c.id, 'aria-label': '項目',
+        oninput: (e) => {
+          const v = e.target.value.trim();
+          if (v) editLater('cl-' + c.id, () => setCl(curCl().map((x) => (x.id === c.id ? { ...x, text: v } : x)), false));
+        },
+        onblur: (e) => {
+          flushEdit('cl-' + c.id);
+          if (!e.target.value.trim()) setCl(curCl().filter((x) => x.id !== c.id));
+        } }),
+      h('button', { class: 'icon-btn', type: 'button', 'aria-label': '項目を削除', onclick: () => setCl(curCl().filter((x) => x.id !== c.id)) }, icon('x')))),
+    h('div', { class: 'cl-item' },
+      h('input', { type: 'text', placeholder: '項目を追加（Enter）', 'data-f': 'cl-new', 'aria-label': 'チェックリストに追加',
+        onkeydown: (e) => {
+          if (e.key !== 'Enter' || e.isComposing || e.keyCode === 229) return;
+          e.preventDefault();
+          const v = e.target.value.trim();
+          if (!v) return;
+          setCl([...curCl(), { id: uid(), text: v, done: false }]);
+          $('detail').querySelector('[data-f="cl-new"]').focus();
+        } })));
+
+  const urls = [...new Set((t.notes.match(/https?:\/\/[^\s<>"'）」]+/g) || []))];
+  const notesField = h('div', { class: 'field' },
+    h('label', { class: 'f-label', for: 'd-notes' }, 'メモ'),
+    h('textarea', { id: 'd-notes', value: t.notes, 'data-f': 'notes', placeholder: '補足、リンク、次にやることなど',
+      oninput: (e) => { const v = e.target.value; editLater('notes', () => set({ notes: v }, false)); },
+      onblur: () => flushEdit('notes') }),
+    urls.length ? h('div', { class: 'links' }, urls.map((u) => h('a', { href: u, target: '_blank', rel: 'noopener noreferrer' }, u))) : null);
+
+  const spent = t.focus.reduce((s, f) => s + f.min, 0);
+  const focusField = h('div', { class: 'field' },
+    h('div', { class: 'f-label' }, '集中した時間'),
+    h('div', { class: 'row' },
+      h('span', null, spent ? `${fmtMin(spent)}（${t.focus.length} 回）` : 'まだありません'),
+      t.estimate && spent ? h('span', { class: 'count' }, `見積もりの ${Math.round(spent / t.estimate * 100)}%`) : null));
+
+  const nodes = [
+    h('div', { class: 'd-head' },
+      h('button', { class: 'icon-btn', type: 'button', onclick: () => toggleDone(t.id), 'aria-pressed': String(t.done) }, icon('check'), t.done ? '完了済み' : '完了にする'),
+      h('span', { class: 'sp' }),
+      t.done ? null : h('button', { class: 'icon-btn', type: 'button', title: '集中する', 'aria-label': '集中タイマーを開始', onclick: () => startFocus(t.id) }, icon('play')),
+      h('button', { class: 'icon-btn', type: 'button', title: '複製', 'aria-label': '複製', onclick: () => duplicateTask(t.id) }, icon('copy')),
+      h('button', { class: 'icon-btn', type: 'button', title: '削除', 'aria-label': '削除', onclick: () => deleteTask(t.id) }, icon('trash')),
+      h('button', { class: 'icon-btn', type: 'button', title: '閉じる（Esc）', 'aria-label': '閉じる', onclick: closeDetail }, icon('x'))),
+    h('input', { class: 'd-title', type: 'text', value: t.title, 'data-f': 'title', 'aria-label': 'タイトル',
+      oninput: (e) => { const v = e.target.value.trim(); if (v) editLater('title', () => set({ title: v }, false)); },
+      onblur: (e) => { flushEdit('title'); if (!e.target.value.trim()) e.target.value = cur().title; } }),
+    t.done ? null : h('div', { class: 'toggles' },
+      h('button', { type: 'button', 'aria-pressed': String(t.myDay === T), onclick: () => set(t.myDay === T ? { myDay: null } : { myDay: T, someday: false }) }, icon('sun'), '今日やる'),
+      h('button', { type: 'button', 'aria-pressed': String(t.someday), onclick: () => set({ someday: !t.someday, myDay: null }) }, icon('box'), 'いつか')),
+    dateField, repeatField, prioField, projField, tagField, estField, clField, notesField, focusField,
+    h('div', { class: 'd-foot' },
+      h('div', null, `作成 ${fmtStamp(t.createdAt)}`),
+      h('div', null, `更新 ${fmtStamp(t.updatedAt)}`),
+      t.done ? h('div', null, `完了 ${fmtStamp(t.doneAt)}`) : null),
+  ];
+  p.dataset.id = t.id;
+  p.replaceChildren(...nodes);
+  p.scrollTop = scroll;
+  if (focusKey) p.querySelector(`[data-f="${CSS.escape(focusKey)}"]`)?.focus();
+}
+
+/* =========================================================================
+ * 集中タイマー（ポモドーロ）
+ * ========================================================================= */
+let timer = loadJSON(KEY.timer, null); // { taskId, title, kind: 'work'|'break', dur(秒), startedAt, endsAt, left }
+let audio = null;
+let barKey = '';
+const saveTimer = () => (timer ? saveJSON(KEY.timer, timer) : store.del(KEY.timer));
+const timeLeft = () => (timer.left != null ? timer.left : timer.endsAt - Date.now());
+function unlockAudio() {
+  try { audio = audio || new (window.AudioContext || window.webkitAudioContext)(); audio.resume?.(); } catch {}
+}
+function beep() {
+  if (!audio) return;
+  try {
+    [0, 0.25, 0.5].forEach((dt) => {
+      const o = audio.createOscillator(), g = audio.createGain();
+      o.frequency.value = 880;
+      g.gain.setValueAtTime(0.0001, audio.currentTime + dt);
+      g.gain.exponentialRampToValueAtTime(0.2, audio.currentTime + dt + 0.02);
+      g.gain.exponentialRampToValueAtTime(0.0001, audio.currentTime + dt + 0.18);
+      o.connect(g).connect(audio.destination);
+      o.start(audio.currentTime + dt);
+      o.stop(audio.currentTime + dt + 0.2);
+    });
+  } catch {}
+}
+function notify(title, body) {
+  try { if ('Notification' in window && Notification.permission === 'granted') new Notification(title, { body }); } catch {}
+}
+function askNotify() {
+  try { if ('Notification' in window && Notification.permission === 'default') Notification.requestPermission()?.catch?.(() => {}); } catch {}
+}
+function startFocus(id) {
+  const t = findTask(id);
+  if (!t) return;
+  if (timer && timer.kind === 'work') stopFocus();
+  const min = DATA.meta.pomo || 25;
+  timer = { taskId: id, title: t.title, kind: 'work', dur: min * 60, startedAt: Date.now(), endsAt: Date.now() + min * 60000, left: null };
+  saveTimer();
+  unlockAudio();
+  askNotify();
+  tick();
+}
+function logFocus(tm, min) {
+  mutate({ t: 'focus', id: tm.taskId, session: { id: uid(), at: new Date(tm.startedAt).toISOString(), min } });
+}
+function pauseFocus() { if (timer && timer.left == null) { timer.left = timeLeft(); saveTimer(); tick(); } }
+function resumeFocus() { if (timer && timer.left != null) { timer.endsAt = Date.now() + timer.left; timer.left = null; saveTimer(); tick(); } }
+function stopFocus() {
+  if (!timer) return;
+  if (timer.kind === 'work') {
+    const min = Math.floor((timer.dur * 1000 - Math.max(0, timeLeft())) / 60000);
+    if (min >= 1) logFocus(timer, min);
+  }
+  timer = null;
+  saveTimer();
+  tick();
+}
+function finishPhase() {
+  const lateBy = -timeLeft();
+  if (timer.kind === 'work') {
+    logFocus(timer, Math.round(timer.dur / 60));
+    beep();
+    notify('集中時間が終わりました', timer.title);
+    const b = DATA.meta.brk || 5;
+    // 画面を閉じている間に休憩時間も過ぎていたら、休憩は飛ばす
+    timer = lateBy > b * 60000 ? null
+      : { taskId: timer.taskId, title: timer.title, kind: 'break', dur: b * 60, startedAt: Date.now(), endsAt: Date.now() + b * 60000, left: null };
+  } else {
+    beep();
+    notify('休憩が終わりました', '次の集中を始めましょう');
+    timer = null;
+  }
+  saveTimer();
+}
+function tick() {
+  const bar = $('focusBar');
+  if (!cfg || $('app').hidden) { bar.hidden = true; return; }
+  if (timer && timeLeft() <= 0) finishPhase();
+  if (!timer) {
+    bar.hidden = true;
+    barKey = '';
+    document.title = 'Todo';
     return;
   }
-  for (const t of todos) {
-    const li = document.createElement('li');
-    if (t.done) li.className = 'done';
-    const cb = document.createElement('input');
-    cb.type = 'checkbox';
-    cb.checked = !!t.done;
-    cb.setAttribute('aria-label', '完了');
-    cb.addEventListener('change', () => setDone(t.id, cb.checked));
-    const span = document.createElement('span');
-    span.className = 'title';
-    span.textContent = t.title; // textContent なので HTML として解釈されない
-    const del = document.createElement('button');
-    del.type = 'button';
-    del.className = 'link del';
-    del.textContent = '削除';
-    del.setAttribute('aria-label', '削除: ' + t.title);
-    del.addEventListener('click', () => removeTodo(t.id));
-    li.append(cb, span, del);
-    list.append(li);
+  const left = Math.max(0, timeLeft());
+  const mmss = `${pad(Math.floor(left / 60000))}:${pad(Math.floor(left / 1000) % 60)}`;
+  const paused = timer.left != null;
+  const key = `${timer.kind}|${paused}|${timer.taskId}`;
+  if (key !== barKey) {
+    barKey = key;
+    bar.replaceChildren(
+      h('span', { class: 'fb-kind' }, timer.kind === 'work' ? '集中' : '休憩'),
+      h('span', { class: 'fb-time', id: 'fbTime' }),
+      h('span', { class: 'fb-title' }, timer.title),
+      paused
+        ? h('button', { class: 'icon-btn', type: 'button', title: '再開', 'aria-label': '再開', onclick: resumeFocus }, icon('play'))
+        : h('button', { class: 'icon-btn', type: 'button', title: '一時停止', 'aria-label': '一時停止', onclick: pauseFocus }, icon('pause')),
+      timer.kind === 'work'
+        ? h('button', { class: 'icon-btn', type: 'button', title: '終了して記録', 'aria-label': '終了して記録', onclick: stopFocus }, icon('stop'))
+        : h('button', { class: 'icon-btn', type: 'button', title: '休憩を飛ばす', 'aria-label': '休憩を飛ばす', onclick: stopFocus }, icon('skip')));
   }
+  $('fbTime').textContent = mmss;
+  bar.hidden = false;
+  document.title = `${mmss} ${timer.kind === 'work' ? '集中' : '休憩'}`;
 }
 
-function setStatus(text, kind) {
-  const s = $('status');
-  s.textContent = text;
-  s.className = kind || '';
+/* =========================================================================
+ * ダイアログ（使い方・設定）
+ * ========================================================================= */
+function openOverlay(node) {
+  const o = $('overlay');
+  o.replaceChildren(node);
+  o.hidden = false;
+  node.querySelector('button, input')?.focus();
+}
+function closeOverlay() { $('overlay').hidden = true; $('overlay').replaceChildren(); }
+function openHelp() {
+  const rows = (pairs) => h('table', { class: 'kv' }, pairs.map(([k, v]) => h('tr', null, h('td', null, k), h('td', null, v))));
+  const kbd = (...ks) => ks.map((k, i) => [i ? ' ' : null, h('kbd', null, k)]);
+  openOverlay(h('div', { class: 'dialog', role: 'dialog', 'aria-label': '使い方' },
+    h('h2', null, '使い方'),
+    h('h3', null, 'クイック追加（空白で区切って書く）'),
+    rows([
+      ['日付', '今日 明日 明後日 金曜 来週月曜 週末 来週 来月 10/15 15日 3日後'],
+      ['時刻', '15時 15時半 午後3時 15:30（日付と続けて 明日15時 でも可）'],
+      ['繰り返し', '毎日 平日 毎週 毎週月水金 隔週 毎月 毎月15日 毎月末 毎年 3日ごと'],
+      ['プロジェクト', '#仕事'],
+      ['タグ', '@メール（いくつでも）'],
+      ['優先度', '!1（高） !2（中） !3（低）'],
+      ['見積もり', '~30m ~1h ~90分'],
+      ['いつか', 'いつか'],
+      ['そのまま書く', '\\明日 のように先頭に \\ を付ける'],
+    ]),
+    h('p', { class: 'hint' }, '例: 「明日15時 学会の資料を作る #研究 @PC !1 ~2h」'),
+    h('h3', null, 'キーボード'),
+    rows([
+      [kbd('n'), 'タスクを追加'],
+      [kbd('/'), '検索'],
+      [kbd('j', 'k'), '下・上に移動'],
+      [kbd('Enter'), '詳細を開く'],
+      [kbd('x'), '完了 / 未完了'],
+      [kbd('t'), '今日やる'],
+      [kbd('s'), 'いつか'],
+      [kbd('1', '2', '3', '0'), '優先度 高・中・低・なし'],
+      [kbd('f'), '集中タイマー'],
+      [kbd('Delete'), '削除'],
+      [kbd('z'), '元に戻す'],
+      [[h('kbd', null, 'g'), ' → ', kbd('i', 't', 'u', 'a', 's', 'm', 'r', 'l')], '受信箱・今日・予定・すべて・いつか・マトリクス・レビュー・完了ログ'],
+      [kbd('Esc'), '閉じる'],
+    ]),
+    h('h3', null, '考え方'),
+    rows([
+      ['受信箱', '思いついたらまず書き出す。毎日、日付・プロジェクト・「いつか」を決めて空にする'],
+      ['今日', '本当にやると決めたことだけ。見積もりの合計が作業可能時間に収まるようにする'],
+      ['マトリクス', '「重要だが緊急でない」ことに時間を確保する'],
+      ['集中タイマー', '25 分集中して 5 分休む。かかった時間はタスクに記録される'],
+      ['週次レビュー', '週に一度、全体を見直して頭を空にする'],
+    ]),
+    h('div', { class: 'dlg-foot' }, h('button', { type: 'button', class: 'btn-primary', onclick: closeOverlay }, '閉じる'))));
+}
+function openSettings() {
+  const m = DATA.meta;
+  const num = (label, key, value, step, toStore) => h('div', { class: 'field' },
+    h('label', { class: 'f-label' }, label,
+      h('input', { type: 'number', min: '0', step, value: String(value), 'data-k': key, style: 'width:120px;display:block;margin-top:5px',
+        onchange: (e) => { const v = +e.target.value; if (v > 0) mutate({ t: 'meta', set: { [key]: toStore(v) } }); } })));
+  const perm = 'Notification' in window ? Notification.permission : 'unsupported';
+  openOverlay(h('div', { class: 'dialog', role: 'dialog', 'aria-label': '設定' },
+    h('h2', null, '設定'),
+    num('1 日の作業可能時間（時間）', 'capacity', (Number.isFinite(m.capacity) ? m.capacity : 360) / 60, '0.5', (v) => Math.round(v * 60)),
+    num('集中する時間（分）', 'pomo', m.pomo || 25, '5', (v) => Math.round(v)),
+    num('休憩する時間（分）', 'brk', m.brk || 5, '1', (v) => Math.round(v)),
+    h('div', { class: 'field' },
+      h('div', { class: 'f-label' }, 'タイマー終了の通知'),
+      perm === 'granted' ? h('span', null, '許可されています')
+        : perm === 'denied' ? h('span', { class: 'hint' }, 'ブラウザの設定で拒否されています')
+          : perm === 'unsupported' ? h('span', { class: 'hint' }, 'このブラウザは対応していません')
+            : h('button', { type: 'button', onclick: () => { askNotify(); closeOverlay(); } }, '通知を許可する')),
+    h('div', { class: 'field' },
+      h('div', { class: 'f-label' }, 'データ'),
+      h('a', { href: `https://github.com/${cfg.repo}/commits/HEAD/${cfg.path}`, target: '_blank', rel: 'noopener noreferrer' }, 'GitHub で変更履歴を見る')),
+    h('div', { class: 'dlg-foot' },
+      h('button', { type: 'button', class: 'btn-danger', onclick: () => {
+        if (st.pending.length && !confirm('まだ保存していない変更があります。破棄して接続を解除しますか？')) return;
+        closeOverlay();
+        logout();
+      } }, '接続解除'),
+      h('button', { type: 'button', class: 'btn-primary', onclick: closeOverlay }, '閉じる'))));
 }
 
-// 設定画面には文字を出さない。失敗したら怪しい欄を赤枠にし、詳細はコンソールにだけ出す
+/* =========================================================================
+ * 初回設定・接続
+ * 設定画面には文字を出さない。失敗したら怪しい欄を赤枠にし、詳細はコンソールにだけ出す
+ * ========================================================================= */
 const FIELDS = ['repo', 'path', 'token'];
 function showSetup(bad = [], detail) {
   document.title = '';
   $('app').hidden = true;
+  $('focusBar').hidden = true;
+  $('toast').hidden = true;
   $('setup').hidden = false;
   for (const id of FIELDS) $(id).classList.toggle('bad', bad.includes(id));
   if (detail) console.warn(detail);
@@ -329,28 +1843,6 @@ function badFields(e) {
   if (e.status === 404) return ['repo', 'token']; // 名前違い、またはトークンの対象外
   return FIELDS;
 }
-
-async function showApp() {
-  document.title = 'Todo';
-  $('setup').hidden = true;
-  $('app').hidden = false;
-  $('fileLink').href = `https://github.com/${cfg.repo}/commits/HEAD/${cfg.path}`;
-  setStatus('読み込み中…');
-  try {
-    await fetchBase();
-    render();
-    setStatus(`${cfg.repo}/${cfg.path} に接続中`, 'ok');
-  } catch (e) {
-    if (e.status === 401) {
-      store.del(KEY.token);
-      showSetup(['token'], explain(e));
-      return;
-    }
-    setStatus('読み込めませんでした: ' + explain(e), 'err');
-  }
-}
-
-// ---- イベント
 async function connect() {
   const repo = $('repo').value.trim().replace(/^https:\/\/github\.com\//, '').replace(/\/+$/, '');
   const path = $('path').value.trim().replace(/^\/+/, '');
@@ -380,50 +1872,194 @@ async function connect() {
     $('setup').classList.remove('busy');
   }
 }
+async function showApp() {
+  $('setup').hidden = true;
+  $('app').hidden = false;
+  document.title = 'Todo';
+  view = loadJSON(KEY.view, { type: 'today' });
+  if (!view || typeof view.type !== 'string' || view.type === 'search') view = { type: 'today' };
+  prevView = view;
+  // 前回の内容をすぐに表示し、裏で最新を取りに行く
+  const cache = loadJSON(KEY.cache, null);
+  if (cache && cache.key === cfgKey() && cache.base) {
+    st.base = normalize(cache.base);
+    st.sha = cache.sha || null;
+    st.loaded = true;
+  }
+  st.pending = (loadJSON(KEY.pending, []) || []).filter((op) => op && typeof op.t === 'string');
+  render();
+  tick();
+  setSync('loading');
+  try {
+    await fetchBase();
+    render();
+    if (st.pending.length) sync(); else setSync('fresh');
+  } catch (e) {
+    if (e.status === 401) return logout(['token'], explain(e));
+    setSync(e instanceof TypeError ? 'offline' : 'error', e);
+  }
+}
+function logout(bad, detail) {
+  for (const k of [KEY.token, KEY.cache, KEY.pending, KEY.timer]) store.del(k);
+  cfg = null;
+  Object.assign(st, { base: null, sha: null, loaded: false, pending: [], syncing: false });
+  clearTimeout(st.timer);
+  timer = null;
+  closeDetail();
+  closeOverlay();
+  $('content').replaceChildren();
+  showSetup(bad || [], detail);
+}
 
+/* =========================================================================
+ * イベント
+ * ========================================================================= */
 $('setup').addEventListener('submit', (ev) => ev.preventDefault());
 for (const id of FIELDS) {
   $(id).addEventListener('input', () => $(id).classList.remove('bad'));
   $(id).addEventListener('keydown', (ev) => {
-    // 日本語入力の変換確定の Enter では送らない
-    if (ev.key === 'Enter' && !ev.isComposing && ev.keyCode !== 229) {
+    if (ev.key === 'Enter' && !ev.isComposing && ev.keyCode !== 229) { // 日本語入力の確定では送らない
       ev.preventDefault();
       connect();
     }
   });
 }
 
-$('addForm').addEventListener('submit', (ev) => {
-  ev.preventDefault();
-  const title = $('newTitle').value.trim();
-  if (!title) return;
-  addTodo(title);
-  $('newTitle').value = '';
+$('quick').addEventListener('submit', (e) => { e.preventDefault(); addFromQuick(); });
+$('quickInput').addEventListener('input', updateQuickChips);
+
+$('search').addEventListener('input', (e) => {
+  const q = e.target.value;
+  if (q.trim()) { view = { type: 'search', q }; selId = null; render(); } else setView(prevView);
 });
 
-$('reloadBtn').addEventListener('click', reload);
-$('retryBtn').addEventListener('click', sync);
-$('logoutBtn').addEventListener('click', () => {
-  if (st.pending.length && !confirm('未保存の変更があります。破棄して接続を解除しますか？')) return;
-  store.del(KEY.token);
-  cfg = null;
-  st.base = null; st.sha = null; st.pending = [];
-  $('list').textContent = '';
-  showSetup();
+$('content').addEventListener('click', (e) => {
+  const a = e.target.closest('[data-act]');
+  if (!a) return;
+  const li = a.closest('.task');
+  const id = li && li.dataset.id;
+  switch (a.dataset.act) {
+    case 'toggle': toggleDone(id); break;
+    case 'open': openDetail(id); break;
+    case 'myday': toggleMyDay(id); break;
+    case 'focus': startFocus(id); break;
+    case 'view': setView(JSON.parse(a.dataset.view)); break;
+  }
+});
+function markSel() {
+  for (const r of document.querySelectorAll('#content .task')) r.classList.toggle('sel', r.dataset.id === selId);
+}
+$('content').addEventListener('focusin', (e) => {
+  const li = e.target.closest('.task');
+  if (li) { selId = li.dataset.id; markSel(); }
+});
+function moveSel(delta) {
+  const rows = [...document.querySelectorAll('#content .task')];
+  if (!rows.length) return;
+  const i = rows.findIndex((r) => r.dataset.id === selId);
+  const next = rows[i < 0 ? (delta > 0 ? 0 : rows.length - 1) : Math.max(0, Math.min(rows.length - 1, i + delta))];
+  selId = next.dataset.id;
+  markSel();
+  next.scrollIntoView({ block: 'nearest' });
+}
+
+$('menuBtn').append(icon('menu'));
+$('helpBtn').append(icon('help'));
+$('settingsBtn').append(icon('gear'));
+$('retryBtn').append(icon('sync'));
+$('menuBtn').addEventListener('click', () => document.body.classList.toggle('drawer'));
+$('scrim').addEventListener('click', () => document.body.classList.remove('drawer'));
+$('helpBtn').addEventListener('click', openHelp);
+$('settingsBtn').addEventListener('click', openSettings);
+$('retryBtn').addEventListener('click', () => (st.pending.length ? sync() : reload(false)));
+$('undoBtn').addEventListener('click', undo);
+$('overlay').addEventListener('click', (e) => { if (e.target === $('overlay')) closeOverlay(); });
+
+// キーボード操作
+let gWait = false;
+document.addEventListener('keydown', (e) => {
+  if (!cfg || $('app').hidden) return;
+  const el = e.target;
+  const typing = el.tagName === 'INPUT' || el.tagName === 'TEXTAREA' || el.tagName === 'SELECT' || el.isContentEditable;
+  if (e.key === 'Escape') {
+    if (!$('overlay').hidden) closeOverlay();
+    else if (typing) el.blur();
+    else if (detailId) closeDetail();
+    else if (document.body.classList.contains('drawer')) document.body.classList.remove('drawer');
+    else { selId = null; markSel(); }
+    return;
+  }
+  if (!$('overlay').hidden) return;
+  if (typing || e.altKey) return;
+  if (e.metaKey || e.ctrlKey) {
+    if (e.key === 'z') { e.preventDefault(); undo(); }
+    return;
+  }
+  if ((el.tagName === 'BUTTON' || el.tagName === 'A') && (e.key === ' ' || e.key === 'Enter')) return; // ボタン自体の動作に任せる
+  if (gWait) {
+    gWait = false;
+    const v = { i: 'inbox', t: 'today', u: 'upcoming', a: 'anytime', s: 'someday', m: 'matrix', r: 'review', l: 'logbook' }[e.key];
+    if (v) { e.preventDefault(); setView({ type: v }); }
+    return;
+  }
+  const sel = selId && findTask(selId) ? selId : null;
+  switch (e.key) {
+    case 'g': gWait = true; setTimeout(() => { gWait = false; }, 1500); break;
+    case 'n': case 'q': e.preventDefault(); $('quickInput').focus(); break;
+    case '/': e.preventDefault(); document.body.classList.add('drawer'); $('search').focus(); break;
+    case 'j': case 'ArrowDown': e.preventDefault(); moveSel(1); break;
+    case 'k': case 'ArrowUp': e.preventDefault(); moveSel(-1); break;
+    case 'Enter': case 'e': if (sel) { e.preventDefault(); openDetail(sel); } break;
+    case 'x': case ' ': if (sel) { e.preventDefault(); toggleDone(sel); } break;
+    case 't': if (sel) toggleMyDay(sel); break;
+    case 's': if (sel) toggleSomeday(sel); break;
+    case '1': case '2': case '3': case '0': if (sel) setPriority(sel, +e.key); break;
+    case 'f': if (sel) startFocus(sel); break;
+    case 'Delete': case 'Backspace': if (sel) { e.preventDefault(); deleteTask(sel); } break;
+    case 'z': undo(); break;
+    case '?': openHelp(); break;
+  }
 });
 
-// 別の端末での変更を拾うため、タブに戻ってきたら読み直す
+// グラフのツールチップ
+function showTip(e) {
+  const el = e.target.closest && e.target.closest('[data-tip]');
+  const tip = $('tip');
+  if (!el) { tip.hidden = true; return; }
+  tip.textContent = el.dataset.tip;
+  tip.hidden = false;
+  const r = el.getBoundingClientRect();
+  tip.style.left = Math.max(8, Math.min(window.innerWidth - tip.offsetWidth - 8, r.left + r.width / 2 - tip.offsetWidth / 2)) + 'px';
+  tip.style.top = Math.max(8, r.top - tip.offsetHeight - 6) + 'px';
+}
+document.addEventListener('mouseover', showTip);
+document.addEventListener('focusin', showTip);
+document.addEventListener('scroll', () => { $('tip').hidden = true; }, true);
+
+// 別の端末での変更を拾う・日付が変わったら描き直す
 document.addEventListener('visibilitychange', () => {
-  if (document.visibilityState === 'visible' && cfg && st.base) reload();
+  if (document.visibilityState !== 'visible' || !cfg) return;
+  tick();
+  if (st.pending.length) sync(); else reload(true);
 });
+setInterval(() => {
+  if (!cfg || document.visibilityState !== 'visible') return;
+  if (st.pending.length) sync(); else reload(true);
+  if (renderedDay !== todayYmd()) render();
+}, 60000);
+setInterval(tick, 1000);
+window.addEventListener('online', () => { if (cfg) sync(); });
 window.addEventListener('beforeunload', (ev) => {
-  if (st.pending.length || st.syncing) { ev.preventDefault(); ev.returnValue = ''; }
+  // 未保存の操作は端末に残るので失われないが、送信中だけは念のため確認する
+  if (st.syncing) { ev.preventDefault(); ev.returnValue = ''; }
 });
 
-// ---- 起動
+/* =========================================================================
+ * 起動
+ * 初期値は持たない（公開ページに非公開リポジトリの名前を書かないため）。
+ * 一度接続した端末では、その端末に保存した値を使う
+ * ========================================================================= */
 (function init() {
-  // 初期値は持たない（公開ページに非公開リポジトリの名前を書かないため）。
-  // 一度接続した端末では、その端末に保存した値を使う。
   const token = store.get(KEY.token);
   const repo = store.get(KEY.repo);
   const path = store.get(KEY.path);
