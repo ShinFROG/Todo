@@ -1,289 +1,511 @@
 <!doctype html>
-<html lang="ja">
+<html lang="ja" data-accent="blue">
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
 <meta name="referrer" content="no-referrer">
 <meta name="robots" content="noindex, nofollow">
 <meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-status-bar-style" content="default">
+<meta name="theme-color" content="#f6f6f4" media="(prefers-color-scheme: light)">
+<meta name="theme-color" content="#151514" media="(prefers-color-scheme: dark)">
+<link rel="manifest" href="manifest.webmanifest">
+<link rel="apple-touch-icon" href="icon-180.png">
+<link rel="icon" href="icon-192.png">
 <!-- 外部スクリプトは一切読み込まない。通信先は GitHub API のみに制限する -->
-<meta http-equiv="Content-Security-Policy" content="default-src 'none'; script-src 'unsafe-inline'; style-src 'unsafe-inline'; connect-src https://api.github.com; img-src data:; base-uri 'none'; form-action 'none'">
+<meta http-equiv="Content-Security-Policy" content="default-src 'none'; script-src 'unsafe-inline'; style-src 'unsafe-inline'; connect-src https://api.github.com; img-src 'self' data:; manifest-src 'self'; worker-src 'self'; base-uri 'none'; form-action 'none'">
 <title></title>
 <style>
+  /* ======================= 色 ======================= */
   :root {
     color-scheme: light;
-    --bg: #f7f7f5; --side: #efefec; --card: #ffffff; --raise: #ffffff;
-    --text: #1c1c1a; --muted: #6b6a66; --faint: #a3a29c; --line: #e4e3df;
-    --accent: #2a78d6; --accent-ink: #ffffff; --accent-soft: rgba(42, 120, 214, .12);
-    --danger: #c63b3a; --ok: #0f8a3c; --warn: #b26a00;
+    --bg: #f6f6f4; --card: #ffffff; --raise: #ffffff; --sunk: #ecebe8;
+    --text: #1b1b19; --muted: #6b6a66; --faint: #a3a29c; --line: #e3e2de;
+    --danger: #c63b3a; --ok: #1f9d55; --warn: #c27400;
     --p1: #e34948; --p2: #eb6834; --p3: #2a78d6;
     --c1: #2a78d6; --c2: #eb6834; --c3: #1baf7a; --c4: #eda100;
     --c5: #e87ba4; --c6: #008300; --c7: #4a3aa7; --c8: #e34948;
-    --shadow: 0 10px 30px rgba(0, 0, 0, .14);
-    --radius: 10px;
+    --accent: #2a78d6; --accent-ink: #ffffff;
+    --shadow: 0 12px 40px rgba(0, 0, 0, .16);
+    --radius: 14px;
   }
+  html[data-accent=green] { --accent: #13895c; }
+  html[data-accent=orange] { --accent: #d4581f; }
+  html[data-accent=purple] { --accent: #6a4fd8; }
+  html[data-accent=pink] { --accent: #cf3f78; }
+  html[data-accent=graphite] { --accent: #4a4a46; }
   @media (prefers-color-scheme: dark) {
     :root {
       color-scheme: dark;
-      --bg: #161615; --side: #1d1d1c; --card: #222221; --raise: #2b2b29;
-      --text: #ecebe6; --muted: #a8a79f; --faint: #75746e; --line: #34332f;
-      --accent: #5598e7; --accent-ink: #0b0b0b; --accent-soft: rgba(85, 152, 231, .18);
-      --danger: #ef6b6a; --ok: #3ccf6e; --warn: #f0a63a;
-      --p1: #e66767; --p2: #d95926; --p3: #3987e5;
+      --bg: #151514; --card: #1f1f1d; --raise: #292927; --sunk: #0f0f0e;
+      --text: #ecebe6; --muted: #a9a8a0; --faint: #74736d; --line: #33322e;
+      --danger: #ef6b6a; --ok: #3ccf7a; --warn: #f0a63a;
+      --p1: #e66767; --p2: #e2703f; --p3: #3987e5;
       --c1: #3987e5; --c2: #d95926; --c3: #199e70; --c4: #c98500;
-      --c5: #d55181; --c6: #008300; --c7: #9085e9; --c8: #e66767;
-      --shadow: 0 10px 30px rgba(0, 0, 0, .5);
+      --c5: #d55181; --c6: #2f9a2f; --c7: #9085e9; --c8: #e66767;
+      --accent: #5598e7; --accent-ink: #0b0b0b;
+      --shadow: 0 12px 40px rgba(0, 0, 0, .55);
     }
+    html[data-accent=green] { --accent: #3cc68a; }
+    html[data-accent=orange] { --accent: #f08a50; }
+    html[data-accent=purple] { --accent: #9d8bf0; }
+    html[data-accent=pink] { --accent: #ec7aa6; }
+    html[data-accent=graphite] { --accent: #c9c8c2; }
   }
-  * { box-sizing: border-box; }
+  :root { --accent-soft: color-mix(in srgb, var(--accent) 14%, transparent); }
+
+  /* ======================= 基本 ======================= */
+  * { box-sizing: border-box; -webkit-tap-highlight-color: transparent; }
   html, body { margin: 0; }
   body {
     background: var(--bg); color: var(--text); -webkit-text-size-adjust: 100%;
-    font: 15px/1.5 system-ui, -apple-system, "Hiragino Sans", "Noto Sans JP", sans-serif;
+    font: 16px/1.5 system-ui, -apple-system, "Hiragino Sans", "Noto Sans JP", sans-serif;
   }
   button, input, select, textarea { font: inherit; color: inherit; }
+  /* iOS は 16px 未満の入力欄にフォーカスすると拡大するので 16px にそろえる */
   input[type=text], input[type=password], input[type=search], input[type=number],
   input[type=date], input[type=time], select, textarea {
-    width: 100%; padding: 8px 10px; background: var(--card);
-    border: 1px solid var(--line); border-radius: 8px; outline: none;
+    width: 100%; padding: 10px 12px; font-size: 16px; background: var(--card);
+    border: 1px solid var(--line); border-radius: 10px; outline: none; min-height: 44px;
   }
   input:focus, select:focus, textarea:focus { border-color: var(--accent); box-shadow: 0 0 0 3px var(--accent-soft); }
-  textarea { resize: vertical; min-height: 90px; line-height: 1.6; }
-  button { cursor: pointer; border: 1px solid var(--line); background: var(--card); border-radius: 8px; padding: 7px 12px; }
+  textarea { resize: none; line-height: 1.6; }
+  button { cursor: pointer; border: 1px solid var(--line); background: var(--card); border-radius: 10px; padding: 8px 14px; min-height: 36px; }
   button:focus-visible, [tabindex]:focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; }
   a { color: var(--accent); }
   [hidden] { display: none !important; }
-  .ic { display: inline-flex; width: 18px; height: 18px; flex: none; }
+  .ic { display: inline-flex; width: 20px; height: 20px; flex: none; }
   .ic svg { width: 100%; height: 100%; }
-  .btn-primary { background: var(--accent); border-color: var(--accent); color: var(--accent-ink); }
+  .btn-primary { background: var(--accent); border-color: var(--accent); color: var(--accent-ink); font-weight: 600; }
   .btn-danger { color: var(--danger); }
   .icon-btn {
-    border: 0; background: transparent; padding: 6px; border-radius: 6px;
-    color: var(--muted); display: inline-flex; align-items: center; gap: 4px;
+    border: 0; background: transparent; padding: 8px; border-radius: 10px; min-height: 40px; min-width: 40px;
+    color: var(--muted); display: inline-flex; align-items: center; justify-content: center; gap: 6px;
   }
   .icon-btn:hover { background: var(--accent-soft); color: var(--text); }
-  .icon-btn.on { color: var(--warn); }
-  .link-btn { border: 0; background: none; padding: 0; color: var(--accent); font-size: 13px; }
+  .link-btn { border: 0; background: none; padding: 0; min-height: 0; color: var(--accent); font-size: 14px; font-weight: 600; }
+  .sp { flex: 1; }
+  .muted { color: var(--muted); }
+  @media (prefers-reduced-motion: reduce) { *, *::before, *::after { animation: none !important; transition: none !important; } }
 
-  /* ---- 初回設定（文字なし） ---- */
+  /* ======================= 初回設定（文字なし） ======================= */
   #setup { display: flex; flex-direction: column; gap: 12px; max-width: 360px; margin: 18vh auto 0; padding: 0 16px; }
-  #setup input { background: var(--card); padding: 10px 12px; }
+  #setup input { background: var(--card); }
   #setup input.bad { border-color: var(--danger); outline: 2px solid var(--danger); outline-offset: -1px; }
   #setup.busy { opacity: .5; pointer-events: none; }
 
-  /* ---- 全体の配置 ---- */
-  #app { display: grid; grid-template-columns: 250px minmax(0, 1fr); min-height: 100vh; min-height: 100dvh; }
+  /* ======================= 骨組み ======================= */
+  #app { min-height: 100vh; min-height: 100dvh; }
+  #main { min-width: 0; padding: calc(env(safe-area-inset-top) + 8px) 16px calc(150px + env(safe-area-inset-bottom)); }
+  .inner { max-width: 720px; margin: 0 auto; }
+  @media (min-width: 900px) {
+    #app { display: grid; grid-template-columns: 264px minmax(0, 1fr); }
+    #tabbar { display: none !important; }
+    #main { padding: 28px 32px 120px; }
+  }
+  @media (max-width: 899px) { #side { display: none !important; } }
+
+  /* サイドバー（広い画面） */
   #side {
     position: sticky; top: 0; height: 100vh; height: 100dvh; overflow-y: auto;
-    background: var(--side); border-right: 1px solid var(--line);
-    padding: 14px 10px; display: flex; flex-direction: column; gap: 2px;
+    background: var(--sunk); border-right: 1px solid var(--line);
+    padding: 16px 10px; display: flex; flex-direction: column; gap: 2px;
   }
-  #main { min-width: 0; padding: 20px 24px 160px; }
-  .inner { max-width: 760px; margin: 0 auto; }
-  #scrim { display: none; position: fixed; inset: 0; background: rgba(0, 0, 0, .35); z-index: 25; }
-  @media (min-width: 801px) { .only-mobile { display: none !important; } }
-  @media (max-width: 800px) {
-    #app { grid-template-columns: minmax(0, 1fr); }
-    #side {
-      position: fixed; z-index: 30; left: 0; top: 0; bottom: 0; width: 280px; max-width: 85vw;
-      transform: translateX(-105%); transition: transform .18s ease; box-shadow: var(--shadow);
-    }
-    body.drawer #side { transform: none; }
-    body.drawer #scrim { display: block; }
-    #main { padding: 12px 16px 160px; }
-  }
-
-  /* ---- サイドバー ---- */
-  .side-search { position: relative; margin-bottom: 8px; }
-  .side-search input { background: var(--card); }
   .nav-item {
-    display: flex; align-items: center; gap: 10px; width: 100%; border: 0; background: transparent;
-    padding: 6px 10px; border-radius: 8px; text-align: left; color: var(--text);
+    display: flex; align-items: center; gap: 12px; width: 100%; border: 0; background: transparent;
+    padding: 7px 10px; min-height: 38px; border-radius: 10px; text-align: left; color: var(--text);
   }
   .nav-item:hover { background: color-mix(in srgb, var(--text) 6%, transparent); }
   .nav-item.on { background: var(--accent-soft); color: var(--accent); font-weight: 600; }
+  .nav-item .ic { color: var(--accent); }
   .nav-label { flex: 1; min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
-  .count { font-size: 12px; color: var(--muted); font-variant-numeric: tabular-nums; font-weight: 400; }
+  .count { font-size: 13px; color: var(--muted); font-variant-numeric: tabular-nums; font-weight: 400; }
   .count.alert { color: var(--danger); font-weight: 700; }
-  .nav-sec { font-size: 11px; color: var(--muted); font-weight: 700; letter-spacing: .04em; margin: 14px 10px 2px; }
-  .pdot { width: 9px; height: 9px; border-radius: 50%; display: inline-block; flex: none; }
-  .nav-item .pdot { margin: 0 4px; }
+  .nav-sec { font-size: 12px; color: var(--muted); font-weight: 700; margin: 16px 10px 4px; }
+  .pdot { width: 10px; height: 10px; border-radius: 50%; display: inline-block; flex: none; }
+  .nav-item .pdot { margin: 0 5px; }
   .side-foot { margin-top: auto; padding-top: 12px; display: flex; align-items: center; gap: 2px; }
-  .sync { font-size: 12px; color: var(--muted); flex: 1; min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; padding-left: 6px; }
+  .sync { font-size: 12px; color: var(--muted); flex: 1; min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; padding-left: 8px; }
   .sync.error { color: var(--danger); }
   .sync.offline, .sync.dirty { color: var(--warn); }
 
-  /* ---- 見出し・クイック追加 ---- */
-  .top { display: flex; align-items: center; gap: 10px; margin-bottom: 14px; min-height: 40px; }
-  .top h1 { font-size: 22px; margin: 0; line-height: 1.2; overflow-wrap: anywhere; }
-  .top .sub { font-size: 13px; color: var(--muted); }
-  .top .grow { flex: 1; min-width: 0; }
-  #quick { display: flex; gap: 8px; }
-  #quick input { flex: 1; min-width: 0; padding: 10px 12px; }
-  .chips { display: flex; flex-wrap: wrap; gap: 6px; margin-top: 6px; }
-  .qchip {
-    font-size: 12px; padding: 2px 9px; border-radius: 999px; background: var(--accent-soft);
-    display: inline-flex; gap: 4px; align-items: center;
+  /* 下のタブ（スマホ） */
+  #tabbar {
+    position: fixed; z-index: 30; left: 0; right: 0; bottom: 0;
+    display: grid; grid-template-columns: repeat(4, minmax(0, 1fr));
+    padding: 4px 8px env(safe-area-inset-bottom);
+    background: color-mix(in srgb, var(--bg) 82%, transparent);
+    -webkit-backdrop-filter: saturate(1.6) blur(18px); backdrop-filter: saturate(1.6) blur(18px);
+    border-top: 1px solid var(--line);
   }
-  .qchip .ic { width: 13px; height: 13px; }
+  .tab {
+    position: relative; border: 0; background: none; border-radius: 0; min-height: 52px; padding: 6px 0 4px;
+    display: flex; flex-direction: column; align-items: center; gap: 2px; font-size: 11px; color: var(--muted);
+  }
+  .tab .ic { width: 25px; height: 25px; }
+  .tab.on { color: var(--accent); font-weight: 600; }
+  .tab .badge {
+    position: absolute; top: 3px; left: calc(50% + 8px); min-width: 18px; height: 18px; padding: 0 5px;
+    border-radius: 9px; background: var(--faint); color: #fff; font-size: 11px; line-height: 18px; font-weight: 700;
+  }
+  .tab .badge.alert { background: var(--danger); }
 
-  /* ---- タスク一覧 ---- */
-  .group { margin-top: 20px; }
-  .group-h { display: flex; align-items: baseline; gap: 8px; margin: 0 0 4px; padding: 0 6px; }
-  .group-h h3 { font-size: 13px; margin: 0; color: var(--muted); font-weight: 700; }
+  /* 追加ボタン */
+  #fab {
+    position: fixed; z-index: 31; right: 18px; bottom: calc(74px + env(safe-area-inset-bottom));
+    width: 58px; height: 58px; border-radius: 50%; padding: 0; border: 0;
+    background: var(--accent); color: var(--accent-ink);
+    box-shadow: 0 10px 26px color-mix(in srgb, var(--accent) 45%, transparent), 0 2px 6px rgba(0, 0, 0, .12);
+    display: flex; align-items: center; justify-content: center; transition: transform .12s;
+  }
+  #fab .ic { width: 30px; height: 30px; }
+  #fab:active { transform: scale(.92); }
+  @media (min-width: 900px) { #fab { bottom: 30px; right: 30px; } }
+
+  /* ======================= 見出し ======================= */
+  .top { display: flex; align-items: flex-end; gap: 12px; margin: 6px 0 14px; min-height: 52px; }
+  .top .grow { flex: 1; min-width: 0; }
+  .top h1 { font-size: 32px; font-weight: 800; letter-spacing: -.01em; margin: 0; line-height: 1.15; overflow-wrap: anywhere; }
+  .top .sub { font-size: 14px; color: var(--muted); margin-top: 2px; }
+  .ring-sm { flex: none; display: flex; align-items: center; gap: 8px; font-size: 13px; color: var(--muted); font-variant-numeric: tabular-nums; }
+  .ring-sm svg { width: 44px; height: 44px; transform: rotate(-90deg); }
+  .ring-sm .trk { stroke: var(--line); }
+  .ring-sm .val { stroke: var(--accent); transition: stroke-dashoffset .5s ease; }
+  #syncPill {
+    border: 0; border-radius: 999px; padding: 4px 10px; min-height: 28px; font-size: 12px; font-weight: 600;
+    background: color-mix(in srgb, var(--warn) 16%, transparent); color: var(--warn); align-self: center;
+  }
+  #syncPill.error { background: color-mix(in srgb, var(--danger) 14%, transparent); color: var(--danger); }
+
+  /* ======================= タスクの行 ======================= */
+  .group { margin-top: 22px; scroll-margin-top: 16px; }
+  .group-h { display: flex; align-items: baseline; gap: 8px; margin: 0 0 2px; padding: 0 2px; }
+  .group-h h3 { font-size: 15px; margin: 0; font-weight: 700; }
   .group-h.late h3 { color: var(--danger); }
-  .group-h .sp { flex: 1; }
   .group-h.faint h3 { color: var(--faint); font-weight: 600; }
   .tasks { list-style: none; margin: 0; padding: 0; }
-  .task { display: flex; align-items: flex-start; gap: 10px; padding: 8px 6px; border-bottom: 1px solid var(--line); border-radius: 6px; }
-  .task:hover { background: color-mix(in srgb, var(--accent) 5%, transparent); }
-  .task.sel { background: var(--accent-soft); }
+  .task { position: relative; touch-action: pan-y; overflow: hidden; }
+  .task-inner {
+    position: relative; z-index: 1; display: flex; align-items: flex-start; gap: 10px;
+    padding: 10px 2px 10px 0; background: var(--bg); min-height: 52px;
+  }
+  .task + .task .task-inner::before { content: ""; position: absolute; top: 0; left: 40px; right: 0; border-top: 1px solid var(--line); }
+  .task.sel .task-inner { background: color-mix(in srgb, var(--accent) 9%, var(--bg)); border-radius: 10px; }
+  @media (hover: hover) { .task:hover .task-inner { background: color-mix(in srgb, var(--text) 3%, var(--bg)); } }
+  .swipe-bg {
+    position: absolute; inset: 0; display: flex; align-items: center; gap: 8px; padding: 0 22px;
+    font-weight: 700; font-size: 15px; color: #fff; opacity: 0;
+  }
+  .swipe-bg .ic { width: 22px; height: 22px; }
+  .done-bg { background: var(--ok); justify-content: flex-start; }
+  .sched-bg { background: var(--accent); color: var(--accent-ink); justify-content: flex-end; }
+  .task.swiping[data-dir=right] .done-bg, .task.swiping[data-dir=left] .sched-bg { opacity: .55; }
+  .task.arm-done .done-bg, .task.arm-sched .sched-bg { opacity: 1; }
+  .task.swiping { user-select: none; -webkit-user-select: none; }
   .check {
-    flex: none; width: 20px; height: 20px; margin-top: 2px; padding: 0; border-radius: 50%;
-    border: 2px solid var(--faint); background: transparent; position: relative;
+    flex: none; width: 40px; height: 40px; margin: -8px -4px -8px -6px; padding: 0; border: 0; background: none;
+    display: grid; place-items: center; min-height: 0;
   }
-  .check.p1 { border-color: var(--p1); background: color-mix(in srgb, var(--p1) 14%, transparent); }
-  .check.p2 { border-color: var(--p2); background: color-mix(in srgb, var(--p2) 14%, transparent); }
-  .check.p3 { border-color: var(--p3); background: color-mix(in srgb, var(--p3) 14%, transparent); }
-  .check:hover::after, .task.done .check::after {
-    content: ""; position: absolute; left: 5px; top: 1px; width: 5px; height: 10px;
-    border: solid var(--muted); border-width: 0 2px 2px 0; transform: rotate(45deg);
+  .ring {
+    width: 22px; height: 22px; border-radius: 50%; border: 2px solid var(--faint); position: relative;
+    transition: background .15s, border-color .15s, transform .15s;
   }
-  .task.done .check { background: var(--faint); border-color: var(--faint); }
-  .task.done .check::after { border-color: var(--card); }
-  .body { flex: 1; min-width: 0; cursor: pointer; outline: none; }
-  .title { overflow-wrap: anywhere; }
+  .check.p1 .ring { border-color: var(--p1); background: color-mix(in srgb, var(--p1) 12%, transparent); }
+  .check.p2 .ring { border-color: var(--p2); background: color-mix(in srgb, var(--p2) 12%, transparent); }
+  .check.p3 .ring { border-color: var(--p3); background: color-mix(in srgb, var(--p3) 12%, transparent); }
+  .ring::after {
+    content: ""; position: absolute; left: 6px; top: 2px; width: 5px; height: 10px; opacity: 0;
+    border: solid #fff; border-width: 0 2.4px 2.4px 0; transform: rotate(45deg);
+  }
+  @media (hover: hover) { .check:hover .ring::after { opacity: .5; border-color: var(--muted); } }
+  .task.done .ring, .task.completing .ring { background: var(--ok); border-color: var(--ok); }
+  .task.done .ring { background: var(--faint); border-color: var(--faint); }
+  .task.done .ring::after, .task.completing .ring::after { opacity: 1; border-color: #fff; }
+  .task.completing .ring { animation: pop .35s ease; }
+  .task.completing .title { text-decoration: line-through; color: var(--muted); transition: color .2s; }
+  .task.leaving { transition: height .26s ease, opacity .26s ease; opacity: 0; height: 0 !important; }
+  @keyframes pop { 0% { transform: scale(1); } 45% { transform: scale(1.3); } 100% { transform: scale(1); } }
+  .emo { flex: none; font-size: 20px; line-height: 26px; width: 26px; text-align: center; margin-left: -2px; }
+  .body { flex: 1; min-width: 0; cursor: pointer; outline: none; padding-top: 1px; }
+  .title { overflow-wrap: anywhere; line-height: 1.45; }
   .task.done .title { color: var(--muted); text-decoration: line-through; }
-  .meta { display: flex; flex-wrap: wrap; gap: 2px 10px; font-size: 12.5px; color: var(--muted); margin-top: 1px; }
-  .mchip { display: inline-flex; align-items: center; gap: 3px; border: 0; background: none; padding: 0; color: inherit; font-size: inherit; }
-  .mchip .ic { width: 13px; height: 13px; }
-  button.mchip:hover { color: var(--text); text-decoration: underline; }
+  .meta { display: flex; flex-wrap: wrap; align-items: center; gap: 2px 10px; font-size: 13px; color: var(--muted); margin-top: 2px; }
+  .mchip { display: inline-flex; align-items: center; gap: 4px; border: 0; background: none; padding: 0; min-height: 0; color: inherit; font-size: inherit; border-radius: 0; }
+  .mchip .ic { width: 14px; height: 14px; }
+  button.mchip:hover { color: var(--text); }
   .mchip.late { color: var(--danger); font-weight: 600; }
   .mchip.today { color: var(--ok); font-weight: 600; }
   .mchip.sun { color: var(--warn); }
-  .acts { display: flex; gap: 0; opacity: 0; }
+  .acts { display: flex; opacity: 0; margin: -6px 0; }
   .task:hover .acts, .task.sel .acts, .task:focus-within .acts { opacity: 1; }
-  @media (hover: none) { .acts { opacity: 1; } }
-  .empty { color: var(--muted); text-align: center; padding: 36px 12px; font-size: 14px; }
-  .nudge { display: flex; align-items: center; gap: 8px; margin-top: 12px; font-size: 13px; color: var(--muted); }
+  .acts .icon-btn.on { color: var(--warn); }
+  @media (hover: none) { .acts { display: none; } }
 
-  /* ---- カード・統計・グラフ ---- */
-  .card { background: var(--card); border: 1px solid var(--line); border-radius: var(--radius); padding: 14px; margin-top: 14px; }
+  /* ======================= 今日 ======================= */
+  .plan { display: flex; align-items: center; gap: 12px; margin-top: 4px; }
+  .plan .meter { flex: 1; height: 6px; background: var(--line); border-radius: 3px; overflow: hidden; }
+  .plan .fill { height: 100%; background: var(--accent); border-radius: 3px; transition: width .4s ease; }
+  .plan.over .fill { background: var(--danger); }
+  .plan-text { font-size: 13px; color: var(--muted); white-space: nowrap; font-variant-numeric: tabular-nums; }
+  .plan.over .plan-text { color: var(--danger); font-weight: 600; }
+  .pill-btn {
+    display: inline-flex; align-items: center; gap: 6px; border-radius: 999px; padding: 6px 14px; min-height: 36px;
+    background: var(--accent-soft); border: 0; color: var(--accent); font-weight: 700; font-size: 14px;
+  }
+  .pill-btn .ic { width: 18px; height: 18px; }
+  .nudge { display: flex; align-items: center; gap: 8px; margin-top: 14px; font-size: 14px; color: var(--muted); }
+  .nudge .ic { width: 18px; height: 18px; }
+  /* タイムライン（Structured / Tiimo 風） */
+  .timeline { margin-top: 6px; }
+  .tl-item { display: grid; grid-template-columns: 46px 34px minmax(0, 1fr); min-height: var(--h); }
+  .tl-time { text-align: right; font-size: 13px; font-weight: 600; padding-top: 12px; font-variant-numeric: tabular-nums; line-height: 1.2; }
+  .tl-time small { display: block; font-weight: 400; color: var(--faint); font-size: 11px; margin-top: 2px; }
+  .tl-rail { position: relative; display: flex; justify-content: center; }
+  .tl-rail::before { content: ""; position: absolute; top: 0; bottom: 0; left: 50%; border-left: 2px dotted var(--line); transform: translateX(-1px); }
+  .tl-pill {
+    position: relative; z-index: 1; width: 26px; margin: 8px 0; border-radius: 13px; height: calc(var(--h) - 16px);
+    background: var(--col); display: flex; justify-content: center; padding-top: 3px; font-size: 14px; line-height: 20px;
+  }
+  .tl-item.done .tl-pill { opacity: .35; }
+  .tl-item .task-inner::before { display: none; }
+  .tl-gap, .tl-now { display: grid; grid-template-columns: 46px 34px minmax(0, 1fr); align-items: center; min-height: 30px; font-size: 12px; color: var(--faint); }
+  .tl-gap .tl-rail, .tl-now .tl-rail { align-self: stretch; }
+  .tl-now { color: var(--danger); font-weight: 700; min-height: 18px; }
+  .tl-now .bar { height: 2px; background: var(--danger); border-radius: 1px; position: relative; }
+  .tl-now .bar::before { content: ""; position: absolute; left: -5px; top: -4px; width: 10px; height: 10px; border-radius: 50%; background: var(--danger); }
+  .tl-now span:first-child { text-align: right; }
+  /* 空のとき */
+  .empty { color: var(--muted); text-align: center; padding: 40px 16px 24px; font-size: 15px; }
+  .empty svg { width: 120px; height: 120px; display: block; margin: 0 auto 14px; }
+  .empty b { display: block; color: var(--text); font-size: 18px; margin-bottom: 4px; }
+  .empty .pill-btn { margin-top: 16px; }
+
+  /* ======================= 予定（週の帯） ======================= */
+  .week { display: flex; gap: 6px; overflow-x: auto; scrollbar-width: none; margin: 4px -16px 0; padding: 4px 16px 8px; scroll-snap-type: x proximity; }
+  .week::-webkit-scrollbar { display: none; }
+  .day-chip {
+    flex: none; width: 48px; min-height: 0; border-radius: 14px; border: 1px solid var(--line); background: var(--card);
+    display: flex; flex-direction: column; align-items: center; padding: 6px 0 5px; gap: 1px; font-size: 11px; color: var(--muted);
+    scroll-snap-align: start;
+  }
+  .day-chip b { font-size: 18px; color: var(--text); font-variant-numeric: tabular-nums; }
+  .day-chip.sat b { color: var(--c1); }
+  .day-chip.sun b { color: var(--danger); }
+  .day-chip .dot { width: 5px; height: 5px; border-radius: 50%; background: transparent; }
+  .day-chip.has .dot { background: var(--accent); }
+
+  /* ======================= カード・統計 ======================= */
+  .card { background: var(--card); border: 1px solid var(--line); border-radius: var(--radius); padding: 14px 16px; margin-top: 14px; }
   .stats { display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); gap: 8px; }
-  .stat b { display: block; font-size: 20px; line-height: 1.3; font-variant-numeric: tabular-nums; }
+  .stat b { display: block; font-size: 22px; line-height: 1.25; font-variant-numeric: tabular-nums; }
   .stat span { font-size: 12px; color: var(--muted); }
   @media (max-width: 480px) { .stats { grid-template-columns: repeat(2, minmax(0, 1fr)); row-gap: 12px; } }
-  .meter { height: 6px; background: var(--line); border-radius: 3px; margin-top: 12px; overflow: hidden; }
+  .meter { height: 6px; background: var(--line); border-radius: 3px; overflow: hidden; }
   .meter .fill { height: 100%; background: var(--accent); border-radius: 3px; }
-  .meter.over .fill { background: var(--danger); }
   .hint { font-size: 13px; color: var(--muted); margin: 8px 0 0; }
-  .hint.warn { color: var(--danger); }
   .chart { margin-top: 16px; }
   .chart-h { font-size: 12px; color: var(--muted); margin-bottom: 6px; }
   .bars { height: 88px; display: grid; grid-template-columns: repeat(14, minmax(0, 1fr)); gap: 2px; border-bottom: 1px solid var(--line); }
-  .bar-col { display: flex; flex-direction: column; justify-content: flex-end; align-items: center; height: 100%; cursor: default; border-radius: 4px; }
+  .bar-col { display: flex; flex-direction: column; justify-content: flex-end; align-items: center; height: 100%; border-radius: 4px; }
   .bar-col:hover { background: color-mix(in srgb, var(--text) 5%, transparent); }
   .bar { width: min(16px, 70%); background: var(--accent); border-radius: 4px 4px 0 0; }
-  .bar-val { font-size: 11px; color: var(--text); font-variant-numeric: tabular-nums; }
+  .bar-val { font-size: 11px; font-variant-numeric: tabular-nums; }
   .bar-labels { display: grid; grid-template-columns: repeat(14, minmax(0, 1fr)); gap: 2px; font-size: 11px; color: var(--muted); text-align: center; margin-top: 3px; }
-  #tip {
-    position: fixed; z-index: 60; pointer-events: none; background: var(--text); color: var(--bg);
-    font-size: 12px; padding: 4px 8px; border-radius: 6px; white-space: nowrap;
-  }
+  #tip { position: fixed; z-index: 90; pointer-events: none; background: var(--text); color: var(--bg); font-size: 12px; padding: 4px 8px; border-radius: 6px; white-space: nowrap; }
 
-  /* ---- マトリクス ---- */
+  /* マトリクス */
   .matrix { display: grid; grid-template-columns: minmax(0, 1fr) minmax(0, 1fr); gap: 12px; margin-top: 14px; }
   @media (max-width: 700px) { .matrix { grid-template-columns: minmax(0, 1fr); } }
-  .quad { margin-top: 0; padding: 10px 10px 4px; border-top-width: 4px; }
-  .quad.q1 { border-top-color: var(--p1); }
-  .quad.q2 { border-top-color: var(--p3); }
-  .quad.q3 { border-top-color: var(--p2); }
-  .quad.q4 { border-top-color: var(--faint); }
-  .quad-h { display: flex; align-items: baseline; gap: 8px; padding: 0 6px 4px; }
-  .quad-h h3 { margin: 0; font-size: 15px; }
+  .quad { margin-top: 0; padding: 12px 12px 4px; border-top-width: 4px; }
+  .quad .task-inner { background: var(--card); }
+  .quad.q1 { border-top-color: var(--p1); } .quad.q2 { border-top-color: var(--p3); }
+  .quad.q3 { border-top-color: var(--p2); } .quad.q4 { border-top-color: var(--faint); }
+  .quad-h { display: flex; align-items: baseline; gap: 8px; padding-bottom: 4px; }
+  .quad-h h3 { margin: 0; font-size: 16px; }
   .quad-h span { font-size: 12px; color: var(--muted); }
   .quad .tasks { max-height: 380px; overflow-y: auto; }
-  .quad .task:last-child { border-bottom: 0; }
 
-  /* ---- レビュー ---- */
-  .step { margin-top: 22px; }
+  /* レビュー */
+  .step { margin-top: 24px; }
   .step-h { display: flex; gap: 10px; align-items: baseline; }
-  .step-n {
-    width: 24px; height: 24px; border-radius: 50%; background: var(--accent-soft); color: var(--accent);
-    display: inline-flex; align-items: center; justify-content: center; font-size: 13px; font-weight: 700; flex: none;
-  }
-  .step-h h3 { margin: 0; font-size: 15px; }
+  .step-n { width: 26px; height: 26px; border-radius: 50%; background: var(--accent-soft); color: var(--accent); display: inline-flex; align-items: center; justify-content: center; font-size: 13px; font-weight: 700; flex: none; }
+  .step-h h3 { margin: 0; font-size: 16px; }
   .step-h p { margin: 0; font-size: 13px; color: var(--muted); }
 
-  /* ---- 詳細パネル ---- */
-  #detail {
-    position: fixed; z-index: 20; top: 0; right: 0; bottom: 0; width: 420px; max-width: 100%;
-    background: var(--card); border-left: 1px solid var(--line); box-shadow: var(--shadow);
-    overflow-y: auto; padding: 12px 18px 140px;
+  /* ブラウズ（スマホのメニュー） */
+  .glist { background: var(--card); border: 1px solid var(--line); border-radius: var(--radius); overflow: hidden; margin-top: 8px; }
+  .glist .nav-item { border-radius: 0; min-height: 50px; padding: 0 14px; font-size: 16px; }
+  .glist .nav-item + .nav-item { border-top: 1px solid var(--line); }
+  .glist .nav-item.on { background: transparent; color: var(--text); font-weight: 400; }
+  .gsec { font-size: 13px; color: var(--muted); font-weight: 700; margin: 22px 4px 0; }
+  .search-big { position: relative; }
+  .search-big .ic { position: absolute; left: 12px; top: 50%; transform: translateY(-50%); color: var(--muted); }
+  .search-big input { padding-left: 40px; border-radius: 12px; background: var(--card); }
+
+  /* ======================= シート（下から出る画面） ======================= */
+  #backdrop { position: fixed; inset: 0; z-index: 50; background: rgba(0, 0, 0, .32); animation: fade .2s ease; }
+  #sheet {
+    position: fixed; z-index: 51; left: 0; right: 0; bottom: var(--kb, 0px);
+    max-height: calc(92dvh - var(--kb, 0px)); overflow-y: auto; overscroll-behavior: contain;
+    background: var(--card); border-radius: 20px 20px 0 0; box-shadow: var(--shadow);
+    padding: 8px 16px calc(16px + env(safe-area-inset-bottom)); animation: up .26s cubic-bezier(.2, .8, .2, 1);
   }
-  @media (min-width: 1280px) { body.detail-open #main { padding-right: 444px; } #detail { box-shadow: none; } }
-  @media (max-width: 800px) { #detail { width: 100%; border-left: 0; z-index: 35; } }
-  .d-head { display: flex; align-items: center; gap: 2px; margin: 0 -6px 4px; }
-  .d-head .sp { flex: 1; }
-  .d-title { font-size: 18px; font-weight: 600; }
-  .field { margin-top: 16px; }
-  .f-label { font-size: 12px; color: var(--muted); margin-bottom: 5px; font-weight: 700; display: block; }
+  #sheet .grabber { width: 38px; height: 5px; border-radius: 3px; background: var(--line); margin: 0 auto 10px; }
+  @media (min-width: 900px) {
+    #sheet {
+      left: 50%; right: auto; bottom: auto; top: 10vh; width: 560px; max-height: 80vh; border-radius: 18px;
+      transform: translateX(-50%); padding: 18px 20px 20px; animation: pop-in .18s ease;
+    }
+    #sheet .grabber { display: none; }
+  }
+  @keyframes fade { from { opacity: 0; } }
+  @keyframes up { from { transform: translateY(100%); } }
+  @keyframes pop-in { from { opacity: 0; transform: translate(-50%, 10px); } }
+  .sheet-title { font-size: 17px; font-weight: 700; margin: 2px 0 10px; display: flex; align-items: center; gap: 8px; }
+  .sheet-title .sp { flex: 1; }
+  .sheet-item {
+    display: flex; align-items: center; gap: 14px; width: 100%; min-height: 52px; padding: 0 6px;
+    border: 0; border-radius: 0; background: none; text-align: left; font-size: 16px;
+  }
+  .sheet-item + .sheet-item { border-top: 1px solid var(--line); }
+  .sheet-item .ic { color: var(--accent); }
+  .sheet-item .lbl { flex: 1; }
+  .sheet-item .val { color: var(--muted); font-size: 14px; }
+  .sheet-item input[type=date] { width: auto; min-height: 36px; padding: 4px 8px; }
+  /* クイック追加 */
+  .qa-ctx { font-size: 12px; color: var(--muted); font-weight: 700; margin-bottom: 6px; }
+  .qa input#qaInput { font-size: 18px; border: 0; box-shadow: none; padding: 6px 2px; background: transparent; min-height: 40px; }
+  .qa textarea { border: 0; box-shadow: none; padding: 2px 2px; background: transparent; min-height: 0; font-size: 15px; color: var(--muted); }
+  .chips { display: flex; flex-wrap: wrap; gap: 6px; margin: 6px 0 2px; min-height: 0; }
+  .qchip { font-size: 13px; padding: 3px 10px; border-radius: 999px; background: var(--accent-soft); color: var(--accent); display: inline-flex; gap: 4px; align-items: center; font-weight: 600; }
+  .qchip .ic { width: 14px; height: 14px; }
+  .qa-bar { display: flex; flex-wrap: wrap; align-items: center; gap: 2px; margin-top: 8px; padding-top: 8px; border-top: 1px solid var(--line); }
+  .qa-bar .icon-btn { flex: none; font-size: 14px; padding: 6px 9px; }
+  .qa-bar .btn-primary { flex: none; border-radius: 999px; padding: 8px 18px; }
+  @media (max-width: 520px) { .qa-bar .t { display: none; } .qa-bar .icon-btn { min-width: 36px; padding: 6px; } }
+  .qa-proj { display: flex; flex-wrap: wrap; gap: 6px; margin-top: 8px; }
+  .qa-proj button { border-radius: 999px; padding: 4px 12px; font-size: 14px; display: inline-flex; align-items: center; gap: 6px; }
+  /* 計画（提案） */
+  .sug { display: flex; align-items: center; gap: 10px; min-height: 52px; border-top: 1px solid var(--line); }
+  .sug .body { cursor: default; }
+  .sug .add {
+    flex: none; width: 34px; height: 34px; min-height: 0; padding: 0; border-radius: 50%; border: 0;
+    background: var(--accent-soft); color: var(--accent); display: grid; place-items: center;
+  }
+  .sug .add.on { background: var(--ok); color: #fff; }
+  .sug .add .ic { width: 18px; height: 18px; }
+
+  /* ======================= 詳細 ======================= */
+  #detail {
+    position: fixed; z-index: 40; inset: 0; background: var(--bg); overflow-y: auto; overscroll-behavior: contain;
+    padding: calc(env(safe-area-inset-top) + 6px) 16px calc(40px + env(safe-area-inset-bottom));
+    animation: up .28s cubic-bezier(.2, .8, .2, 1);
+  }
+  @media (min-width: 900px) {
+    #detail { left: auto; width: 440px; border-left: 1px solid var(--line); box-shadow: var(--shadow); padding: 14px 20px 40px; animation: slide .22s ease; }
+  }
+  @keyframes slide { from { transform: translateX(100%); } }
+  @media (min-width: 1320px) { body.detail-open #main { padding-right: 470px; } #detail { box-shadow: none; } }
+  .d-head { display: flex; align-items: center; gap: 2px; margin: 0 -8px 6px; }
+  .d-titlebox { display: flex; align-items: flex-start; gap: 6px; }
+  .d-titlebox .check { margin: 2px -2px 0 -8px; }
+  .d-title { font-size: 21px !important; font-weight: 700; border: 0 !important; box-shadow: none !important; background: transparent !important; padding: 4px 0 !important; }
+  .d-notes { border: 0 !important; box-shadow: none !important; background: transparent !important; padding: 2px 0 !important; color: var(--text); min-height: 28px !important; }
+  .links a { display: block; font-size: 14px; overflow-wrap: anywhere; margin-top: 2px; }
+  .props { background: var(--card); border: 1px solid var(--line); border-radius: var(--radius); margin-top: 14px; overflow: hidden; }
+  .prop {
+    display: flex; align-items: center; gap: 12px; width: 100%; min-height: 50px; padding: 0 14px;
+    border: 0; border-radius: 0; background: none; text-align: left; font-size: 16px;
+  }
+  .props > * + * { border-top: 1px solid var(--line); }
+  .prop .ic { color: var(--accent); }
+  .prop .lbl { flex: 1; }
+  .prop .val { color: var(--muted); font-size: 15px; text-align: right; min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; max-width: 55%; }
+  .prop .val.set { color: var(--text); }
+  .prop .chev { width: 16px; height: 16px; color: var(--faint); transition: transform .15s; }
+  .prop[aria-expanded=true] .chev { transform: rotate(90deg); }
+  .prop-ed { padding: 4px 14px 14px; }
+  .switch { width: 51px; height: 31px; min-height: 0; border-radius: 16px; padding: 0; border: 0; background: var(--line); position: relative; flex: none; transition: background .2s; }
+  .switch::after { content: ""; position: absolute; top: 2px; left: 2px; width: 27px; height: 27px; border-radius: 50%; background: #fff; box-shadow: 0 2px 4px rgba(0, 0, 0, .2); transition: transform .2s; }
+  .switch[aria-checked=true] { background: var(--ok); }
+  .switch[aria-checked=true]::after { transform: translateX(20px); }
   .row { display: flex; gap: 8px; align-items: center; }
   .row > * { min-width: 0; }
-  .mini { display: flex; flex-wrap: wrap; gap: 6px; margin-top: 6px; }
-  .mini button { padding: 3px 11px; font-size: 13px; border-radius: 999px; }
+  .mini { display: flex; flex-wrap: wrap; gap: 6px; margin-top: 8px; }
+  .mini button { padding: 4px 13px; font-size: 14px; border-radius: 999px; min-height: 34px; }
   button[aria-pressed=true] { background: var(--accent); color: var(--accent-ink); border-color: var(--accent); }
   .icon-btn[aria-pressed=true] { background: transparent; color: var(--warn); }
-  .d-head .icon-btn[aria-pressed=true] { color: var(--ok); }
   .seg { display: flex; }
-  .seg button { flex: 1; border-radius: 0; margin-left: -1px; padding: 6px 4px; font-size: 14px; }
-  .seg button:first-child { border-radius: 8px 0 0 8px; margin-left: 0; }
-  .seg button:last-child { border-radius: 0 8px 8px 0; }
+  .seg button { flex: 1; border-radius: 0; margin-left: -1px; padding: 6px 4px; }
+  .seg button:first-child { border-radius: 10px 0 0 10px; margin-left: 0; }
+  .seg button:last-child { border-radius: 0 10px 10px 0; }
   .wd { display: flex; gap: 4px; margin-top: 8px; }
-  .wd button { flex: 1; padding: 4px 0; font-size: 13px; }
-  .cl-item { display: flex; gap: 8px; align-items: center; margin-top: 6px; }
-  .cl-item input[type=checkbox] { width: 18px; height: 18px; flex: none; }
-  .cl-item input[type=text] { padding: 5px 8px; }
+  .wd button { flex: 1; padding: 4px 0; font-size: 14px; }
+  .sec-h { font-size: 13px; color: var(--muted); font-weight: 700; margin: 22px 4px 0; }
+  .cl-item { display: flex; gap: 8px; align-items: center; padding: 2px 6px 2px 14px; }
+  .cl-item input[type=checkbox] { width: 20px; height: 20px; flex: none; accent-color: var(--ok); }
+  .cl-item input[type=text] { border: 0; box-shadow: none; background: transparent; padding: 6px 4px; }
   .cl-item.done input[type=text] { color: var(--muted); text-decoration: line-through; }
-  .links { margin-top: 6px; }
-  .links a { display: block; font-size: 13px; overflow-wrap: anywhere; }
-  .d-foot { margin-top: 20px; font-size: 12px; color: var(--muted); line-height: 1.8; }
-  .toggles { display: flex; flex-wrap: wrap; gap: 6px; margin-top: 10px; }
-  .toggles button { display: inline-flex; align-items: center; gap: 5px; border-radius: 999px; padding: 4px 12px; font-size: 13px; }
-  .toggles .ic { width: 15px; height: 15px; }
+  .d-foot { margin-top: 18px; font-size: 12px; color: var(--muted); line-height: 1.8; padding: 0 4px; }
+  .big-btn { width: 100%; min-height: 50px; border-radius: 12px; font-weight: 700; display: flex; align-items: center; justify-content: center; gap: 8px; }
 
-  /* ---- タイマー・通知・ダイアログ ---- */
-  #focusBar {
-    position: fixed; z-index: 40; left: 50%; transform: translateX(-50%);
-    bottom: calc(14px + env(safe-area-inset-bottom)); background: var(--text); color: var(--bg);
-    border-radius: 14px; padding: 6px 8px 6px 16px; display: flex; align-items: center; gap: 10px;
-    box-shadow: var(--shadow); max-width: calc(100% - 24px);
+  /* ======================= 集中モード ======================= */
+  #focus {
+    position: fixed; inset: 0; z-index: 70; background: var(--bg); display: flex; flex-direction: column;
+    align-items: center; justify-content: center; gap: 18px; padding: 24px; text-align: center; animation: fade .25s ease;
   }
+  #focus .fm-close { position: absolute; top: calc(env(safe-area-inset-top) + 10px); left: 10px; }
+  .fm-kind { color: var(--muted); font-weight: 700; letter-spacing: .1em; }
+  .fm-ring { position: relative; width: min(74vw, 300px); aspect-ratio: 1; }
+  .fm-ring svg { width: 100%; height: 100%; transform: rotate(-90deg); }
+  .fm-ring .trk { stroke: var(--line); }
+  .fm-ring .val { stroke: var(--accent); transition: stroke-dashoffset 1s linear; }
+  #focus.brk .fm-ring .val { stroke: var(--ok); }
+  .fm-time { position: absolute; inset: 0; display: grid; place-items: center; font-size: clamp(44px, 15vw, 64px); font-weight: 800; font-variant-numeric: tabular-nums; }
+  .fm-title { font-size: 19px; font-weight: 600; max-width: 520px; overflow-wrap: anywhere; }
+  .fm-btns { display: flex; gap: 18px; }
+  .fm-btns button { width: 68px; height: 68px; border-radius: 50%; padding: 0; display: grid; place-items: center; }
+  .fm-btns .ic { width: 28px; height: 28px; }
+  #focusBar {
+    position: fixed; z-index: 32; left: 16px; bottom: calc(80px + env(safe-area-inset-bottom)); max-width: calc(100% - 110px);
+    background: var(--text); color: var(--bg); border-radius: 16px; padding: 4px 6px 4px 14px; cursor: pointer;
+    display: flex; align-items: center; gap: 10px; box-shadow: var(--shadow);
+  }
+  @media (min-width: 900px) { #focusBar { left: 50%; transform: translateX(-50%); bottom: 34px; max-width: 520px; } }
   .fb-kind { font-size: 12px; opacity: .75; white-space: nowrap; }
-  .fb-time { font-size: 20px; font-weight: 700; font-variant-numeric: tabular-nums; }
-  .fb-title { min-width: 0; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; max-width: 38vw; font-size: 13px; opacity: .85; }
+  .fb-time { font-size: 19px; font-weight: 800; font-variant-numeric: tabular-nums; }
+  .fb-title { min-width: 0; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; font-size: 13px; opacity: .85; }
   #focusBar .icon-btn { color: inherit; }
   #focusBar .icon-btn:hover { background: color-mix(in srgb, var(--bg) 18%, transparent); }
+
+  /* ======================= 通知・紙吹雪 ======================= */
   #toast {
-    position: fixed; z-index: 45; left: 50%; transform: translateX(-50%); bottom: calc(76px + env(safe-area-inset-bottom));
-    background: var(--raise); border: 1px solid var(--line); box-shadow: var(--shadow); border-radius: 10px;
-    padding: 6px 6px 6px 14px; display: flex; gap: 10px; align-items: center; max-width: calc(100% - 24px); font-size: 14px;
+    position: fixed; z-index: 80; left: 50%; transform: translateX(-50%); bottom: calc(144px + env(safe-area-inset-bottom));
+    background: var(--text); color: var(--bg); border-radius: 12px; box-shadow: var(--shadow);
+    padding: 6px 6px 6px 16px; display: flex; gap: 10px; align-items: center; width: max-content; max-width: calc(100% - 32px); font-size: 14px;
+    animation: toast-in .2s ease;
   }
+  @media (min-width: 900px) { #toast { bottom: 100px; } }
+  @keyframes toast-in { from { opacity: 0; transform: translate(-50%, 8px); } }
   #toastMsg { min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
-  #overlay {
-    position: fixed; inset: 0; z-index: 50; background: rgba(0, 0, 0, .4);
-    display: flex; align-items: flex-start; justify-content: center; padding: 6vh 16px; overflow-y: auto;
-  }
-  .dialog { background: var(--card); border-radius: 14px; padding: 18px 20px 20px; width: 100%; max-width: 600px; box-shadow: var(--shadow); }
-  .dialog h2 { margin: 0 0 6px; font-size: 18px; }
-  .dialog h3 { margin: 18px 0 6px; font-size: 14px; color: var(--muted); }
+  #undoBtn { background: transparent; border: 0; color: var(--accent); font-weight: 700; min-height: 32px; filter: brightness(1.35); }
+  #confetti { position: fixed; inset: 0; z-index: 85; pointer-events: none; overflow: hidden; }
+  #confetti i { position: absolute; top: -12px; width: 8px; height: 12px; border-radius: 2px; animation: fall linear forwards; }
+  @keyframes fall { to { transform: translate(var(--dx), 105vh) rotate(var(--rot)); } }
+
+  /* 使い方・設定 */
   .kv { width: 100%; border-collapse: collapse; font-size: 14px; }
-  .kv td { padding: 4px 6px; border-bottom: 1px solid var(--line); vertical-align: top; }
+  .kv td { padding: 6px 6px; border-bottom: 1px solid var(--line); vertical-align: top; }
   .kv td:first-child { white-space: nowrap; color: var(--muted); }
-  kbd {
-    font: 12px ui-monospace, SFMono-Regular, Menlo, monospace; padding: 1px 6px; border-radius: 5px;
-    border: 1px solid var(--line); background: var(--bg);
-  }
+  kbd { font: 12px ui-monospace, SFMono-Regular, Menlo, monospace; padding: 1px 6px; border-radius: 5px; border: 1px solid var(--line); background: var(--bg); }
+  .swatches { display: flex; gap: 10px; flex-wrap: wrap; }
+  .swatch { width: 36px; height: 36px; min-height: 0; border-radius: 50%; padding: 0; border: 3px solid transparent; }
+  .swatch[aria-checked=true] { border-color: var(--text); }
+  .set-row { display: flex; align-items: center; gap: 12px; min-height: 52px; }
+  .set-row + .set-row { border-top: 1px solid var(--line); }
+  .set-row label, .set-row .lbl { flex: 1; }
+  .set-row input[type=number] { width: 96px; }
   .dlg-foot { display: flex; gap: 8px; justify-content: flex-end; margin-top: 18px; flex-wrap: wrap; }
 </style>
 </head>
@@ -297,7 +519,7 @@
 
 <div id="app" hidden>
   <aside id="side" aria-label="メニュー">
-    <div class="side-search">
+    <div class="search-big" style="margin-bottom:10px">
       <input id="search" type="search" placeholder="検索（/）" autocomplete="off" aria-label="検索">
     </div>
     <nav id="nav"></nav>
@@ -312,27 +534,28 @@
   <main id="main">
     <div class="inner">
       <header class="top">
-        <button id="menuBtn" class="icon-btn only-mobile" type="button" aria-label="メニュー"></button>
         <div class="grow">
           <h1 id="viewTitle"></h1>
           <div id="viewSub" class="sub"></div>
         </div>
+        <button id="syncPill" type="button" hidden></button>
+        <div id="headExtra"></div>
       </header>
-      <form id="quick" autocomplete="off">
-        <input id="quickInput" type="text" placeholder="タスクを追加　例: 明日15時 資料作成 #仕事 !1" aria-label="タスクを追加" enterkeyhint="done">
-        <button class="btn-primary">追加</button>
-      </form>
-      <div id="quickChips" class="chips" aria-live="polite"></div>
       <div id="content"></div>
     </div>
   </main>
+
+  <nav id="tabbar" aria-label="タブ"></nav>
+  <button id="fab" type="button" aria-label="タスクを追加（n）" title="タスクを追加（n）"></button>
 </div>
 
 <aside id="detail" hidden aria-label="タスクの詳細"></aside>
 <div id="focusBar" hidden role="timer"></div>
+<div id="focus" hidden role="dialog" aria-label="集中モード"></div>
+<div id="backdrop" hidden></div>
+<div id="sheet" hidden role="dialog" aria-modal="true"></div>
 <div id="toast" hidden role="status"><span id="toastMsg"></span><button id="undoBtn" type="button">元に戻す</button></div>
-<div id="overlay" hidden></div>
-<div id="scrim"></div>
+<div id="confetti" aria-hidden="true"></div>
 <div id="tip" hidden></div>
 <datalist id="projList"></datalist>
 
@@ -346,6 +569,7 @@ const API = 'https://api.github.com';
 const KEY = {
   token: 'todo.token', repo: 'todo.repo', path: 'todo.path',
   cache: 'todo.cache', pending: 'todo.pending', timer: 'todo.timer', view: 'todo.view',
+  accent: 'todo.accent', sound: 'todo.sound',
 };
 const $ = (id) => document.getElementById(id);
 
@@ -362,6 +586,8 @@ const uid = () => Date.now().toString(36) + Math.random().toString(36).slice(2, 
 const nowIso = () => new Date().toISOString();
 const clone = (x) => JSON.parse(JSON.stringify(x));
 const cmp = (a, b) => (a < b ? -1 : a > b ? 1 : 0);
+const wide = () => matchMedia('(min-width: 900px)').matches;
+const reduceMotion = () => matchMedia('(prefers-reduced-motion: reduce)').matches;
 
 // DOM を組み立てる小さな関数。文字列は必ずテキストとして入る（HTML として解釈されない）
 function h(tag, props, ...kids) {
@@ -392,7 +618,8 @@ const ICONS = {
   box: '<path d="M3 7h18v4H3z"/><path d="M5 11v9h14v-9M10 15h4"/>',
   grid: '<rect x="3" y="3" width="8" height="8" rx="1.5"/><rect x="13" y="3" width="8" height="8" rx="1.5"/><rect x="3" y="13" width="8" height="8" rx="1.5"/><rect x="13" y="13" width="8" height="8" rx="1.5"/>',
   review: '<path d="M4 12a8 8 0 1 0 2.5-5.8"/><path d="M4 4v5h5"/>',
-  check: '<circle cx="12" cy="12" r="9"/><path d="M8 12.5l2.5 2.5L16 9.5"/>',
+  check: '<path d="M5 12.5l4.5 4.5L19 7.5"/>',
+  checkCircle: '<circle cx="12" cy="12" r="9"/><path d="M8 12.5l2.5 2.5L16 9.5"/>',
   tag: '<path d="M3 12V3h9l9 9-9 9z"/><circle cx="7.5" cy="7.5" r="1.5"/>',
   play: '<path d="M7 4.5v15l12-7.5z"/>',
   pause: '<path d="M8 5v14M16 5v14"/>',
@@ -402,7 +629,6 @@ const ICONS = {
   note: '<path d="M5 3h10l4 4v14H5z"/><path d="M9 11h6M9 15h6"/>',
   clock: '<circle cx="12" cy="12" r="9"/><path d="M12 7v5l3 2"/>',
   timer: '<circle cx="12" cy="13" r="8"/><path d="M12 9v4M9 2h6"/>',
-  menu: '<path d="M3 6h18M3 12h18M3 18h18"/>',
   x: '<path d="M6 6l12 12M18 6L6 18"/>',
   gear: '<circle cx="12" cy="12" r="3"/><path d="M12 2v3M12 19v3M4.2 4.2l2.1 2.1M17.7 17.7l2.1 2.1M2 12h3M19 12h3M4.2 19.8l2.1-2.1M17.7 6.3l2.1-2.1"/>',
   help: '<circle cx="12" cy="12" r="9"/><path d="M9.5 9a2.5 2.5 0 1 1 3.5 2.3c-.7.3-1 .9-1 1.7M12 17h.01"/>',
@@ -412,11 +638,21 @@ const ICONS = {
   copy: '<rect x="8" y="8" width="12" height="12" rx="2"/><path d="M16 8V4H4v12h4"/>',
   flag: '<path d="M5 21V4h11l-2 4 2 4H5"/>',
   folder: '<path d="M3 6a1 1 0 0 1 1-1h5l2 2h9a1 1 0 0 1 1 1v10a1 1 0 0 1-1 1H4a1 1 0 0 1-1-1z"/>',
+  plus: '<path d="M12 5v14M5 12h14"/>',
+  chevron: '<path d="M9 5l7 7-7 7"/>',
+  down: '<path d="M5 9l7 7 7-7"/>',
+  search: '<circle cx="11" cy="11" r="7"/><path d="M20 20l-4-4"/>',
+  more: '<circle cx="5" cy="12" r="1.3"/><circle cx="12" cy="12" r="1.3"/><circle cx="19" cy="12" r="1.3"/>',
+  sparkle: '<path d="M12 3l1.8 5.2L19 10l-5.2 1.8L12 17l-1.8-5.2L5 10l5.2-1.8z"/><path d="M19 15l.8 2.2L22 18l-2.2.8L19 21l-.8-2.2L16 18l2.2-.8z"/>',
+  arrow: '<path d="M5 12h14M13 6l6 6-6 6"/>',
+  sofa: '<path d="M4 11V8a2 2 0 0 1 2-2h12a2 2 0 0 1 2 2v3"/><path d="M2 13a2 2 0 0 1 4 0v2h12v-2a2 2 0 0 1 4 0v5H2z"/><path d="M5 18v2M19 18v2"/>',
+  ban: '<circle cx="12" cy="12" r="9"/><path d="M5.6 5.6l12.8 12.8"/>',
+  bolt: '<path d="M13 2L4 14h7l-1 8 9-12h-7z"/>',
 };
 function icon(name) {
   const s = document.createElement('span');
   s.className = 'ic';
-  s.innerHTML = `<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">${ICONS[name]}</svg>`;
+  s.innerHTML = `<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">${ICONS[name]}</svg>`;
   return s;
 }
 
@@ -926,6 +1162,9 @@ function setSync(state, err) {
   s.title = text;
   s.className = 'sync ' + state;
   $('retryBtn').hidden = !(state === 'error' || state === 'offline');
+  syncState = state;
+  syncText = text;
+  renderSyncPill(state);
 }
 
 /* =========================================================================
@@ -946,28 +1185,59 @@ function focusMinutes(d, pred) {
   return s;
 }
 
+
 /* =========================================================================
  * 表示
+ * 下のタブ（今日・予定・受信箱・ブラウズ）を中心に、1 画面 1 つの目的に絞る。
+ * 細かい情報は詳細を開いたときだけ見せる
  * ========================================================================= */
 let view = { type: 'today' };
 let prevView = view;
 let selId = null;
 let detailId = null;
+let detailOpen = null; // 詳細で開いている項目
 let renderedDay = null;
 let logDays = 30;
 let showProjectDone = false;
+let showTodayDone = false;
+let syncState = 'loading';
+let syncText = '';
+const MAIN_TABS = ['today', 'upcoming', 'inbox'];
+
+// タイトル先頭の絵文字は、そのタスクのアイコンとして使う（Structured / Tiimo 風）
+const EMOJI_RE = /^(\p{Extended_Pictographic}(?:\uFE0F|\u200D\p{Extended_Pictographic}|\p{Emoji_Modifier})*)[\s\u3000]*/u;
+function splitEmoji(title) {
+  const m = title.match(EMOJI_RE);
+  return m && m[0].length < title.length ? [m[1], title.slice(m[0].length)] : [null, title];
+}
+const taskColor = (t) => (t.project ? colorOf(t.project) : t.priority ? `var(--p${t.priority})` : 'var(--accent)');
+const hmToMin = (s) => +s.slice(0, 2) * 60 + +s.slice(3, 5);
+const minToHm = (m) => `${pad(Math.floor(m / 60) % 24)}:${pad(m % 60)}`;
+
+// 進み具合の円（数値だけから作るので innerHTML で問題ない）
+function ringSvg(frac, size, stroke) {
+  const r = (size - stroke) / 2;
+  const c = 2 * Math.PI * r;
+  const f = Math.max(0, Math.min(1, frac));
+  const s = document.createElement('span');
+  s.innerHTML = `<svg viewBox="0 0 ${size} ${size}" aria-hidden="true"><circle class="trk" cx="${size / 2}" cy="${size / 2}" r="${r}" fill="none" stroke-width="${stroke}"/><circle class="val" cx="${size / 2}" cy="${size / 2}" r="${r}" fill="none" stroke-width="${stroke}" stroke-linecap="round" stroke-dasharray="${c}" stroke-dashoffset="${c * (1 - f)}" data-c="${c}"/></svg>`;
+  return s.firstChild;
+}
 
 function sameView(a, b) { return a.type === b.type && a.name === b.name; }
 function setView(v) {
   if (v.type !== 'search') {
     view = v; prevView = v; saveJSON(KEY.view, v);
     $('search').value = '';
+    if (mSearch) mSearch.querySelector('input').value = '';
   } else view = v;
   selId = null;
   showProjectDone = false;
-  document.body.classList.remove('drawer');
   render();
   window.scrollTo(0, 0);
+}
+function onSearch(q) {
+  if (q.trim()) { view = { type: 'search', q }; selId = null; render(); } else setView(prevView);
 }
 
 function render() {
@@ -975,170 +1245,280 @@ function render() {
   DATA = current();
   const T = todayYmd();
   renderedDay = T;
-  renderNav(DATA, T);
-  renderMain(DATA, T);
+  const model = navModel(DATA, T);
+  renderNav(model);
+  renderTabbar(model);
+  renderMain(DATA, T, model);
   renderDetail(false);
   updateQuickChips();
   const projs = [...new Set(DATA.todos.map((t) => t.project).filter(Boolean))].sort((a, b) => a.localeCompare(b, 'ja'));
   $('projList').replaceChildren(...projs.map((p) => h('option', { value: p })));
 }
 
-function renderNav(d, T) {
+/* ---------- ナビ ---------- */
+function navModel(d, T) {
   const act = d.todos.filter((t) => !t.done);
   const last = d.meta.lastReview;
-  const reviewDue = !last || daysBetween(last, T) >= 7;
-  const item = (v, label, ic, count, alert) => h('button', {
-    class: 'nav-item' + (sameView(v, view) ? ' on' : ''), type: 'button', 'aria-current': sameView(v, view) ? 'page' : null,
-    onclick: () => setView(v),
-  }, ic, h('span', { class: 'nav-label' }, label), count ? h('span', { class: 'count' + (alert ? ' alert' : '') }, String(count)) : null);
-
-  const nodes = [
-    item({ type: 'inbox' }, '受信箱', icon('inbox'), act.filter((t) => isInbox(t, T)).length),
-    item({ type: 'today' }, '今日', icon('sun'), act.filter((t) => isToday(t, T)).length, act.some((t) => isLate(t, T))),
-    item({ type: 'upcoming' }, '予定', icon('calendar'), act.filter((t) => isUpcoming(t, T)).length),
-    item({ type: 'anytime' }, 'すべて', icon('list'), act.filter(isAnytime).length),
-    item({ type: 'someday' }, 'いつか', icon('box'), act.filter((t) => t.someday).length),
-    h('div', { class: 'nav-sec' }, 'ふりかえり'),
-    item({ type: 'matrix' }, 'マトリクス', icon('grid')),
-    item({ type: 'review' }, '週次レビュー', icon('review'), reviewDue ? '●' : null, true),
-    item({ type: 'logbook' }, '完了ログ', icon('check')),
+  const items = [
+    { v: { type: 'today' }, label: '今日', ic: 'sun', count: act.filter((t) => isToday(t, T)).length, alert: act.some((t) => isLate(t, T)) },
+    { v: { type: 'upcoming' }, label: '予定', ic: 'calendar', count: act.filter((t) => isUpcoming(t, T)).length },
+    { v: { type: 'inbox' }, label: '受信箱', ic: 'inbox', count: act.filter((t) => isInbox(t, T)).length },
+    { v: { type: 'anytime' }, label: 'すべて', ic: 'list', count: act.filter(isAnytime).length },
+    { v: { type: 'someday' }, label: 'いつか', ic: 'box', count: act.filter((t) => t.someday).length },
+    { sec: 'ふりかえり' },
+    { v: { type: 'matrix' }, label: 'マトリクス', ic: 'grid' },
+    { v: { type: 'review' }, label: '週次レビュー', ic: 'review', count: !last || daysBetween(last, T) >= 7 ? '●' : null, alert: true },
+    { v: { type: 'logbook' }, label: '完了ログ', ic: 'checkCircle' },
   ];
   const projects = new Map();
   for (const t of act) if (t.project) projects.set(t.project, (projects.get(t.project) || 0) + 1);
   if (view.type === 'project' && !projects.has(view.name)) projects.set(view.name, 0);
   if (projects.size) {
-    nodes.push(h('div', { class: 'nav-sec' }, 'プロジェクト'));
+    items.push({ sec: 'プロジェクト' });
     for (const [name, n] of [...projects].sort((a, b) => a[0].localeCompare(b[0], 'ja'))) {
-      nodes.push(item({ type: 'project', name }, name, h('span', { class: 'pdot', style: `background:${colorOf(name)}` }), n));
+      items.push({ v: { type: 'project', name }, label: name, dot: colorOf(name), count: n });
     }
   }
   const tags = new Map();
   for (const t of act) for (const g of t.tags) tags.set(g, (tags.get(g) || 0) + 1);
   if (view.type === 'tag' && !tags.has(view.name)) tags.set(view.name, 0);
   if (tags.size) {
-    nodes.push(h('div', { class: 'nav-sec' }, 'タグ'));
+    items.push({ sec: 'タグ' });
     for (const [name, n] of [...tags].sort((a, b) => a[0].localeCompare(b[0], 'ja'))) {
-      nodes.push(item({ type: 'tag', name }, name, icon('tag'), n));
+      items.push({ v: { type: 'tag', name }, label: name, ic: 'tag', count: n });
     }
   }
-  $('nav').replaceChildren(...nodes);
+  return items;
+}
+function navButton(it, chev) {
+  const on = sameView(it.v, view);
+  return h('button', { class: 'nav-item' + (on ? ' on' : ''), type: 'button', 'aria-current': on ? 'page' : null, onclick: () => setView(it.v) },
+    it.dot ? h('span', { class: 'pdot', style: `background:${it.dot}` }) : icon(it.ic),
+    h('span', { class: 'nav-label' }, it.label),
+    it.count ? h('span', { class: 'count' + (it.alert ? ' alert' : '') }, String(it.count)) : null,
+    chev ? icon('chevron') : null);
+}
+function renderNav(model) {
+  $('nav').replaceChildren(...model.map((it) => (it.sec ? h('div', { class: 'nav-sec' }, it.sec) : navButton(it))));
+}
+function renderTabbar(model) {
+  const get = (type) => model.find((it) => it.v && it.v.type === type);
+  const tab = (type, label, ic, badge, alert) => {
+    const on = type === 'browse' ? !MAIN_TABS.includes(view.type) : view.type === type;
+    return h('button', { class: 'tab' + (on ? ' on' : ''), type: 'button', 'aria-current': on ? 'page' : null, onclick: () => setView({ type }) },
+      icon(ic), label, badge ? h('span', { class: 'badge' + (alert ? ' alert' : '') }, String(badge)) : null);
+  };
+  const today = get('today');
+  const inbox = get('inbox');
+  $('tabbar').replaceChildren(
+    tab('today', '今日', 'sun', today.count, today.alert),
+    tab('upcoming', '予定', 'calendar'),
+    tab('inbox', '受信箱', 'inbox', inbox.count),
+    tab('browse', 'ブラウズ', 'list'));
+}
+function renderSyncPill(state) {
+  const p = $('syncPill');
+  p.hidden = !(state === 'offline' || state === 'error');
+  p.className = state === 'error' ? 'error' : '';
+  p.textContent = state === 'error' ? 'エラー・再試行' : 'オフライン';
+  p.title = syncText;
 }
 
+/* ---------- タスクの行 ---------- */
 function taskRow(t, T, opts = {}) {
+  const [emo0, text] = splitEmoji(t.title);
+  const emo = opts.noEmoji ? null : emo0; // タイムラインでは絵文字を左の帯に出す
   const meta = [];
-  if (t.due) {
+  if (t.due && !opts.hideDate) {
     const cls = t.done ? '' : t.due < T ? ' late' : t.due === T ? ' today' : '';
     meta.push(h('span', { class: 'mchip' + cls }, icon('calendar'), fmtDate(t.due, T) + (t.time ? ' ' + t.time : '')));
-  } else if (t.time) meta.push(h('span', { class: 'mchip' }, icon('clock'), t.time));
-  if (t.repeat) meta.push(h('span', { class: 'mchip' }, icon('repeat'), describeRepeat(t.repeat)));
-  if (!t.done && t.myDay === T && opts.view !== 'today') meta.push(h('span', { class: 'mchip sun' }, icon('sun'), '今日やる'));
+  } else if (t.time && !opts.hideDate) meta.push(h('span', { class: 'mchip' }, icon('clock'), t.time));
+  if (t.repeat) meta.push(h('span', { class: 'mchip', title: describeRepeat(t.repeat), 'aria-label': describeRepeat(t.repeat) }, icon('repeat')));
+  if (!t.done && t.myDay === T && view.type !== 'today') meta.push(h('span', { class: 'mchip sun', title: '今日やる', 'aria-label': '今日やる' }, icon('sun')));
   if (t.checklist.length) meta.push(h('span', { class: 'mchip' }, icon('checklist'), `${t.checklist.filter((c) => c.done).length}/${t.checklist.length}`));
-  if (t.estimate) meta.push(h('span', { class: 'mchip' }, icon('timer'), fmtMin(t.estimate)));
-  const spent = t.focus.reduce((s, f) => s + f.min, 0);
-  if (spent) meta.push(h('span', { class: 'mchip', title: '集中した時間' }, icon('clock'), fmtMin(spent)));
-  if (t.notes.trim()) meta.push(h('span', { class: 'mchip', title: 'メモあり' }, icon('note')));
+  if (opts.plan && t.estimate) meta.push(h('span', { class: 'mchip' }, icon('timer'), fmtMin(t.estimate)));
+  if (t.notes.trim()) meta.push(h('span', { class: 'mchip', title: 'メモあり', 'aria-label': 'メモあり' }, icon('note')));
   if (t.project && !(view.type === 'project' && view.name === t.project)) {
     meta.push(h('button', { class: 'mchip', type: 'button', 'data-act': 'view', 'data-view': JSON.stringify({ type: 'project', name: t.project }) },
-      h('span', { class: 'pdot', style: `background:${colorOf(t.project)}` }), t.project));
+      h('span', { class: 'pdot', style: `background:${colorOf(t.project)};width:8px;height:8px` }), t.project));
   }
   for (const g of t.tags) {
+    if (view.type === 'tag' && view.name === g) continue;
     meta.push(h('button', { class: 'mchip', type: 'button', 'data-act': 'view', 'data-view': JSON.stringify({ type: 'tag', name: g }) }, '@' + g));
   }
   const prioName = ['', '優先度 高', '優先度 中', '優先度 低'][t.priority];
   return h('li', { class: 'task' + (t.done ? ' done' : '') + (t.id === selId ? ' sel' : ''), 'data-id': t.id },
-    h('button', {
-      class: `check p${t.priority}`, type: 'button', role: 'checkbox', 'aria-checked': String(t.done),
-      'aria-label': (t.done ? '未完了に戻す: ' : '完了にする: ') + t.title + (prioName ? `（${prioName}）` : ''), 'data-act': 'toggle',
-    }),
-    h('div', { class: 'body', 'data-act': 'open', tabindex: '0', role: 'button', 'aria-label': '詳細を開く: ' + t.title },
-      h('div', { class: 'title' }, t.title || '（無題）'),
-      meta.length ? h('div', { class: 'meta' }, meta) : null),
-    t.done ? null : h('div', { class: 'acts' },
-      h('button', { class: 'icon-btn' + (t.myDay === T ? ' on' : ''), type: 'button', 'data-act': 'myday', title: '今日やる（t）', 'aria-label': '今日やる', 'aria-pressed': String(t.myDay === T) }, icon('sun')),
-      h('button', { class: 'icon-btn', type: 'button', 'data-act': 'focus', title: '集中する（f）', 'aria-label': '集中タイマーを開始' }, icon('play'))));
+    h('div', { class: 'swipe-bg done-bg', 'aria-hidden': 'true' }, icon('check'), t.done ? '戻す' : '完了'),
+    h('div', { class: 'swipe-bg sched-bg', 'aria-hidden': 'true' }, '日付', icon('calendar')),
+    h('div', { class: 'task-inner' },
+      h('button', {
+        class: `check p${t.priority}`, type: 'button', role: 'checkbox', 'aria-checked': String(t.done), 'data-act': 'toggle',
+        'aria-label': (t.done ? '未完了に戻す: ' : '完了にする: ') + t.title + (prioName ? `（${prioName}）` : ''),
+      }, h('span', { class: 'ring' })),
+      emo ? h('span', { class: 'emo', 'aria-hidden': 'true' }, emo) : null,
+      h('div', { class: 'body', 'data-act': 'open', tabindex: '0', role: 'button', 'aria-label': '詳細を開く: ' + t.title },
+        h('div', { class: 'title' }, text || '（無題）'),
+        meta.length ? h('div', { class: 'meta' }, meta) : null),
+      t.done ? null : h('div', { class: 'acts' },
+        h('button', { class: 'icon-btn' + (t.myDay === T ? ' on' : ''), type: 'button', 'data-act': 'myday', title: '今日やる（t）', 'aria-label': '今日やる', 'aria-pressed': String(t.myDay === T) }, icon('sun')),
+        h('button', { class: 'icon-btn', type: 'button', 'data-act': 'focus', title: '集中する（f）', 'aria-label': '集中タイマーを開始' }, icon('play')))));
 }
 function taskList(list, T, opts) { return h('ul', { class: 'tasks' }, list.map((t) => taskRow(t, T, opts))); }
 function group(title, list, T, opts = {}) {
-  return h('section', { class: 'group' },
+  return h('section', { class: 'group', id: opts.id || null },
     title ? h('div', { class: 'group-h' + (opts.cls ? ' ' + opts.cls : '') }, h('h3', null, title),
       list.length ? h('span', { class: 'count' }, String(list.length)) : null, h('span', { class: 'sp' }), opts.action || null) : null,
     list.length ? taskList(list, T, opts) : null);
 }
-const empty = (text) => h('div', { class: 'empty' }, text);
 const stat = (value, label) => h('div', { class: 'stat' }, h('b', null, value), h('span', null, label));
 
-function renderMain(d, T) {
+// 空のときの絵（固定の SVG）
+const ILLUS = {
+  done: '<circle cx="60" cy="60" r="46" style="fill:var(--accent-soft)"/><path d="M39 61l14 14 29-31" style="fill:none;stroke:var(--accent);stroke-width:7;stroke-linecap:round;stroke-linejoin:round"/><path d="M99 18l3 8 8 3-8 3-3 8-3-8-8-3 8-3zM18 86l2 5 5 2-5 2-2 5-2-5-5-2 5-2z" style="fill:var(--c4)"/>',
+  today: '<circle cx="60" cy="60" r="46" style="fill:var(--accent-soft)"/><circle cx="60" cy="60" r="15" style="fill:none;stroke:var(--accent);stroke-width:5"/><path d="M60 27v8M60 85v8M27 60h8M85 60h8M37 37l6 6M77 77l6 6M37 83l6-6M77 43l6-6" style="stroke:var(--accent);stroke-width:5;stroke-linecap:round"/>',
+  inbox: '<circle cx="60" cy="60" r="46" style="fill:var(--accent-soft)"/><path d="M33 64h15l4 8h16l4-8h15M40 41h40l8 23v19H32V64z" style="fill:none;stroke:var(--accent);stroke-width:5;stroke-linejoin:round"/>',
+  search: '<circle cx="60" cy="60" r="46" style="fill:var(--accent-soft)"/><circle cx="55" cy="55" r="17" style="fill:none;stroke:var(--accent);stroke-width:5"/><path d="M68 68l14 14" style="stroke:var(--accent);stroke-width:6;stroke-linecap:round"/>',
+};
+function emptyState(kind, title, text, action) {
+  const box = h('div', { class: 'empty' });
+  if (ILLUS[kind]) {
+    const s = document.createElement('span');
+    s.innerHTML = `<svg viewBox="0 0 120 120" aria-hidden="true">${ILLUS[kind]}</svg>`;
+    box.append(s.firstChild);
+  }
+  box.append(h('b', null, title), text || '', action || '');
+  return box;
+}
+
+/* ---------- 画面ごと ---------- */
+let mSearch = null; // スマホの検索欄（入力中に作り直すとフォーカスが外れるので使い回す）
+function searchBox() {
+  if (!mSearch) {
+    mSearch = h('div', { class: 'search-big' }, icon('search'),
+      h('input', { type: 'search', placeholder: 'タスクを検索', 'aria-label': '検索', autocomplete: 'off', oninput: (e) => onSearch(e.target.value) }));
+  }
+  return mSearch;
+}
+
+function renderMain(d, T, model) {
   const c = $('content');
   const act = d.todos.filter((t) => !t.done);
   const Td = parseYmd(T);
   const nodes = [];
-  let title = '', sub = '';
+  let title = '', sub = '', extra = null;
 
   switch (view.type) {
-    case 'inbox': {
-      title = '受信箱'; sub = 'まだ整理していないタスク。日付・プロジェクト・「いつか」のどれかを決めると、ここから消えます';
-      const list = act.filter((t) => isInbox(t, T)).sort(byDefault);
-      nodes.push(list.length ? group('', list, T) : empty('受信箱は空です。思いついたことは上の欄にすぐ書き出しましょう。'));
-      break;
-    }
     case 'today': {
       title = '今日'; sub = fmtFull(T);
       const list = act.filter((t) => isToday(t, T));
-      const late = list.filter((t) => isLate(t, T)).sort(byDefault);
-      const rest = list.filter((t) => !isLate(t, T)).sort(byDay);
-      nodes.push(planCard(list, d, T));
+      const doneToday = d.todos.filter((t) => t.done && t.doneAt && localYmd(t.doneAt) === T).sort((a, b) => cmp(b.doneAt, a.doneAt));
+      const total = list.length + doneToday.length;
+      if (total) extra = h('div', { class: 'ring-sm', title: `今日 ${doneToday.length}/${total} 完了` }, `${doneToday.length}/${total}`, ringSvg(doneToday.length / total, 44, 5));
+      nodes.push(planBar(list, d, T));
       const inboxN = act.filter((t) => isInbox(t, T)).length;
       if (inboxN) {
-        nodes.push(h('div', { class: 'nudge' }, icon('inbox'), `受信箱に未整理のタスクが ${inboxN} 件あります`,
+        nodes.push(h('div', { class: 'nudge' }, icon('inbox'), `受信箱に未整理が ${inboxN} 件`,
           h('button', { class: 'link-btn', type: 'button', onclick: () => setView({ type: 'inbox' }) }, '整理する')));
       }
+      const late = list.filter((t) => isLate(t, T)).sort(byDefault);
+      const rest = list.filter((t) => !isLate(t, T));
+      const timed = rest.filter((t) => t.time).sort(byDay);
+      const untimed = rest.filter((t) => !t.time).sort(byDay);
       if (late.length) {
         nodes.push(group('期限切れ', late, T, {
-          cls: 'late', view: 'today',
-          action: h('button', { class: 'link-btn', type: 'button', onclick: () => moveToToday(late) }, 'すべて今日に移動'),
+          cls: 'late', plan: true,
+          action: h('button', { class: 'link-btn', type: 'button', onclick: () => moveToToday(late) }, 'すべて今日に'),
         }));
       }
-      if (rest.length) nodes.push(group(late.length ? '今日' : '', rest, T, { view: 'today' }));
-      if (!list.length) nodes.push(empty('今日のタスクはありません。'));
+      if (timed.length) nodes.push(h('section', { class: 'group' }, h('div', { class: 'group-h' }, h('h3', null, 'タイムライン')), timeline(timed, T)));
+      if (untimed.length) nodes.push(group(timed.length || late.length ? 'いつでも' : '', untimed, T, { plan: true }));
+      if (!list.length) {
+        nodes.push(doneToday.length
+          ? emptyState('done', '今日のタスクはすべて完了', 'おつかれさまでした。')
+          : emptyState('today', '今日の予定はまだありません', '「今日の計画」から、今日やることを選びましょう。'));
+      }
+      if (doneToday.length) {
+        nodes.push(h('section', { class: 'group' },
+          h('button', { class: 'link-btn', type: 'button', 'aria-expanded': String(showTodayDone), onclick: () => { showTodayDone = !showTodayDone; render(); } },
+            `${showTodayDone ? '▾' : '▸'} 今日の完了 ${doneToday.length} 件`),
+          showTodayDone ? taskList(doneToday, T) : null));
+      }
       break;
     }
     case 'upcoming': {
       title = '予定'; sub = '日付の決まっているこれからのタスク';
       const list = act.filter((t) => isUpcoming(t, T));
+      const strip = h('div', { class: 'week', role: 'list', 'aria-label': '日付へ移動' });
+      for (let i = 1; i <= 14; i++) {
+        const dd = addDays(Td, i);
+        const k = ymd(dd);
+        const n = list.filter((t) => t.due === k).length;
+        strip.append(h('button', {
+          class: 'day-chip' + (dd.getDay() === 6 ? ' sat' : dd.getDay() === 0 ? ' sun' : '') + (n ? ' has' : ''), type: 'button', role: 'listitem',
+          'aria-label': `${fmtShort(k)} ${n}件`,
+          onclick: () => document.getElementById('day-' + k)?.scrollIntoView({ behavior: reduceMotion() ? 'auto' : 'smooth', block: 'start' }),
+        }, WD[dd.getDay()], h('b', null, String(dd.getDate())), h('span', { class: 'dot' })));
+      }
+      nodes.push(strip);
       for (let i = 1; i <= 14; i++) {
         const k = ymd(addDays(Td, i));
         const items = list.filter((t) => t.due === k).sort(byDay);
-        if (!items.length && i > 7) continue;
-        nodes.push(group(`${fmtShort(k)}  ${relWord(k, T)}`, items, T, { cls: items.length ? '' : 'faint' }));
+        nodes.push(group(`${fmtShort(k)}  ${relWord(k, T)}`, items, T, { id: 'day-' + k, cls: items.length ? '' : 'faint' }));
       }
       const end = ymd(addDays(Td, 14));
-      const later = list.filter((t) => t.due > end).sort((a, b) => cmp(a.due, b.due) || byDay(a, b));
       const months = new Map();
-      for (const t of later) { const k = t.due.slice(0, 7); if (!months.has(k)) months.set(k, []); months.get(k).push(t); }
+      for (const t of list.filter((x) => x.due > end).sort((a, b) => cmp(a.due, b.due) || byDay(a, b))) {
+        const k = t.due.slice(0, 7);
+        if (!months.has(k)) months.set(k, []);
+        months.get(k).push(t);
+      }
       for (const [k, items] of months) {
         const [y, m] = k.split('-').map(Number);
         nodes.push(group(y === Td.getFullYear() ? `${m}月` : `${y}年${m}月`, items, T));
       }
       break;
     }
+    case 'inbox': {
+      title = '受信箱'; sub = '日付・プロジェクト・「いつか」のどれかを決めると、ここから消えます';
+      const list = act.filter((t) => isInbox(t, T)).sort((a, b) => cmp(b.createdAt, a.createdAt));
+      nodes.push(list.length ? group('', list, T)
+        : emptyState('inbox', '受信箱は空です', '思いついたことは ＋ からすぐ書き出しましょう。'));
+      break;
+    }
+    case 'browse': {
+      title = 'ブラウズ';
+      if (!wide()) nodes.push(searchBox());
+      const items = model.filter((it) => !it.v || !MAIN_TABS.includes(it.v.type));
+      let cur = h('div', { class: 'glist' });
+      nodes.push(cur);
+      for (const it of items) {
+        if (it.sec) { nodes.push(h('div', { class: 'gsec' }, it.sec)); cur = h('div', { class: 'glist' }); nodes.push(cur); continue; }
+        cur.append(navButton(it, true));
+      }
+      nodes.push(h('div', { class: 'gsec' }, 'その他'), h('div', { class: 'glist' },
+        h('button', { class: 'nav-item', type: 'button', onclick: openSettings }, icon('gear'), h('span', { class: 'nav-label' }, '設定'), icon('chevron')),
+        h('button', { class: 'nav-item', type: 'button', onclick: openHelp }, icon('help'), h('span', { class: 'nav-label' }, '使い方'), icon('chevron'))));
+      nodes.push(h('p', { class: 'hint', style: 'text-align:center;margin-top:16px' }, syncText));
+      break;
+    }
     case 'anytime': {
-      title = 'すべて'; sub = '「いつか」以外の未完了タスク（プロジェクト別）';
+      title = 'すべて'; sub = '「いつか」以外の未完了タスク';
       const list = act.filter(isAnytime);
       const none = list.filter((t) => !t.project).sort(byDefault);
       if (none.length) nodes.push(group('プロジェクトなし', none, T));
       const names = [...new Set(list.map((t) => t.project).filter(Boolean))].sort((a, b) => a.localeCompare(b, 'ja'));
       for (const n of names) nodes.push(group(n, list.filter((t) => t.project === n).sort(byDefault), T));
-      if (!list.length) nodes.push(empty('タスクはありません。'));
+      if (!list.length) nodes.push(emptyState('done', 'タスクはありません', ''));
       break;
     }
     case 'someday': {
-      title = 'いつか'; sub = '今は手を付けないけれど、忘れたくないこと。週次レビューで見直しましょう';
+      title = 'いつか'; sub = '今は手を付けないけれど、忘れたくないこと';
       const list = act.filter((t) => t.someday).sort((a, b) => cmp(a.createdAt, b.createdAt));
-      nodes.push(list.length ? group('', list, T) : empty('「いつか」リストは空です。'));
+      nodes.push(list.length ? group('', list, T) : emptyState('', '「いつか」リストは空です', ''));
       break;
     }
     case 'matrix': {
-      title = 'マトリクス'; sub = '重要 = 優先度が高・中 ／ 緊急 = 期限が明日まで、または「今日やる」。数字キー 1〜3 で優先度を変えると移動します';
+      title = 'マトリクス'; sub = '重要 = 優先度が高・中 ／ 緊急 = 期限が明日まで、または「今日やる」';
       const list = act.filter(isAnytime);
       const tom = ymd(addDays(Td, 1));
       const imp = (t) => t.priority === 1 || t.priority === 2;
@@ -1152,13 +1532,13 @@ function renderMain(d, T) {
       nodes.push(h('div', { class: 'matrix' }, quads.map(([cls, name, desc, f]) => {
         const items = list.filter(f).sort(byDefault);
         return h('section', { class: 'card quad ' + cls, 'data-quad': cls },
-          h('div', { class: 'quad-h' }, h('h3', null, name), h('span', null, desc), h('span', { class: 'count' }, String(items.length))),
-          items.length ? taskList(items, T) : h('div', { class: 'empty', style: 'padding:14px' }, 'なし'));
+          h('div', { class: 'quad-h' }, h('h3', null, name), h('span', null, desc), h('span', { class: 'sp' }), h('span', { class: 'count' }, String(items.length))),
+          items.length ? taskList(items, T) : h('div', { class: 'hint', style: 'padding:6px 0 12px' }, 'なし'));
       })));
       break;
     }
     case 'review': {
-      title = '週次レビュー'; sub = '週に一度、全体を見直して頭を空にする時間（GTD）';
+      title = '週次レビュー'; sub = '週に一度、全体を見直して頭を空にする';
       const last = d.meta.lastReview;
       nodes.push(h('div', { class: 'card' }, last ? `前回のレビュー: ${fmtShort(last)}（${relWord(last, T)}）` : 'まだ一度もレビューしていません。'));
       const old = ymd(addDays(Td, -14));
@@ -1182,7 +1562,7 @@ function renderMain(d, T) {
           h('div', null, h('h3', null, '今週を振り返る'),
             h('p', null, `今週の完了 ${doneWeek} 件・集中 ${fmtMin(focusMinutes(d, (k) => k >= mon && k <= T))}`)))));
       nodes.push(h('div', { class: 'dlg-foot', style: 'justify-content:flex-start' },
-        h('button', { class: 'btn-primary', type: 'button', onclick: () => { mutate({ t: 'meta', set: { lastReview: T } }); toast('週次レビューを記録しました'); } }, 'レビューを完了する')));
+        h('button', { class: 'btn-primary', type: 'button', onclick: () => { mutate({ t: 'meta', set: { lastReview: T } }); toast('週次レビューを記録しました'); celebrate(); } }, 'レビューを完了する')));
       break;
     }
     case 'logbook': {
@@ -1203,7 +1583,7 @@ function renderMain(d, T) {
         nodes.push(h('div', { class: 'nudge' }, `それより前に ${older} 件`,
           h('button', { class: 'link-btn', type: 'button', onclick: () => { logDays += 60; render(); } }, 'さらに表示')));
       }
-      if (!done.length) nodes.push(empty('まだ完了したタスクはありません。'));
+      if (!done.length) nodes.push(emptyState('', 'まだ完了したタスクはありません', ''));
       break;
     }
     case 'project': {
@@ -1213,25 +1593,25 @@ function renderMain(d, T) {
       const sd = all.filter((t) => !t.done && t.someday).sort(byDefault);
       const dn = all.filter((t) => t.done).sort((x, y) => cmp(y.doneAt || '', x.doneAt || ''));
       sub = `${dn.length} / ${all.length} 完了`;
-      nodes.push(h('div', { class: 'card' },
-        h('div', { class: 'meter', style: 'margin-top:0' }, h('div', { class: 'fill', style: `width:${all.length ? dn.length / all.length * 100 : 0}%` })),
-        h('div', { class: 'mini' },
-          h('button', { type: 'button', onclick: () => renameProject(view.name) }, '名前を変更'),
-          dn.length ? h('button', { type: 'button', 'aria-pressed': String(showProjectDone), onclick: () => { showProjectDone = !showProjectDone; render(); } }, `完了済みを表示（${dn.length}）`) : null)));
+      if (all.length) extra = h('div', { class: 'ring-sm' }, ringSvg(dn.length / all.length, 44, 5));
+      nodes.push(h('div', { class: 'mini', style: 'margin-top:0' },
+        h('button', { type: 'button', onclick: () => renameProject(view.name) }, '名前を変更'),
+        dn.length ? h('button', { type: 'button', 'aria-pressed': String(showProjectDone), onclick: () => { showProjectDone = !showProjectDone; render(); } }, `完了済みを表示（${dn.length}）`) : null));
       if (a.length) nodes.push(group('', a, T));
       if (sd.length) nodes.push(group('いつか', sd, T));
       if (showProjectDone && dn.length) nodes.push(group('完了済み', dn, T));
-      if (!a.length && !sd.length) nodes.push(empty('このプロジェクトに未完了のタスクはありません。'));
+      if (!a.length && !sd.length) nodes.push(emptyState('done', '未完了のタスクはありません', ''));
       break;
     }
     case 'tag': {
       title = '@' + view.name;
       const list = act.filter((t) => t.tags.includes(view.name)).sort(byDefault);
-      nodes.push(list.length ? group('', list, T) : empty('このタグの未完了タスクはありません。'));
+      nodes.push(list.length ? group('', list, T) : emptyState('', 'このタグの未完了タスクはありません', ''));
       break;
     }
     case 'search': {
       title = '検索'; sub = '@タグ や #プロジェクト でも絞り込めます';
+      if (!wide()) nodes.push(searchBox());
       const words = view.q.toLowerCase().split(/[\s\u3000]+/).filter(Boolean);
       const match = (t) => {
         const hay = [t.title, t.notes, t.project || '', ...t.tags, ...t.checklist.map((x) => x.text)].join(' ').toLowerCase();
@@ -1243,32 +1623,62 @@ function renderMain(d, T) {
       const dn = hits.filter((t) => t.done).sort((x, y) => cmp(y.doneAt || '', x.doneAt || '')).slice(0, 50);
       if (a.length) nodes.push(group('未完了', a, T));
       if (dn.length) nodes.push(group('完了済み', dn, T));
-      if (!hits.length) nodes.push(empty('見つかりませんでした。'));
+      if (!hits.length) nodes.push(emptyState('search', '見つかりませんでした', ''));
       break;
     }
   }
   $('viewTitle').textContent = title;
   $('viewSub').textContent = sub;
-  c.replaceChildren(...nodes);
+  $('headExtra').replaceChildren(...(extra ? [extra] : []));
+  // 検索欄を入力中なら、その欄だけは作り直さない
+  if (mSearch && nodes[0] === mSearch && c.firstChild === mSearch) {
+    while (c.childNodes.length > 1) c.lastChild.remove();
+    c.append(...nodes.slice(1));
+  } else c.replaceChildren(...nodes);
 }
 
-function planCard(list, d, T) {
+function planBar(list, d, T) {
   const cap = Number.isFinite(d.meta.capacity) ? d.meta.capacity : 360;
   const est = list.reduce((s, t) => s + (t.estimate || 0), 0);
-  const noEst = list.filter((t) => !t.estimate).length;
-  const doneToday = d.todos.filter((t) => t.done && t.doneAt && localYmd(t.doneAt) === T).length;
-  const over = est - cap;
-  let hint = null;
-  if (over > 0) hint = h('p', { class: 'hint warn' }, `見積もりが作業可能時間を ${fmtMin(over)} 超えています。明日以降に回せるものはありませんか？`);
-  else if (noEst) hint = h('p', { class: 'hint' }, `見積もりのないタスクが ${noEst} 件あります。かかる時間を決めると計画が立てやすくなります。`);
-  else if (list.length) hint = h('p', { class: 'hint' }, '今日の計画は作業可能時間に収まっています。');
-  return h('div', { class: 'card plan' },
-    h('div', { class: 'stats' },
-      stat(fmtMin(est), '見積もり合計'), stat(fmtMin(cap), '作業可能時間'),
-      stat(String(doneToday), '今日の完了'), stat(fmtMin(focusMinutes(d, (k) => k === T)), '今日の集中')),
-    h('div', { class: 'meter' + (over > 0 ? ' over' : ''), role: 'meter', 'aria-label': '見積もり / 作業可能時間', 'aria-valuemin': '0', 'aria-valuemax': String(cap), 'aria-valuenow': String(Math.min(est, cap)) },
-      h('div', { class: 'fill', style: `width:${cap ? Math.min(100, est / cap * 100) : 0}%` })),
-    hint);
+  const over = est > cap;
+  const nSug = planSuggestions(d, T).reduce((s, g) => s + g[1].length, 0);
+  return h('div', null,
+    list.length ? h('div', { class: 'plan' + (over ? ' over' : ''), title: '見積もりの合計 / 1 日の作業可能時間' },
+      h('div', { class: 'meter', role: 'meter', 'aria-label': '見積もりの合計 / 作業可能時間', 'aria-valuemin': '0', 'aria-valuemax': String(cap), 'aria-valuenow': String(Math.min(est, cap)) },
+        h('div', { class: 'fill', style: `width:${cap ? Math.min(100, est / cap * 100) : 0}%` })),
+      h('span', { class: 'plan-text' }, `${fmtMin(est)} / ${fmtMin(cap)}${over ? `（${fmtMin(est - cap)} 超過）` : ''}`)) : null,
+    h('div', { class: 'row', style: 'margin-top:12px' },
+      h('button', { class: 'pill-btn', type: 'button', onclick: openPlan }, icon('sparkle'), '今日の計画',
+        nSug ? h('span', { class: 'count', style: 'color:inherit;opacity:.75' }, String(nSug)) : null)));
+}
+
+// 時刻のあるタスクを 1 日の流れとして並べる（空き時間と現在時刻も出す）
+function timeline(items, T) {
+  const now = new Date();
+  const nowMin = now.getHours() * 60 + now.getMinutes();
+  const out = [];
+  let prevEnd = null;
+  let nowDone = false;
+  const nowLine = () => h('div', { class: 'tl-now', 'aria-label': '現在時刻' }, h('span', null, minToHm(nowMin)), h('span', { class: 'tl-rail' }), h('div', { class: 'bar' }));
+  for (const t of items) {
+    const start = hmToMin(t.time);
+    const dur = t.estimate || 30;
+    const end = start + dur;
+    if (prevEnd != null && start - prevEnd >= 30) {
+      if (!nowDone && nowMin >= prevEnd && nowMin < start) { out.push(nowLine()); nowDone = true; }
+      out.push(h('div', { class: 'tl-gap' }, h('span'), h('span', { class: 'tl-rail' }), h('span', null, `空き ${fmtMin(start - prevEnd)}`)));
+    }
+    if (!nowDone && nowMin < start) { out.push(nowLine()); nowDone = true; }
+    const [emo] = splitEmoji(t.title);
+    const hgt = Math.round(Math.max(60, Math.min(200, dur * 1.1)));
+    out.push(h('div', { class: 'tl-item' + (t.done ? ' done' : ''), style: `--h:${hgt}px;--col:${taskColor(t)}` },
+      h('div', { class: 'tl-time' }, t.time, h('small', null, minToHm(end))),
+      h('div', { class: 'tl-rail' }, h('span', { class: 'tl-pill', 'aria-hidden': 'true' }, emo || '')),
+      h('ul', { class: 'tasks' }, taskRow(t, T, { plan: true, hideDate: true, noEmoji: !!emo }))));
+    prevEnd = prevEnd == null ? end : Math.max(prevEnd, end);
+  }
+  if (!nowDone) out.push(nowLine());
+  return h('div', { class: 'timeline' }, out);
 }
 
 function statsCard(d, T) {
@@ -1298,8 +1708,102 @@ function statsCard(d, T) {
 }
 
 /* =========================================================================
- * クイック追加
+ * シート（下から出る画面。広い画面では中央のダイアログ）
  * ========================================================================= */
+let sheetKind = null;
+function openSheet(node, opts = {}) {
+  sheetKind = opts.kind || null;
+  const s = $('sheet');
+  s.replaceChildren(h('div', { class: 'grabber' }), node);
+  s.setAttribute('aria-label', opts.label || '');
+  s.hidden = false;
+  $('backdrop').hidden = false;
+  s.scrollTop = 0;
+}
+function closeSheet() {
+  if ($('sheet').hidden) return;
+  $('sheet').hidden = true;
+  $('backdrop').hidden = true;
+  $('sheet').replaceChildren();
+  sheetKind = null;
+}
+const sheetHead = (title) => h('div', { class: 'sheet-title' }, title, h('span', { class: 'sp' }),
+  h('button', { class: 'icon-btn', type: 'button', 'aria-label': '閉じる', onclick: closeSheet }, icon('x')));
+// スマホのキーボードが出ている間は、シートをその上に出す
+function trackKeyboard() {
+  const vv = window.visualViewport;
+  if (!vv) return;
+  const kb = Math.max(0, window.innerHeight - vv.height - vv.offsetTop);
+  document.documentElement.style.setProperty('--kb', `${Math.round(kb)}px`);
+}
+
+/* ---------- クイック追加 ---------- */
+function contextLabel() {
+  switch (view.type) {
+    case 'today': return '今日に追加';
+    case 'project': return `${view.name} に追加`;
+    case 'tag': return `@${view.name} を付けて追加`;
+    case 'someday': return '「いつか」に追加';
+    default: return '受信箱に追加';
+  }
+}
+function openQuickAdd() {
+  if (sheetKind === 'qa') return $('qaInput')?.focus();
+  const input = h('input', { id: 'qaInput', type: 'text', placeholder: '何をしますか？', 'aria-label': 'タスク', autocomplete: 'off', enterkeyhint: 'done', oninput: updateQuickChips });
+  const notes = h('textarea', { id: 'qaNotes', rows: '1', placeholder: 'メモ', 'aria-label': 'メモ', oninput: (e) => autoGrow(e.target) });
+  const dateIn = h('input', { type: 'date', 'aria-label': '日付', onchange: (e) => { if (e.target.value) setToken(isDateTok, e.target.value); dateRow.hidden = true; } });
+  const dateRow = h('div', { class: 'row', hidden: true, style: 'margin-top:8px' }, dateIn);
+  const projBox = h('div', { class: 'qa-proj', hidden: true });
+  const tool = (ic, label, fn) => h('button', { class: 'icon-btn', type: 'button', title: label, 'aria-label': label, onclick: fn }, icon(ic), h('span', { class: 't' }, label));
+  openSheet(h('form', { class: 'qa', onsubmit: (e) => { e.preventDefault(); addFromQuick(); } },
+    h('div', { class: 'qa-ctx' }, contextLabel()),
+    input, notes,
+    h('div', { id: 'quickChips', class: 'chips', 'aria-live': 'polite' }),
+    dateRow, projBox,
+    h('div', { class: 'row', style: 'margin-top:8px;border-top:1px solid var(--line);padding-top:8px' },
+      h('div', { class: 'qa-bar', style: 'margin:0;padding:0;border:0;flex:1' },
+        tool('sun', '今日', () => setToken(isDateTok, '今日')),
+        tool('arrow', '明日', () => setToken(isDateTok, '明日')),
+        tool('calendar', '日付', () => { dateRow.hidden = !dateRow.hidden; if (!dateRow.hidden) { try { dateIn.showPicker(); } catch { dateIn.focus(); } } }),
+        tool('flag', '優先度', cyclePriority),
+        tool('folder', 'プロジェクト', () => {
+          projBox.hidden = !projBox.hidden;
+          const names = [...new Set(DATA.todos.map((t) => t.project).filter(Boolean))].sort((a, b) => a.localeCompare(b, 'ja'));
+          projBox.replaceChildren(
+            ...names.map((n) => h('button', { type: 'button', onclick: () => { setToken((s) => s[0] === '#', '#' + n); projBox.hidden = true; } }, h('span', { class: 'pdot', style: `background:${colorOf(n)}` }), n)),
+            h('button', { type: 'button', onclick: () => { setToken((s) => s[0] === '#', '#'); projBox.hidden = true; } }, '＋ 新しいプロジェクト'));
+        }),
+        tool('timer', '見積もり', cycleEstimate),
+        tool('box', 'いつか', () => setToken((s) => s === 'いつか', qaTokens().includes('いつか') ? null : 'いつか'))),
+      h('button', { class: 'btn-primary', type: 'submit', style: 'border-radius:999px;flex:none' }, '追加'))),
+  { kind: 'qa', label: 'タスクを追加' });
+  input.focus();
+  trackKeyboard();
+}
+function autoGrow(el) { el.style.height = 'auto'; el.style.height = el.scrollHeight + 'px'; }
+const qaTokens = () => $('qaInput').value.split(/[\s\u3000]+/).filter(Boolean);
+const isDateTok = (s, T) => !!parseDateWord(s, T) || !!parseDateTime(s, T)?.date;
+// 入力欄の語を置き換える（ボタンで入れても、文字で書いても同じ結果になる）
+function setToken(match, tok) {
+  const T = parseYmd(todayYmd());
+  const rest = qaTokens().filter((x) => !match(toHalf(x), T));
+  if (tok) rest.push(tok);
+  const input = $('qaInput');
+  input.value = rest.join(' ') + (tok === '#' ? '' : ' ');
+  input.focus();
+  updateQuickChips();
+}
+function cyclePriority() {
+  const curTok = qaTokens().map(toHalf).find((s) => /^![1-3]$/.test(s));
+  const next = { undefined: '!1', '!1': '!2', '!2': '!3', '!3': null }[curTok];
+  setToken((s) => /^![1-3]$/.test(s), next);
+}
+function cycleEstimate() {
+  const seq = ['~15m', '~30m', '~1h', '~2h'];
+  const curTok = qaTokens().map(toHalf).find((s) => s[0] === '~');
+  const i = seq.indexOf(curTok);
+  setToken((s) => s[0] === '~', i < 0 ? seq[0] : seq[i + 1] || null);
+}
 function taskFromQuick(text) {
   const T = todayYmd();
   const Td = parseYmd(T);
@@ -1331,10 +1835,11 @@ function whereLabel(t, T) {
   return '受信箱';
 }
 function updateQuickChips() {
-  const text = $('quickInput').value;
+  const input = $('qaInput');
   const box = $('quickChips');
-  if (!text.trim()) { box.replaceChildren(); return; }
-  const t = taskFromQuick(text);
+  if (!input || !box) return;
+  if (!input.value.trim()) { box.replaceChildren(); return; }
+  const t = taskFromQuick(input.value);
   const T = todayYmd();
   const chip = (ic, label) => h('span', { class: 'qchip' }, icon(ic), label);
   const chips = [];
@@ -1348,20 +1853,108 @@ function updateQuickChips() {
   if (t.someday) chips.push(chip('box', 'いつか'));
   box.replaceChildren(...chips);
 }
+function addFromQuick() {
+  const input = $('qaInput');
+  if (!input || !input.value.trim()) return;
+  const t = taskFromQuick(input.value);
+  const notes = $('qaNotes').value.trim();
+  if (notes) t.notes = notes;
+  input.value = '';
+  $('qaNotes').value = '';
+  autoGrow($('qaNotes'));
+  selId = t.id;
+  mutate({ t: 'add', task: t });
+  updateQuickChips();
+  toast(`「${t.title}」を${whereLabel(t, todayYmd())}に追加しました`, { t: 'restore', remove: [t.id] });
+  input.focus(); // 続けて書けるように開いたままにする
+}
+
+/* ---------- 今日の計画（Microsoft To Do の「提案」風） ---------- */
+function planSuggestions(d, T) {
+  const soon = ymd(addDays(parseYmd(T), 3));
+  const cand = d.todos.filter((t) => !t.done && !t.someday && t.myDay !== T && !(t.due && t.due <= T));
+  const soonL = cand.filter((t) => t.due && t.due <= soon).sort((a, b) => cmp(a.due, b.due) || byDefault(a, b));
+  const imp = cand.filter((t) => !t.due && (t.priority === 1 || t.priority === 2)).sort(byDefault);
+  const inbox = cand.filter((t) => isInbox(t, T) && !imp.includes(t)).sort((a, b) => cmp(b.createdAt, a.createdAt)).slice(0, 10);
+  return [['近いうちに期限', soonL], ['優先度が高い', imp], ['受信箱から', inbox]].filter((g) => g[1].length);
+}
+let planGroups = [];
+function openPlan() {
+  planGroups = planSuggestions(DATA, todayYmd()).map(([n, l]) => [n, l.map((t) => t.id)]);
+  openSheet(planBody(), { kind: 'plan', label: '今日の計画' });
+}
+function planBody() {
+  const T = todayYmd();
+  const today = DATA.todos.filter((t) => isToday(t, T));
+  const cap = Number.isFinite(DATA.meta.capacity) ? DATA.meta.capacity : 360;
+  const est = today.reduce((s, t) => s + (t.estimate || 0), 0);
+  const body = [
+    sheetHead('今日の計画'),
+    h('p', { class: 'hint', style: 'margin-top:-4px' }, `今日 ${today.length} 件 · 見積もり ${fmtMin(est)} / 作業可能 ${fmtMin(cap)}`),
+  ];
+  if (!planGroups.length) body.push(emptyState('done', '提案できるタスクはありません', '期限の近いもの・優先度の高いもの・受信箱から提案します。'));
+  for (const [name, ids] of planGroups) {
+    body.push(h('div', { class: 'gsec', style: 'margin-top:16px' }, name));
+    for (const id of ids) {
+      const t = findTask(id);
+      if (!t) continue;
+      const added = t.myDay === T;
+      const meta = [];
+      if (t.due) meta.push(h('span', { class: 'mchip' }, icon('calendar'), fmtDate(t.due, T)));
+      if (t.estimate) meta.push(h('span', { class: 'mchip' }, icon('timer'), fmtMin(t.estimate)));
+      if (t.project) meta.push(h('span', { class: 'mchip' }, h('span', { class: 'pdot', style: `background:${colorOf(t.project)};width:8px;height:8px` }), t.project));
+      body.push(h('div', { class: 'sug' },
+        h('div', { class: 'body' }, h('div', { class: 'title' }, t.title), meta.length ? h('div', { class: 'meta' }, meta) : null),
+        h('button', {
+          class: 'add' + (added ? ' on' : ''), type: 'button', 'aria-pressed': String(added), 'aria-label': (added ? '今日から外す: ' : '今日に追加: ') + t.title,
+          onclick: () => { mutate({ t: 'patch', id, set: added ? { myDay: null } : { myDay: T, someday: false } }); if (!added) haptic(); refreshPlan(); },
+        }, icon(added ? 'check' : 'plus'))));
+    }
+  }
+  body.push(h('div', { class: 'dlg-foot' }, h('button', { class: 'btn-primary', type: 'button', onclick: closeSheet }, '完了')));
+  return h('div', null, body);
+}
+function refreshPlan() {
+  if (sheetKind !== 'plan') return;
+  const s = $('sheet');
+  const top = s.scrollTop;
+  s.replaceChildren(h('div', { class: 'grabber' }), planBody());
+  s.scrollTop = top;
+}
+
+/* ---------- 日付を変える（行を左にスワイプ） ---------- */
+function openSchedule(id) {
+  const t = findTask(id);
+  if (!t) return;
+  const T = todayYmd();
+  const Td = parseYmd(T);
+  const tom = ymd(addDays(Td, 1));
+  const sat = ymd(parseDateWord('週末', Td));
+  const mon = ymd(addDays(mondayOf(Td), 7));
+  const pick = (label, fields) => { closeSheet(); applySchedule(t, fields, label); };
+  const opt = (ic, label, sub, fields) => h('button', { class: 'sheet-item', type: 'button', onclick: () => pick(label, fields) },
+    icon(ic), h('span', { class: 'lbl' }, label), sub ? h('span', { class: 'val' }, sub) : null);
+  openSheet(h('div', null,
+    sheetHead(t.title),
+    opt('sun', '今日', fmtShort(T), { due: T, someday: false }),
+    opt('arrow', '明日', fmtShort(tom), { due: tom, someday: false }),
+    opt('sofa', '週末', fmtShort(sat), { due: sat, someday: false }),
+    opt('calendar', '来週', fmtShort(mon), { due: mon, someday: false }),
+    opt('box', 'いつか', null, { someday: true, myDay: null }),
+    h('label', { class: 'sheet-item' }, icon('calendar'), h('span', { class: 'lbl' }, '日付を選ぶ'),
+      h('input', { type: 'date', value: t.due || '', 'aria-label': '日付を選ぶ', onchange: (e) => { if (e.target.value) pick(fmtDate(e.target.value, T), { due: e.target.value, someday: false }); } })),
+    t.due || t.someday ? opt('ban', '日付なし', null, { due: null, time: null, repeat: null, someday: false }) : null),
+  { kind: 'schedule', label: '日付を変更' });
+}
+function applySchedule(t, fields, label) {
+  mutate({ t: 'patch', id: t.id, set: fields });
+  toast(`「${t.title}」を${label}に移しました`, { t: 'restore', tasks: [clone(t)] });
+}
 
 /* =========================================================================
  * 操作
  * ========================================================================= */
 const findTask = (id) => DATA.todos.find((x) => x.id === id);
-function addFromQuick() {
-  const input = $('quickInput');
-  if (!input.value.trim()) return;
-  const t = taskFromQuick(input.value);
-  input.value = '';
-  selId = t.id;
-  mutate({ t: 'add', task: t });
-  toast(`「${t.title}」を${whereLabel(t, todayYmd())}に追加しました`, { t: 'restore', remove: [t.id] });
-}
 function toggleDone(id) {
   const t = findTask(id);
   if (!t) return;
@@ -1370,7 +1963,9 @@ function toggleDone(id) {
   if (t.done) {
     mutate({ t: 'patch', id, set: { done: false, doneAt: null } });
     toast('未完了に戻しました', { t: 'restore', tasks: [snap] });
-  } else if (t.repeat && t.due) {
+    return;
+  }
+  if (t.repeat && t.due) {
     const next = nextDue(t.due, t.repeat, T);
     const logId = uid();
     mutate({ t: 'complete', id, from: t.due, next, logId });
@@ -1379,6 +1974,26 @@ function toggleDone(id) {
     mutate({ t: 'complete', id });
     toast(`「${t.title}」を完了しました`, { t: 'restore', tasks: [snap] });
   }
+  if (view.type === 'today' && isToday(snap, T) && !DATA.todos.some((x) => isToday(x, T))) celebrate();
+}
+// 完了は、チェックが付く → 行が消える、の順に少し時間をかけて見せる
+const completing = new Set();
+function completeTask(id, el) {
+  const t = findTask(id);
+  if (!t || completing.has(id)) return;
+  if (t.done) return toggleDone(id);
+  el = el || document.querySelector(`#content .task[data-id="${CSS.escape(id)}"]`);
+  playDone();
+  haptic();
+  if (!el || reduceMotion()) return toggleDone(id);
+  completing.add(id);
+  el.classList.add('completing');
+  setTimeout(() => {
+    el.style.height = el.offsetHeight + 'px';
+    void el.offsetHeight;
+    el.classList.add('leaving');
+    setTimeout(() => { completing.delete(id); toggleDone(id); }, 240);
+  }, 360);
 }
 function deleteTask(id) {
   const t = findTask(id);
@@ -1433,7 +2048,7 @@ function toast(msg, undoOp) {
   $('undoBtn').hidden = !undoOp;
   $('toast').hidden = false;
   clearTimeout(toastTimer);
-  toastTimer = setTimeout(() => { $('toast').hidden = true; }, undoOp ? 7000 : 3000);
+  toastTimer = setTimeout(() => { $('toast').hidden = true; }, undoOp ? 6000 : 3000);
 }
 function undo() {
   if (!lastUndo) return;
@@ -1443,8 +2058,45 @@ function undo() {
   mutate(op);
 }
 
+/* ---------- 手応え（音・振動・紙吹雪） ---------- */
+let audio = null;
+function unlockAudio() {
+  try { audio = audio || new (window.AudioContext || window.webkitAudioContext)(); if (audio.state === 'suspended') audio.resume(); } catch {}
+}
+function tone(freq, at, dur, vol) {
+  const o = audio.createOscillator();
+  const g = audio.createGain();
+  const t0 = audio.currentTime + at;
+  o.type = 'sine';
+  o.frequency.value = freq;
+  g.gain.setValueAtTime(0.0001, t0);
+  g.gain.exponentialRampToValueAtTime(vol, t0 + 0.015);
+  g.gain.exponentialRampToValueAtTime(0.0001, t0 + dur);
+  o.connect(g).connect(audio.destination);
+  o.start(t0);
+  o.stop(t0 + dur + 0.02);
+}
+function playDone() {
+  if (!audio || store.get(KEY.sound) === 'off') return;
+  try { tone(880, 0, 0.14, 0.12); tone(1318.5, 0.08, 0.26, 0.1); } catch {}
+}
+function beep() {
+  if (!audio) return;
+  try { [0, 0.25, 0.5].forEach((dt) => tone(880, dt, 0.18, 0.2)); } catch {}
+}
+function haptic() { try { navigator.vibrate?.(12); } catch {} }
+function celebrate() {
+  if (reduceMotion()) return;
+  const box = $('confetti');
+  const colors = ['var(--c1)', 'var(--c2)', 'var(--c3)', 'var(--c4)', 'var(--c5)', 'var(--c7)'];
+  for (let i = 0; i < 70; i++) {
+    box.append(h('i', { style: `left:${Math.random() * 100}vw;background:${colors[i % colors.length]};--dx:${Math.round((Math.random() - 0.5) * 240)}px;--rot:${Math.round(Math.random() * 720 - 360)}deg;animation-duration:${(1.6 + Math.random() * 1.4).toFixed(2)}s;animation-delay:${(Math.random() * 0.3).toFixed(2)}s` }));
+  }
+  setTimeout(() => box.replaceChildren(), 3600);
+}
+
 /* =========================================================================
- * 詳細パネル
+ * 詳細（項目を並べ、押したところだけ開く）
  * ========================================================================= */
 // 文字の入力は打ち終わって少し経ってから保存する（欄を離れたときは即保存）。
 // 欄を離れた瞬間に画面を作り直すと、その直後のクリックが失われるため
@@ -1465,16 +2117,19 @@ function flushEdits() { for (const k of [...pendingEdits.keys()]) flushEdit(k); 
 
 function openDetail(id) {
   flushEdits();
+  if (detailId !== id) detailOpen = null;
   detailId = id;
   selId = id;
   $('detail').hidden = false;
   document.body.classList.add('detail-open');
   renderDetail(true);
+  $('detail').scrollTop = 0;
   markSel();
 }
 function closeDetail() {
   flushEdits();
   detailId = null;
+  detailOpen = null;
   $('detail').hidden = true;
   $('detail').replaceChildren();
   document.body.classList.remove('detail-open');
@@ -1497,24 +2152,42 @@ function renderDetail(force) {
   const set = (fields, rebuild = true) => { mutate({ t: 'patch', id: t.id, set: fields }); if (rebuild) renderDetail(true); };
   const r = t.repeat;
 
-  const dateField = h('div', { class: 'field' },
-    h('label', { class: 'f-label', for: 'd-due' }, '日付・時刻'),
-    h('div', { class: 'row' },
-      h('input', { id: 'd-due', type: 'date', value: t.due || '', 'data-f': 'due',
+  const prop = (key, ic, label, value, isSet, editor) => {
+    const open = detailOpen === key;
+    const ch = icon('chevron');
+    ch.classList.add('chev');
+    return [
+      h('button', { class: 'prop', type: 'button', 'aria-expanded': String(open), 'data-f': 'p-' + key, onclick: () => { detailOpen = open ? null : key; renderDetail(true); } },
+        icon(ic), h('span', { class: 'lbl' }, label), h('span', { class: 'val' + (isSet ? ' set' : '') }, value), ch),
+      open ? h('div', { class: 'prop-ed' }, editor()) : null,
+    ];
+  };
+  const toggleRow = (ic, label, on, fn) => h('div', { class: 'prop' }, icon(ic), h('span', { class: 'lbl' }, label),
+    h('button', { class: 'switch', type: 'button', role: 'switch', 'aria-checked': String(on), 'aria-label': label, 'data-f': 'sw-' + label, onclick: fn }));
+
+  const dateEd = () => [
+    h('div', { class: 'mini', style: 'margin-top:4px' },
+      [['今日', T], ['明日', ymd(addDays(Td, 1))], ['週末', ymd(parseDateWord('週末', Td))], ['来週', ymd(addDays(mondayOf(Td), 7))]].map(([label, v]) =>
+        h('button', { type: 'button', 'aria-pressed': String(t.due === v), onclick: () => set({ due: v, someday: false }) }, label)),
+      t.due ? h('button', { type: 'button', onclick: () => set({ due: null, time: null, repeat: null }) }, 'なし') : null),
+    h('div', { class: 'row', style: 'margin-top:10px' },
+      h('input', { type: 'date', value: t.due || '', 'data-f': 'due', 'aria-label': '日付',
         onchange: (e) => { const v = e.target.value; set(v ? { due: v, someday: false } : { due: null, time: null, repeat: null }); } }),
       h('input', { type: 'time', value: t.time || '', 'data-f': 'time', 'aria-label': '時刻',
         onchange: (e) => { const v = e.target.value; set(v ? { time: v, ...(t.due ? {} : { due: T }) } : { time: null }); } })),
-    h('div', { class: 'mini' },
-      [['今日', T], ['明日', ymd(addDays(Td, 1))], ['来週', ymd(addDays(mondayOf(Td), 7))]].map(([label, v]) =>
-        h('button', { type: 'button', 'aria-pressed': String(t.due === v), onclick: () => set({ due: v, someday: false }) }, label)),
-      t.due ? h('button', { type: 'button', onclick: () => set({ due: null, time: null, repeat: null }) }, '日付なし') : null));
-
-  const repeatField = h('div', { class: 'field' },
-    h('label', { class: 'f-label', for: 'd-runit' }, '繰り返し'),
-    h('div', { class: 'row' },
-      r ? h('input', { type: 'number', min: '1', max: '99', value: String(r.every), 'data-f': 'revery', style: 'width:70px;flex:none', 'aria-label': '間隔',
+  ];
+  const repeatEd = () => [
+    h('div', { class: 'mini', style: 'margin-top:4px' },
+      [['毎日', { unit: 'day', every: 1 }], ['平日', { unit: 'week', every: 1, days: [1, 2, 3, 4, 5] }], ['毎週', { unit: 'week', every: 1 }], ['毎月', { unit: 'month', every: 1 }], ['毎年', { unit: 'year', every: 1 }]].map(([label, rule]) =>
+        h('button', { type: 'button', 'aria-pressed': String(!!r && describeRepeat(completeRule(rule, t.due ? parseYmd(t.due) : Td)) === describeRepeat(r)), onclick: () => {
+          const rr = completeRule(rule, t.due ? parseYmd(t.due) : Td);
+          set({ repeat: rr, due: t.due || ymd(firstDue(rr, Td)), someday: false });
+        } }, label)),
+      r ? h('button', { type: 'button', onclick: () => set({ repeat: null }) }, 'しない') : null),
+    h('div', { class: 'row', style: 'margin-top:10px' },
+      r ? h('input', { type: 'number', min: '1', max: '99', value: String(r.every), 'data-f': 'revery', style: 'width:80px;flex:none', 'aria-label': '間隔',
         onchange: (e) => { const rr = cur().repeat; if (rr) set({ repeat: normRepeat({ ...rr, every: e.target.value }) }, false); } }) : null,
-      h('select', { id: 'd-runit', 'data-f': 'runit',
+      h('select', { 'data-f': 'runit', 'aria-label': '繰り返しの単位',
         onchange: (e) => {
           const u = e.target.value;
           if (!u) return set({ repeat: null });
@@ -1531,45 +2204,39 @@ function renderDetail(force) {
       } }, WD[wd]);
     })) : null,
     r && r.unit === 'month' ? h('div', { class: 'row', style: 'margin-top:8px' },
-      h('input', { type: 'number', min: '1', max: '31', value: String(r.day || 1), 'data-f': 'rday', style: 'width:70px;flex:none', 'aria-label': '日',
-        onchange: (e) => { const rr = cur().repeat; if (rr) set({ repeat: normRepeat({ ...rr, day: e.target.value }) }, false); } }), h('span', { class: 'hint', style: 'margin:0' }, '日（31 = 月末）')) : null,
-    h('div', { class: 'mini' },
-      [['毎日', { unit: 'day', every: 1 }], ['平日', { unit: 'week', every: 1, days: [1, 2, 3, 4, 5] }], ['毎週', { unit: 'week', every: 1 }], ['毎月', { unit: 'month', every: 1 }]].map(([label, rule]) =>
-        h('button', { type: 'button', onclick: () => {
-          const rr = completeRule(rule, t.due ? parseYmd(t.due) : Td);
-          set({ repeat: rr, due: t.due || ymd(firstDue(rr, Td)), someday: false });
-        } }, label))),
-    r && t.due ? h('p', { class: 'hint' }, `${describeRepeat(r)} · 完了すると次回は ${fmtDate(nextDue(t.due, r, T), T)}`) : null);
-
-  const prioField = h('div', { class: 'field' },
-    h('div', { class: 'f-label' }, '優先度'),
-    h('div', { class: 'seg', role: 'group', 'aria-label': '優先度' }, [[0, 'なし'], [3, '低'], [2, '中'], [1, '高']].map(([v, l]) =>
-      h('button', { type: 'button', 'aria-pressed': String(t.priority === v), onclick: () => set({ priority: v }) }, l))));
-
-  const projField = h('div', { class: 'field' },
-    h('label', { class: 'f-label', for: 'd-proj' }, 'プロジェクト'),
-    h('input', { id: 'd-proj', type: 'text', list: 'projList', value: t.project || '', 'data-f': 'project', placeholder: 'なし',
-      onchange: (e) => set({ project: e.target.value.trim() || null }, false) }));
-
-  const tagField = h('div', { class: 'field' },
-    h('label', { class: 'f-label', for: 'd-tags' }, 'タグ（空白区切り）'),
-    h('input', { id: 'd-tags', type: 'text', value: t.tags.join(' '), 'data-f': 'tags', placeholder: '例: メール 電話',
-      onchange: (e) => set({ tags: [...new Set(e.target.value.split(/[\s,、\u3000]+/).map((s) => s.replace(/^[@＠]/, '')).filter(Boolean))] }, false) }));
-
-  const estField = h('div', { class: 'field' },
-    h('label', { class: 'f-label', for: 'd-est' }, '見積もり（分）'),
-    h('input', { id: 'd-est', type: 'number', min: '0', step: '5', value: t.estimate ? String(t.estimate) : '', 'data-f': 'estimate', style: 'width:120px',
-      onchange: (e) => { const v = Math.round(+e.target.value); set({ estimate: v > 0 ? v : null }, false); } }),
-    h('div', { class: 'mini' }, [15, 30, 60, 120].map((m) =>
-      h('button', { type: 'button', 'aria-pressed': String(t.estimate === m), onclick: () => set({ estimate: t.estimate === m ? null : m }) }, fmtMin(m)))));
+      h('input', { type: 'number', min: '1', max: '31', value: String(r.day || 1), 'data-f': 'rday', style: 'width:80px;flex:none', 'aria-label': '日',
+        onchange: (e) => { const rr = cur().repeat; if (rr) set({ repeat: normRepeat({ ...rr, day: e.target.value }) }, false); } }),
+      h('span', { class: 'hint', style: 'margin:0' }, '日（31 = 月末）')) : null,
+    r && t.due ? h('p', { class: 'hint' }, `完了すると次回は ${fmtDate(nextDue(t.due, r, T), T)}`) : null,
+  ];
+  const prioEd = () => h('div', { class: 'seg', role: 'group', 'aria-label': '優先度' }, [[0, 'なし'], [3, '低'], [2, '中'], [1, '高']].map(([v, l]) =>
+    h('button', { type: 'button', 'aria-pressed': String(t.priority === v), onclick: () => set({ priority: v }) }, l)));
+  const projEd = () => {
+    const names = [...new Set(DATA.todos.map((x) => x.project).filter(Boolean))].sort((a, b) => a.localeCompare(b, 'ja'));
+    return [
+      h('input', { type: 'text', list: 'projList', value: t.project || '', 'data-f': 'project', placeholder: 'プロジェクト名', 'aria-label': 'プロジェクト',
+        onchange: (e) => set({ project: e.target.value.trim() || null }, false) }),
+      names.length ? h('div', { class: 'mini' }, names.map((n) =>
+        h('button', { type: 'button', 'aria-pressed': String(t.project === n), onclick: () => set({ project: t.project === n ? null : n }) },
+          h('span', { class: 'pdot', style: `background:${colorOf(n)};width:8px;height:8px;margin-right:6px` }), n))) : null,
+    ];
+  };
+  const tagEd = () => h('input', { type: 'text', value: t.tags.join(' '), 'data-f': 'tags', placeholder: '空白で区切る（例: メール 電話）', 'aria-label': 'タグ',
+    onchange: (e) => set({ tags: [...new Set(e.target.value.split(/[\s,、\u3000]+/).map((s) => s.replace(/^[@＠]/, '')).filter(Boolean))] }, false) });
+  const estEd = () => [
+    h('div', { class: 'mini', style: 'margin-top:4px' }, [15, 30, 60, 90, 120].map((m) =>
+      h('button', { type: 'button', 'aria-pressed': String(t.estimate === m), onclick: () => set({ estimate: t.estimate === m ? null : m }) }, fmtMin(m)))),
+    h('div', { class: 'row', style: 'margin-top:10px' },
+      h('input', { type: 'number', min: '0', step: '5', value: t.estimate ? String(t.estimate) : '', 'data-f': 'estimate', style: 'width:110px', 'aria-label': '見積もり（分）',
+        onchange: (e) => { const v = Math.round(+e.target.value); set({ estimate: v > 0 ? v : null }, false); } }), h('span', { class: 'muted' }, '分')),
+  ];
 
   const cl = t.checklist;
   const curCl = () => cur().checklist;
   const setCl = (list, rebuild = true) => set({ checklist: list }, rebuild);
-  const clField = h('div', { class: 'field' },
-    h('div', { class: 'f-label' }, `チェックリスト${cl.length ? `（${cl.filter((c) => c.done).length}/${cl.length}）` : ''}`),
+  const clCard = h('div', { class: 'props' },
     cl.map((c) => h('div', { class: 'cl-item' + (c.done ? ' done' : '') },
-      h('input', { type: 'checkbox', checked: c.done, 'aria-label': '済み', onchange: () => setCl(curCl().map((x) => (x.id === c.id ? { ...x, done: !x.done } : x))) }),
+      h('input', { type: 'checkbox', checked: c.done, 'aria-label': '済み', onchange: () => { if (!c.done) haptic(); setCl(curCl().map((x) => (x.id === c.id ? { ...x, done: !x.done } : x))); } }),
       h('input', { type: 'text', value: c.text, 'data-f': 'cl-' + c.id, 'aria-label': '項目',
         oninput: (e) => {
           const v = e.target.value.trim();
@@ -1580,8 +2247,8 @@ function renderDetail(force) {
           if (!e.target.value.trim()) setCl(curCl().filter((x) => x.id !== c.id));
         } }),
       h('button', { class: 'icon-btn', type: 'button', 'aria-label': '項目を削除', onclick: () => setCl(curCl().filter((x) => x.id !== c.id)) }, icon('x')))),
-    h('div', { class: 'cl-item' },
-      h('input', { type: 'text', placeholder: '項目を追加（Enter）', 'data-f': 'cl-new', 'aria-label': 'チェックリストに追加',
+    h('div', { class: 'cl-item' }, icon('plus'),
+      h('input', { type: 'text', placeholder: '項目を追加', 'data-f': 'cl-new', 'aria-label': 'チェックリストに追加', enterkeyhint: 'done',
         onkeydown: (e) => {
           if (e.key !== 'Enter' || e.isComposing || e.keyCode === 229) return;
           e.preventDefault();
@@ -1591,73 +2258,70 @@ function renderDetail(force) {
           $('detail').querySelector('[data-f="cl-new"]').focus();
         } })));
 
-  const urls = [...new Set((t.notes.match(/https?:\/\/[^\s<>"'）」]+/g) || []))];
-  const notesField = h('div', { class: 'field' },
-    h('label', { class: 'f-label', for: 'd-notes' }, 'メモ'),
-    h('textarea', { id: 'd-notes', value: t.notes, 'data-f': 'notes', placeholder: '補足、リンク、次にやることなど',
-      oninput: (e) => { const v = e.target.value; editLater('notes', () => set({ notes: v }, false)); },
-      onblur: () => flushEdit('notes') }),
-    urls.length ? h('div', { class: 'links' }, urls.map((u) => h('a', { href: u, target: '_blank', rel: 'noopener noreferrer' }, u))) : null);
-
+  // メモの中の URL はリンクにする（入力中も更新）
+  const links = h('div', { class: 'links' });
+  const showLinks = (text) => links.replaceChildren(...[...new Set(text.match(/https?:\/\/[^\s<>"'）」]+/g) || [])]
+    .map((u) => h('a', { href: u, target: '_blank', rel: 'noopener noreferrer' }, u)));
+  showLinks(t.notes);
+  const notes = h('textarea', { class: 'd-notes', rows: '1', value: t.notes, 'data-f': 'notes', placeholder: 'メモ', 'aria-label': 'メモ',
+    oninput: (e) => { autoGrow(e.target); const v = e.target.value; editLater('notes', () => { set({ notes: v }, false); showLinks(v); }); },
+    onblur: () => flushEdit('notes') });
   const spent = t.focus.reduce((s, f) => s + f.min, 0);
-  const focusField = h('div', { class: 'field' },
-    h('div', { class: 'f-label' }, '集中した時間'),
-    h('div', { class: 'row' },
-      h('span', null, spent ? `${fmtMin(spent)}（${t.focus.length} 回）` : 'まだありません'),
-      t.estimate && spent ? h('span', { class: 'count' }, `見積もりの ${Math.round(spent / t.estimate * 100)}%`) : null));
 
   const nodes = [
     h('div', { class: 'd-head' },
-      h('button', { class: 'icon-btn', type: 'button', onclick: () => toggleDone(t.id), 'aria-pressed': String(t.done) }, icon('check'), t.done ? '完了済み' : '完了にする'),
+      h('button', { class: 'icon-btn', type: 'button', 'aria-label': '閉じる', title: '閉じる（Esc）', onclick: closeDetail }, icon(wide() ? 'x' : 'down')),
       h('span', { class: 'sp' }),
-      t.done ? null : h('button', { class: 'icon-btn', type: 'button', title: '集中する', 'aria-label': '集中タイマーを開始', onclick: () => startFocus(t.id) }, icon('play')),
+      h('button', { class: 'icon-btn', type: 'button', title: '日付を変更', 'aria-label': '日付を変更', onclick: () => openSchedule(t.id) }, icon('calendar')),
       h('button', { class: 'icon-btn', type: 'button', title: '複製', 'aria-label': '複製', onclick: () => duplicateTask(t.id) }, icon('copy')),
-      h('button', { class: 'icon-btn', type: 'button', title: '削除', 'aria-label': '削除', onclick: () => deleteTask(t.id) }, icon('trash')),
-      h('button', { class: 'icon-btn', type: 'button', title: '閉じる（Esc）', 'aria-label': '閉じる', onclick: closeDetail }, icon('x'))),
-    h('input', { class: 'd-title', type: 'text', value: t.title, 'data-f': 'title', 'aria-label': 'タイトル',
-      oninput: (e) => { const v = e.target.value.trim(); if (v) editLater('title', () => set({ title: v }, false)); },
-      onblur: (e) => { flushEdit('title'); if (!e.target.value.trim()) e.target.value = cur().title; } }),
-    t.done ? null : h('div', { class: 'toggles' },
-      h('button', { type: 'button', 'aria-pressed': String(t.myDay === T), onclick: () => set(t.myDay === T ? { myDay: null } : { myDay: T, someday: false }) }, icon('sun'), '今日やる'),
-      h('button', { type: 'button', 'aria-pressed': String(t.someday), onclick: () => set({ someday: !t.someday, myDay: null }) }, icon('box'), 'いつか')),
-    dateField, repeatField, prioField, projField, tagField, estField, clField, notesField, focusField,
+      h('button', { class: 'icon-btn', type: 'button', title: '削除', 'aria-label': '削除', onclick: () => deleteTask(t.id) }, icon('trash'))),
+    h('div', { class: 'd-titlebox' + (t.done ? ' task done' : '') },
+      h('button', {
+        class: `check p${t.priority}`, type: 'button', role: 'checkbox', 'aria-checked': String(t.done), 'aria-label': t.done ? '未完了に戻す' : '完了にする',
+        onclick: () => { if (!t.done) { playDone(); haptic(); } toggleDone(t.id); renderDetail(true); },
+      }, h('span', { class: 'ring' })),
+      h('input', { class: 'd-title', type: 'text', value: t.title, 'data-f': 'title', 'aria-label': 'タイトル',
+        oninput: (e) => { const v = e.target.value.trim(); if (v) editLater('title', () => set({ title: v }, false)); },
+        onblur: (e) => { flushEdit('title'); if (!e.target.value.trim()) e.target.value = cur().title; } })),
+    notes,
+    links,
+    h('div', { class: 'props' },
+      prop('date', 'calendar', '日付', t.due ? fmtDate(t.due, T) + (t.time ? ' ' + t.time : '') : 'なし', !!t.due, dateEd),
+      prop('repeat', 'repeat', '繰り返し', r ? describeRepeat(r) : 'なし', !!r, repeatEd),
+      prop('prio', 'flag', '優先度', ['なし', '高', '中', '低'][t.priority], !!t.priority, prioEd),
+      prop('project', 'folder', 'プロジェクト', t.project || 'なし', !!t.project, projEd),
+      prop('tags', 'tag', 'タグ', t.tags.length ? t.tags.join('、') : 'なし', !!t.tags.length, tagEd),
+      prop('est', 'timer', '見積もり', t.estimate ? fmtMin(t.estimate) : 'なし', !!t.estimate, estEd)),
+    t.done ? null : h('div', { class: 'props' },
+      toggleRow('sun', '今日やる', t.myDay === T, () => set(t.myDay === T ? { myDay: null } : { myDay: T, someday: false })),
+      toggleRow('box', 'いつか', t.someday, () => set({ someday: !t.someday, myDay: null }))),
+    h('div', { class: 'sec-h' }, `チェックリスト${cl.length ? `  ${cl.filter((c) => c.done).length}/${cl.length}` : ''}`),
+    clCard,
+    h('div', { class: 'sec-h' }, '集中'),
+    h('div', { class: 'props', style: 'padding:12px 14px' },
+      h('div', { class: 'row', style: 'margin-bottom:10px' },
+        h('span', { class: 'muted' }, spent ? `これまで ${fmtMin(spent)}（${t.focus.length} 回）` : 'まだ記録はありません'),
+        t.estimate && spent ? h('span', { class: 'count', style: 'margin-left:auto' }, `見積もりの ${Math.round(spent / t.estimate * 100)}%`) : null),
+      t.done ? null : h('button', { class: 'big-btn btn-primary', type: 'button', onclick: () => startFocus(t.id) }, icon('play'), `${DATA.meta.pomo || 25} 分集中する`)),
     h('div', { class: 'd-foot' },
-      h('div', null, `作成 ${fmtStamp(t.createdAt)}`),
-      h('div', null, `更新 ${fmtStamp(t.updatedAt)}`),
+      h('div', null, `作成 ${fmtStamp(t.createdAt)} · 更新 ${fmtStamp(t.updatedAt)}`),
       t.done ? h('div', null, `完了 ${fmtStamp(t.doneAt)}`) : null),
   ];
   p.dataset.id = t.id;
   p.replaceChildren(...nodes);
+  autoGrow(notes);
   p.scrollTop = scroll;
   if (focusKey) p.querySelector(`[data-f="${CSS.escape(focusKey)}"]`)?.focus();
 }
 
 /* =========================================================================
- * 集中タイマー（ポモドーロ）
+ * 集中タイマー（ポモドーロ）。開始すると全画面の集中モードになる
  * ========================================================================= */
 let timer = loadJSON(KEY.timer, null); // { taskId, title, kind: 'work'|'break', dur(秒), startedAt, endsAt, left }
-let audio = null;
 let barKey = '';
+let fmKey = '';
 const saveTimer = () => (timer ? saveJSON(KEY.timer, timer) : store.del(KEY.timer));
 const timeLeft = () => (timer.left != null ? timer.left : timer.endsAt - Date.now());
-function unlockAudio() {
-  try { audio = audio || new (window.AudioContext || window.webkitAudioContext)(); audio.resume?.(); } catch {}
-}
-function beep() {
-  if (!audio) return;
-  try {
-    [0, 0.25, 0.5].forEach((dt) => {
-      const o = audio.createOscillator(), g = audio.createGain();
-      o.frequency.value = 880;
-      g.gain.setValueAtTime(0.0001, audio.currentTime + dt);
-      g.gain.exponentialRampToValueAtTime(0.2, audio.currentTime + dt + 0.02);
-      g.gain.exponentialRampToValueAtTime(0.0001, audio.currentTime + dt + 0.18);
-      o.connect(g).connect(audio.destination);
-      o.start(audio.currentTime + dt);
-      o.stop(audio.currentTime + dt + 0.2);
-    });
-  } catch {}
-}
 function notify(title, body) {
   try { if ('Notification' in window && Notification.permission === 'granted') new Notification(title, { body }); } catch {}
 }
@@ -1673,7 +2337,7 @@ function startFocus(id) {
   saveTimer();
   unlockAudio();
   askNotify();
-  tick();
+  openFocusMode();
 }
 function logFocus(tm, min) {
   mutate({ t: 'focus', id: tm.taskId, session: { id: uid(), at: new Date(tm.startedAt).toISOString(), min } });
@@ -1688,6 +2352,7 @@ function stopFocus() {
   }
   timer = null;
   saveTimer();
+  closeFocusMode();
   tick();
 }
 function finishPhase() {
@@ -1695,6 +2360,7 @@ function finishPhase() {
   if (timer.kind === 'work') {
     logFocus(timer, Math.round(timer.dur / 60));
     beep();
+    haptic();
     notify('集中時間が終わりました', timer.title);
     const b = DATA.meta.brk || 5;
     // 画面を閉じている間に休憩時間も過ぎていたら、休憩は飛ばす
@@ -1707,6 +2373,14 @@ function finishPhase() {
   }
   saveTimer();
 }
+function openFocusMode() { if (!timer) return; fmKey = ''; $('focus').hidden = false; tick(); }
+function closeFocusMode() {
+  if ($('focus').hidden) return;
+  $('focus').hidden = true;
+  $('focus').replaceChildren();
+  fmKey = '';
+  tick(); // 下の小さなバーをすぐ出す
+}
 function tick() {
   const bar = $('focusBar');
   if (!cfg || $('app').hidden) { bar.hidden = true; return; }
@@ -1714,6 +2388,7 @@ function tick() {
   if (!timer) {
     bar.hidden = true;
     barKey = '';
+    if (!$('focus').hidden) closeFocusMode();
     document.title = 'Todo';
     return;
   }
@@ -1721,106 +2396,129 @@ function tick() {
   const mmss = `${pad(Math.floor(left / 60000))}:${pad(Math.floor(left / 1000) % 60)}`;
   const paused = timer.left != null;
   const key = `${timer.kind}|${paused}|${timer.taskId}`;
+  const kind = timer.kind === 'work' ? '集中' : '休憩';
+  const ctrl = () => [
+    paused
+      ? h('button', { class: 'icon-btn', type: 'button', title: '再開', 'aria-label': '再開', onclick: (e) => { e.stopPropagation(); resumeFocus(); } }, icon('play'))
+      : h('button', { class: 'icon-btn', type: 'button', title: '一時停止', 'aria-label': '一時停止', onclick: (e) => { e.stopPropagation(); pauseFocus(); } }, icon('pause')),
+    timer.kind === 'work'
+      ? h('button', { class: 'icon-btn', type: 'button', title: '終了して記録', 'aria-label': '終了して記録', onclick: (e) => { e.stopPropagation(); stopFocus(); } }, icon('stop'))
+      : h('button', { class: 'icon-btn', type: 'button', title: '休憩を飛ばす', 'aria-label': '休憩を飛ばす', onclick: (e) => { e.stopPropagation(); stopFocus(); } }, icon('skip')),
+  ];
   if (key !== barKey) {
     barKey = key;
-    bar.replaceChildren(
-      h('span', { class: 'fb-kind' }, timer.kind === 'work' ? '集中' : '休憩'),
-      h('span', { class: 'fb-time', id: 'fbTime' }),
-      h('span', { class: 'fb-title' }, timer.title),
-      paused
-        ? h('button', { class: 'icon-btn', type: 'button', title: '再開', 'aria-label': '再開', onclick: resumeFocus }, icon('play'))
-        : h('button', { class: 'icon-btn', type: 'button', title: '一時停止', 'aria-label': '一時停止', onclick: pauseFocus }, icon('pause')),
-      timer.kind === 'work'
-        ? h('button', { class: 'icon-btn', type: 'button', title: '終了して記録', 'aria-label': '終了して記録', onclick: stopFocus }, icon('stop'))
-        : h('button', { class: 'icon-btn', type: 'button', title: '休憩を飛ばす', 'aria-label': '休憩を飛ばす', onclick: stopFocus }, icon('skip')));
+    bar.replaceChildren(h('span', { class: 'fb-kind' }, kind), h('span', { class: 'fb-time', id: 'fbTime' }), h('span', { class: 'fb-title' }, timer.title), ...ctrl());
   }
   $('fbTime').textContent = mmss;
-  bar.hidden = false;
-  document.title = `${mmss} ${timer.kind === 'work' ? '集中' : '休憩'}`;
+  const f = $('focus');
+  bar.hidden = !f.hidden;
+  if (!f.hidden) {
+    if (key !== fmKey) {
+      fmKey = key;
+      f.classList.toggle('brk', timer.kind === 'break');
+      f.replaceChildren(
+        h('button', { class: 'icon-btn fm-close', type: 'button', 'aria-label': '小さくする', title: '小さくする（Esc）', onclick: closeFocusMode }, icon('down')),
+        h('div', { class: 'fm-kind' }, kind),
+        h('div', { class: 'fm-ring' }, ringSvg(1, 220, 10), h('div', { class: 'fm-time', id: 'fmTime' })),
+        h('div', { class: 'fm-title' }, timer.title),
+        h('div', { class: 'fm-btns' }, ...ctrl()));
+    }
+    const v = f.querySelector('.val');
+    const c = +v.dataset.c;
+    v.style.strokeDashoffset = String(c * (1 - left / (timer.dur * 1000)));
+    $('fmTime').textContent = mmss;
+  }
+  document.title = `${mmss} ${kind}`;
 }
 
 /* =========================================================================
- * ダイアログ（使い方・設定）
+ * 使い方・設定
  * ========================================================================= */
-function openOverlay(node) {
-  const o = $('overlay');
-  o.replaceChildren(node);
-  o.hidden = false;
-  node.querySelector('button, input')?.focus();
-}
-function closeOverlay() { $('overlay').hidden = true; $('overlay').replaceChildren(); }
 function openHelp() {
   const rows = (pairs) => h('table', { class: 'kv' }, pairs.map(([k, v]) => h('tr', null, h('td', null, k), h('td', null, v))));
   const kbd = (...ks) => ks.map((k, i) => [i ? ' ' : null, h('kbd', null, k)]);
-  openOverlay(h('div', { class: 'dialog', role: 'dialog', 'aria-label': '使い方' },
-    h('h2', null, '使い方'),
-    h('h3', null, 'クイック追加（空白で区切って書く）'),
+  openSheet(h('div', null,
+    sheetHead('使い方'),
+    h('div', { class: 'gsec', style: 'margin-top:4px' }, '指で'),
     rows([
-      ['日付', '今日 明日 明後日 金曜 来週月曜 週末 来週 来月 10/15 15日 3日後'],
-      ['時刻', '15時 15時半 午後3時 15:30（日付と続けて 明日15時 でも可）'],
-      ['繰り返し', '毎日 平日 毎週 毎週月水金 隔週 毎月 毎月15日 毎月末 毎年 3日ごと'],
+      ['右にスワイプ', '完了'],
+      ['左にスワイプ', '日付を変える（今日・明日・週末・来週・いつか）'],
+      ['＋ ボタン', 'タスクを追加（開いたまま続けて書ける）'],
+      ['今日の計画', '期限の近いもの・優先度の高いものから今日やることを選ぶ'],
+    ]),
+    h('div', { class: 'gsec' }, '追加するときの書き方（空白で区切る）'),
+    rows([
+      ['日付', '今日 明日 金曜 来週月曜 週末 来月 10/15 15日 3日後'],
+      ['時刻', '15時 15時半 午後3時 15:30（明日15時 のように続けても可）'],
+      ['繰り返し', '毎日 平日 毎週月水金 隔週 毎月15日 毎月末 毎年 3日ごと'],
       ['プロジェクト', '#仕事'],
-      ['タグ', '@メール（いくつでも）'],
+      ['タグ', '@メール'],
       ['優先度', '!1（高） !2（中） !3（低）'],
       ['見積もり', '~30m ~1h ~90分'],
       ['いつか', 'いつか'],
-      ['そのまま書く', '\\明日 のように先頭に \\ を付ける'],
+      ['アイコン', 'タイトルの先頭に絵文字（例: 🏃 ジョギング）'],
+      ['そのまま書く', '\\明日 のように先頭に \\'],
     ]),
-    h('p', { class: 'hint' }, '例: 「明日15時 学会の資料を作る #研究 @PC !1 ~2h」'),
-    h('h3', null, 'キーボード'),
+    h('div', { class: 'gsec' }, 'キーボード'),
     rows([
-      [kbd('n'), 'タスクを追加'],
-      [kbd('/'), '検索'],
-      [kbd('j', 'k'), '下・上に移動'],
-      [kbd('Enter'), '詳細を開く'],
-      [kbd('x'), '完了 / 未完了'],
-      [kbd('t'), '今日やる'],
-      [kbd('s'), 'いつか'],
-      [kbd('1', '2', '3', '0'), '優先度 高・中・低・なし'],
-      [kbd('f'), '集中タイマー'],
-      [kbd('Delete'), '削除'],
-      [kbd('z'), '元に戻す'],
-      [[h('kbd', null, 'g'), ' → ', kbd('i', 't', 'u', 'a', 's', 'm', 'r', 'l')], '受信箱・今日・予定・すべて・いつか・マトリクス・レビュー・完了ログ'],
+      [kbd('n'), 'タスクを追加'], [kbd('/'), '検索'], [kbd('j', 'k'), '下・上に移動'], [kbd('Enter'), '詳細を開く'],
+      [kbd('x'), '完了 / 未完了'], [kbd('t'), '今日やる'], [kbd('s'), 'いつか'], [kbd('d'), '日付を変える'],
+      [kbd('1', '2', '3', '0'), '優先度 高・中・低・なし'], [kbd('f'), '集中タイマー'], [kbd('Delete'), '削除'], [kbd('z'), '元に戻す'],
+      [[h('kbd', null, 'g'), ' → ', kbd('t', 'u', 'i', 'a', 's', 'm', 'r', 'l')], '今日・予定・受信箱・すべて・いつか・マトリクス・レビュー・完了ログ'],
       [kbd('Esc'), '閉じる'],
     ]),
-    h('h3', null, '考え方'),
+    h('div', { class: 'gsec' }, '考え方'),
     rows([
       ['受信箱', '思いついたらまず書き出す。毎日、日付・プロジェクト・「いつか」を決めて空にする'],
       ['今日', '本当にやると決めたことだけ。見積もりの合計が作業可能時間に収まるようにする'],
+      ['タイムライン', '時刻を決めたタスクは 1 日の流れとして並び、空き時間が見える'],
       ['マトリクス', '「重要だが緊急でない」ことに時間を確保する'],
-      ['集中タイマー', '25 分集中して 5 分休む。かかった時間はタスクに記録される'],
+      ['集中', '25 分集中して 5 分休む。かかった時間はタスクに記録される'],
       ['週次レビュー', '週に一度、全体を見直して頭を空にする'],
     ]),
-    h('div', { class: 'dlg-foot' }, h('button', { type: 'button', class: 'btn-primary', onclick: closeOverlay }, '閉じる'))));
+    h('div', { class: 'dlg-foot' }, h('button', { type: 'button', class: 'btn-primary', onclick: closeSheet }, '閉じる'))),
+  { kind: 'help', label: '使い方' });
 }
+const ACCENTS = [['blue', '#2a78d6', '青'], ['green', '#13895c', '緑'], ['orange', '#d4581f', '橙'], ['purple', '#6a4fd8', '紫'], ['pink', '#cf3f78', '桃'], ['graphite', '#4a4a46', '墨']];
+function applyAccent() { document.documentElement.dataset.accent = store.get(KEY.accent) || 'blue'; }
 function openSettings() {
   const m = DATA.meta;
-  const num = (label, key, value, step, toStore) => h('div', { class: 'field' },
-    h('label', { class: 'f-label' }, label,
-      h('input', { type: 'number', min: '0', step, value: String(value), 'data-k': key, style: 'width:120px;display:block;margin-top:5px',
-        onchange: (e) => { const v = +e.target.value; if (v > 0) mutate({ t: 'meta', set: { [key]: toStore(v) } }); } })));
+  const curAccent = store.get(KEY.accent) || 'blue';
+  const soundOn = store.get(KEY.sound) !== 'off';
+  const num = (label, key, value, step, toStore) => h('div', { class: 'set-row' },
+    h('label', null, label),
+    h('input', { type: 'number', min: '0', step, value: String(value), 'data-k': key, 'aria-label': label,
+      onchange: (e) => { const v = +e.target.value; if (v > 0) mutate({ t: 'meta', set: { [key]: toStore(v) } }); } }));
   const perm = 'Notification' in window ? Notification.permission : 'unsupported';
-  openOverlay(h('div', { class: 'dialog', role: 'dialog', 'aria-label': '設定' },
-    h('h2', null, '設定'),
+  openSheet(h('div', null,
+    sheetHead('設定'),
+    h('div', { class: 'gsec', style: 'margin-top:4px' }, 'テーマカラー（この端末）'),
+    h('div', { class: 'swatches', role: 'radiogroup', 'aria-label': 'テーマカラー', style: 'margin:10px 0 4px' }, ACCENTS.map(([k, c, name]) =>
+      h('button', { class: 'swatch', type: 'button', role: 'radio', 'aria-checked': String(curAccent === k), 'aria-label': name, title: name, style: `background:${c}`,
+        onclick: () => { store.set(KEY.accent, k); applyAccent(); openSettings(); } }))),
+    h('div', { class: 'gsec' }, '動作'),
+    h('div', { class: 'set-row' }, h('span', { class: 'lbl' }, '完了したときの音（この端末）'),
+      h('button', { class: 'switch', type: 'button', role: 'switch', 'aria-checked': String(soundOn), 'aria-label': '完了したときの音',
+        onclick: () => { store.set(KEY.sound, soundOn ? 'off' : 'on'); if (!soundOn) { unlockAudio(); playDone(); } openSettings(); } })),
     num('1 日の作業可能時間（時間）', 'capacity', (Number.isFinite(m.capacity) ? m.capacity : 360) / 60, '0.5', (v) => Math.round(v * 60)),
     num('集中する時間（分）', 'pomo', m.pomo || 25, '5', (v) => Math.round(v)),
     num('休憩する時間（分）', 'brk', m.brk || 5, '1', (v) => Math.round(v)),
-    h('div', { class: 'field' },
-      h('div', { class: 'f-label' }, 'タイマー終了の通知'),
-      perm === 'granted' ? h('span', null, '許可されています')
-        : perm === 'denied' ? h('span', { class: 'hint' }, 'ブラウザの設定で拒否されています')
-          : perm === 'unsupported' ? h('span', { class: 'hint' }, 'このブラウザは対応していません')
-            : h('button', { type: 'button', onclick: () => { askNotify(); closeOverlay(); } }, '通知を許可する')),
-    h('div', { class: 'field' },
-      h('div', { class: 'f-label' }, 'データ'),
-      h('a', { href: `https://github.com/${cfg.repo}/commits/HEAD/${cfg.path}`, target: '_blank', rel: 'noopener noreferrer' }, 'GitHub で変更履歴を見る')),
+    h('div', { class: 'set-row' }, h('span', { class: 'lbl' }, 'タイマー終了の通知'),
+      perm === 'granted' ? h('span', { class: 'muted' }, '許可済み')
+        : perm === 'denied' ? h('span', { class: 'muted' }, 'ブラウザで拒否')
+          : perm === 'unsupported' ? h('span', { class: 'muted' }, '非対応')
+            : h('button', { type: 'button', onclick: () => { askNotify(); closeSheet(); } }, '許可する')),
+    h('div', { class: 'set-row' }, h('span', { class: 'lbl' }, 'データ'),
+      h('a', { href: `https://github.com/${cfg.repo}/commits/HEAD/${cfg.path}`, target: '_blank', rel: 'noopener noreferrer' }, '変更履歴')),
+    h('p', { class: 'hint' }, 'ホーム画面に追加すると、アプリのように全画面で使えます（iPhone は共有ボタン →「ホーム画面に追加」）。'),
     h('div', { class: 'dlg-foot' },
       h('button', { type: 'button', class: 'btn-danger', onclick: () => {
         if (st.pending.length && !confirm('まだ保存していない変更があります。破棄して接続を解除しますか？')) return;
-        closeOverlay();
+        closeSheet();
         logout();
       } }, '接続解除'),
-      h('button', { type: 'button', class: 'btn-primary', onclick: closeOverlay }, '閉じる'))));
+      h('button', { type: 'button', class: 'btn-primary', onclick: closeSheet }, '閉じる'))),
+  { kind: 'settings', label: '設定' });
 }
 
 /* =========================================================================
@@ -1831,8 +2529,7 @@ const FIELDS = ['repo', 'path', 'token'];
 function showSetup(bad = [], detail) {
   document.title = '';
   $('app').hidden = true;
-  $('focusBar').hidden = true;
-  $('toast').hidden = true;
+  for (const id of ['focusBar', 'focus', 'toast', 'sheet', 'backdrop', 'detail']) $(id).hidden = true;
   $('setup').hidden = false;
   for (const id of FIELDS) $(id).classList.toggle('bad', bad.includes(id));
   if (detail) console.warn(detail);
@@ -1906,7 +2603,8 @@ function logout(bad, detail) {
   clearTimeout(st.timer);
   timer = null;
   closeDetail();
-  closeOverlay();
+  closeSheet();
+  closeFocusMode();
   $('content').replaceChildren();
   showSetup(bad || [], detail);
 }
@@ -1925,21 +2623,84 @@ for (const id of FIELDS) {
   });
 }
 
-$('quick').addEventListener('submit', (e) => { e.preventDefault(); addFromQuick(); });
-$('quickInput').addEventListener('input', updateQuickChips);
+$('fab').append(icon('plus'));
+$('search').before(icon('search'));
+$('fab').addEventListener('click', () => { unlockAudio(); openQuickAdd(); });
+$('backdrop').addEventListener('click', closeSheet);
+$('search').addEventListener('input', (e) => onSearch(e.target.value));
+$('helpBtn').append(icon('help'));
+$('settingsBtn').append(icon('gear'));
+$('retryBtn').append(icon('sync'));
+$('helpBtn').addEventListener('click', openHelp);
+$('settingsBtn').addEventListener('click', openSettings);
+const retry = () => (st.pending.length ? sync() : reload(false));
+$('retryBtn').addEventListener('click', retry);
+$('syncPill').addEventListener('click', retry);
+$('undoBtn').addEventListener('click', undo);
+$('focusBar').addEventListener('click', openFocusMode);
+document.addEventListener('pointerdown', unlockAudio, { once: true, capture: true });
+window.visualViewport?.addEventListener('resize', trackKeyboard);
+window.visualViewport?.addEventListener('scroll', trackKeyboard);
 
-$('search').addEventListener('input', (e) => {
-  const q = e.target.value;
-  if (q.trim()) { view = { type: 'search', q }; selId = null; render(); } else setView(prevView);
+// 行のスワイプ（右 = 完了、左 = 日付を変える）
+const SWIPE_T = 72;
+const sw = { active: false };
+let suppressClick = false;
+$('content').addEventListener('pointerdown', (e) => {
+  if (e.pointerType === 'mouse' && e.button !== 0) return;
+  const inner = e.target.closest('.task-inner');
+  if (!inner || e.target.closest('button:not(.body), a, input, textarea, select')) return;
+  const li = inner.closest('.task');
+  Object.assign(sw, { active: true, decided: false, horizontal: false, el: li, inner, id: li.dataset.id, x0: e.clientX, y0: e.clientY, dx: 0, pid: e.pointerId });
 });
+document.addEventListener('pointermove', (e) => {
+  if (!sw.active || e.pointerId !== sw.pid) return;
+  const dx = e.clientX - sw.x0;
+  const dy = e.clientY - sw.y0;
+  if (!sw.decided) {
+    if (Math.abs(dx) < 10 && Math.abs(dy) < 10) return;
+    sw.decided = true;
+    sw.horizontal = Math.abs(dx) > Math.abs(dy) * 1.4;
+    if (!sw.horizontal) { sw.active = false; return; }
+    sw.el.classList.add('swiping');
+    try { sw.inner.setPointerCapture(e.pointerId); } catch {}
+  }
+  sw.dx = dx;
+  const lim = sw.el.offsetWidth * 0.6;
+  sw.inner.style.transform = `translateX(${Math.max(-lim, Math.min(lim, dx))}px)`;
+  sw.el.dataset.dir = dx > 0 ? 'right' : 'left';
+  const armed = Math.abs(dx) > SWIPE_T;
+  if (armed && !sw.armed) haptic();
+  sw.armed = armed;
+  sw.el.classList.toggle('arm-done', dx > SWIPE_T);
+  sw.el.classList.toggle('arm-sched', dx < -SWIPE_T);
+}, { passive: true });
+function endSwipe(e, cancelled) {
+  if (!sw.active || e.pointerId !== sw.pid) return;
+  sw.active = false;
+  if (!sw.horizontal) return;
+  suppressClick = true;
+  setTimeout(() => { suppressClick = false; }, 60);
+  const { el, inner, id, dx } = sw;
+  sw.armed = false;
+  inner.style.transition = 'transform .2s ease';
+  inner.style.transform = '';
+  setTimeout(() => { inner.style.transition = ''; el.classList.remove('swiping', 'arm-done', 'arm-sched'); }, 200);
+  if (cancelled) return;
+  if (dx > SWIPE_T) completeTask(id, el);
+  else if (dx < -SWIPE_T) openSchedule(id);
+}
+document.addEventListener('pointerup', (e) => endSwipe(e, false));
+document.addEventListener('pointercancel', (e) => endSwipe(e, true));
 
 $('content').addEventListener('click', (e) => {
+  if (suppressClick) { suppressClick = false; return; }
   const a = e.target.closest('[data-act]');
   if (!a) return;
   const li = a.closest('.task');
   const id = li && li.dataset.id;
   switch (a.dataset.act) {
-    case 'toggle': toggleDone(id); break;
+    case 'toggle': completeTask(id, li); break;
     case 'open': openDetail(id); break;
     case 'myday': toggleMyDay(id); break;
     case 'focus': startFocus(id); break;
@@ -1963,18 +2724,6 @@ function moveSel(delta) {
   next.scrollIntoView({ block: 'nearest' });
 }
 
-$('menuBtn').append(icon('menu'));
-$('helpBtn').append(icon('help'));
-$('settingsBtn').append(icon('gear'));
-$('retryBtn').append(icon('sync'));
-$('menuBtn').addEventListener('click', () => document.body.classList.toggle('drawer'));
-$('scrim').addEventListener('click', () => document.body.classList.remove('drawer'));
-$('helpBtn').addEventListener('click', openHelp);
-$('settingsBtn').addEventListener('click', openSettings);
-$('retryBtn').addEventListener('click', () => (st.pending.length ? sync() : reload(false)));
-$('undoBtn').addEventListener('click', undo);
-$('overlay').addEventListener('click', (e) => { if (e.target === $('overlay')) closeOverlay(); });
-
 // キーボード操作
 let gWait = false;
 document.addEventListener('keydown', (e) => {
@@ -1982,14 +2731,14 @@ document.addEventListener('keydown', (e) => {
   const el = e.target;
   const typing = el.tagName === 'INPUT' || el.tagName === 'TEXTAREA' || el.tagName === 'SELECT' || el.isContentEditable;
   if (e.key === 'Escape') {
-    if (!$('overlay').hidden) closeOverlay();
+    if (!$('focus').hidden) closeFocusMode();
+    else if (!$('sheet').hidden) closeSheet();
     else if (typing) el.blur();
     else if (detailId) closeDetail();
-    else if (document.body.classList.contains('drawer')) document.body.classList.remove('drawer');
     else { selId = null; markSel(); }
     return;
   }
-  if (!$('overlay').hidden) return;
+  if (!$('sheet').hidden || !$('focus').hidden) return;
   if (typing || e.altKey) return;
   if (e.metaKey || e.ctrlKey) {
     if (e.key === 'z') { e.preventDefault(); undo(); }
@@ -2005,14 +2754,15 @@ document.addEventListener('keydown', (e) => {
   const sel = selId && findTask(selId) ? selId : null;
   switch (e.key) {
     case 'g': gWait = true; setTimeout(() => { gWait = false; }, 1500); break;
-    case 'n': case 'q': e.preventDefault(); $('quickInput').focus(); break;
-    case '/': e.preventDefault(); document.body.classList.add('drawer'); $('search').focus(); break;
+    case 'n': case 'q': e.preventDefault(); unlockAudio(); openQuickAdd(); break;
+    case '/': e.preventDefault(); if (wide()) $('search').focus(); else { setView({ type: 'browse' }); mSearch?.querySelector('input').focus(); } break;
     case 'j': case 'ArrowDown': e.preventDefault(); moveSel(1); break;
     case 'k': case 'ArrowUp': e.preventDefault(); moveSel(-1); break;
     case 'Enter': case 'e': if (sel) { e.preventDefault(); openDetail(sel); } break;
-    case 'x': case ' ': if (sel) { e.preventDefault(); toggleDone(sel); } break;
+    case 'x': case ' ': if (sel) { e.preventDefault(); completeTask(sel); } break;
     case 't': if (sel) toggleMyDay(sel); break;
     case 's': if (sel) toggleSomeday(sel); break;
+    case 'd': if (sel) openSchedule(sel); break;
     case '1': case '2': case '3': case '0': if (sel) setPriority(sel, +e.key); break;
     case 'f': if (sel) startFocus(sel); break;
     case 'Delete': case 'Backspace': if (sel) { e.preventDefault(); deleteTask(sel); } break;
@@ -2045,7 +2795,7 @@ document.addEventListener('visibilitychange', () => {
 setInterval(() => {
   if (!cfg || document.visibilityState !== 'visible') return;
   if (st.pending.length) sync(); else reload(true);
-  if (renderedDay !== todayYmd()) render();
+  if (renderedDay !== todayYmd() || view.type === 'today') render(); // 今日のタイムラインの現在時刻も進める
 }, 60000);
 setInterval(tick, 1000);
 window.addEventListener('online', () => { if (cfg) sync(); });
@@ -2060,6 +2810,9 @@ window.addEventListener('beforeunload', (ev) => {
  * 一度接続した端末では、その端末に保存した値を使う
  * ========================================================================= */
 (function init() {
+  applyAccent();
+  // ホーム画面に追加したときにオフラインでも開けるようにする（GitHub API の通信には関与しない）
+  if ('serviceWorker' in navigator && location.protocol !== 'file:') navigator.serviceWorker.register('sw.js').catch(() => {});
   const token = store.get(KEY.token);
   const repo = store.get(KEY.repo);
   const path = store.get(KEY.path);
