@@ -1397,6 +1397,7 @@ function render() {
   if ($('app').hidden) return;
   DATA = current();
   computePlan();
+  schedulePlanPublish();
   const T = todayYmd();
   renderedDay = T;
   const model = navModel(DATA, T);
@@ -2018,7 +2019,7 @@ function tipCard() {
  * データ用リポジトリの calendar.json（Google Apps Script が 1 時間ごとに書き出す）を読むだけ。
  * ブラウザから Google には一切つながない
  * ========================================================================= */
-let CAL = { events: [], calendars: [], sleep: [], errors: [], updatedAt: null, state: 'none', fetchedAt: 0 };
+let CAL = { events: [], calendars: [], sleep: [], errors: [], proposalCalendar: '', updatedAt: null, state: 'none', fetchedAt: 0 };
 const sidePath = (name) => cfg.path.replace(/[^/]*$/, name);
 function setCal(data, state) {
   const ok = (e) => e && typeof e.title === 'string' && typeof e.start === 'string' && typeof e.end === 'string';
@@ -2027,17 +2028,19 @@ function setCal(data, state) {
     events: Array.isArray(data?.events) ? data.events.filter(ok) : [],
     calendars: Array.isArray(data?.calendars) ? data.calendars : [],
     sleep: Array.isArray(data?.sleep) ? data.sleep.filter(okSleep) : [],
+    proposalCalendar: typeof data?.proposalCalendar === 'string' ? data.proposalCalendar : '',
     errors: Array.isArray(data?.errors) ? data.errors.map(String) : [],
     updatedAt: data?.updatedAt || null, state, fetchedAt: CAL.fetchedAt,
   };
 }
 // todos.json と同じ場所にある、Apps Script が書くファイルを読む
-async function readSide(name) {
+async function readSideFile(name) {
   const f = await gh('GET', contentsUrlFor(sidePath(name)));
   let b64 = f.content;
   if (!b64 && f.sha && f.size > 0) b64 = (await gh('GET', `/repos/${cfg.repo}/git/blobs/${f.sha}`)).content;
-  return JSON.parse((b64 && b64decode(b64)) || '{}');
+  return { data: JSON.parse((b64 && b64decode(b64)) || '{}'), sha: f.sha };
 }
+const readSide = async (name) => (await readSideFile(name)).data;
 async function fetchCalendar() {
   if (!cfg) return;
   CAL.fetchedAt = Date.now();
@@ -2052,7 +2055,11 @@ async function fetchCalendar() {
     setCal(null, 'none');
     store.del(KEY.cal);
   }
-  if (cfg) { render(); refreshPlan(); }
+  if (CAL.state === 'ok') await fetchPlanRemote(key);
+  if (!cfg || cfgKey() !== key) return;
+  calReady = true;
+  render();
+  refreshPlan();
 }
 
 /* =========================================================================
@@ -2133,6 +2140,8 @@ function planSchedule(input) {
   const cap = Number.isFinite(meta.capacity) && meta.capacity > 0 ? meta.capacity : 360;
   const now = input.now;
   const today = ymd(now);
+  const nowMin = minOfDay(now, parseYmd(today));
+  const prevItems = ((input.prev && input.prev.items) || []).filter((p) => p && typeof p.taskId === 'string' && YMD_RE.test(p.date) && HM_RE.test(p.start || '') && HM_RE.test(p.end || ''));
   const events = input.events || [];
   const sleep = input.sleep || [];
   const all = (data.todos || []).filter((t) => t && typeof t === 'object');
@@ -2158,7 +2167,17 @@ function planSchedule(input) {
     const noon = new Date(date.getTime() + 12 * 3600000);
     const wake = sleep.filter((x) => x.end > date && x.end <= noon).sort((x, y) => y.end - x.end)[0];
     if (wake) start = Math.max(start, minOfDay(wake.end, date));
-    if (i === 0) start = Math.max(start, Math.ceil((minOfDay(now, date) + 1) / 15) * 15);
+    // 今日は今の時刻から。ただし前回の提案で、ちょうど進行中のものは終わるまで残せるよう、空きはその開始から数える
+    let freeFrom = start;
+    if (i === 0) {
+      const ruleStart = start;
+      start = Math.max(start, Math.ceil((nowMin + 1) / 15) * 15);
+      freeFrom = start;
+      for (const p of prevItems) {
+        const ps = hmToMin(p.start);
+        if (p.date === k && ps >= ruleStart && ps < freeFrom && hmToMin(p.end) > nowMin) freeFrom = ps;
+      }
+    }
     const bed = sleep.filter((x) => x.start >= noon && x.start < new Date(date.getTime() + 36 * 3600000)).sort((x, y) => x.start - y.start)[0];
     const end = Math.min(bed ? minOfDay(bed.start, date) - R.sleepGap : R.dayEnd * 60, 24 * 60 - 1); // 日付はまたがない
     const busy = [];
@@ -2174,7 +2193,7 @@ function planSchedule(input) {
     for (const m of R.meals) busy.push([m[0] * 60, m[1] * 60]);
     const day = {
       k, date, isLab: !!labEv, labWord: labEv ? R.labWords.find((w) => has(labEv.title, [w])) : '',
-      start, end, free: [], load: 0, deep: 0,
+      start, freeFrom, end, free: [], load: 0, deep: 0,
       physical: dayEvents.some((e) => has(e.title, R.physicalWords)),
       budget: Math.max(0, cap - eventMin),
     };
@@ -2188,7 +2207,7 @@ function planSchedule(input) {
       if (kindOf(t) === 'deep') day.deep += d;
       if (kindOf(t) === 'physical') day.physical = true;
     }
-    day.free = start < end ? subtractRanges([[start, end]], busy) : [];
+    day.free = freeFrom < end ? subtractRanges([[freeFrom, end]], busy) : [];
     days.push(day);
   }
   const dayOf = Object.fromEntries(days.map((d) => [d.k, d]));
@@ -2252,14 +2271,15 @@ function planSchedule(input) {
   };
   // 前回の提案がまだ有効なら、その時刻のまま残す
   const prevBy = {};
-  for (const p of (input.prev && input.prev.items) || []) if (p && typeof p.taskId === 'string') prevBy[p.taskId] = p;
+  for (const p of prevItems) prevBy[p.taskId] = p;
   const keep = (t) => {
     const p = prevBy[t.id];
     const day = p && dayOf[p.date];
-    if (!day || !allowedDays(t).includes(day) || !HM_RE.test(p.start || '') || !HM_RE.test(p.end || '')) return false;
+    if (!day || !allowedDays(t).includes(day)) return false;
     const dur = durOf(t);
     const s = hmToMin(p.start);
-    if (s < day.start || s + dur !== hmToMin(p.end) || !day.free.some((f) => f[0] <= s && s + dur <= f[1])) return false;
+    const running = day === days[0] && s >= day.freeFrom && s + dur > nowMin; // 進行中
+    if ((s < day.start && !running) || s + dur !== hmToMin(p.end) || !day.free.some((f) => f[0] <= s && s + dur <= f[1])) return false;
     if (!fits(t, day, s, s + dur, 'normal')) return false;
     place(t, day, s, dur, 'normal');
     return true;
@@ -2275,7 +2295,7 @@ function planSchedule(input) {
       // 空きの途中から始めてよい（朝を避ける・研究室の日の「自宅で」は夕方から）
       const from = Math.max(mode === 'late' ? R.goldenEnd * 60 : 0, 0);
       for (const day of dlist) {
-        const lo = Math.max(from, t.place === 'home' && day.isLab ? R.eveningStart * 60 : 0);
+        const lo = Math.max(from, day.start, t.place === 'home' && day.isLab ? R.eveningStart * 60 : 0);
         for (const f of day.free) {
           const s = Math.max(f[0], lo);
           if (s + dur <= f[1] && fits(t, day, s, s + dur, mode)) { place(t, day, s, dur, mode); return; }
@@ -2304,13 +2324,13 @@ function planSchedule(input) {
   };
 }
 let PLAN = { items: [], unplaced: [], summary: '', on: false };
-let planPrev; // 前回の結果（未読み込みは undefined）
+let planPrev; // 前回の結果 { items, at }（未読み込みは undefined）
 const suggestOn = () => DATA.meta.suggest !== false;
 function computePlan() {
   if (!cfg || !suggestOn()) { PLAN = { items: [], unplaced: [], summary: '', on: false }; return; }
   if (planPrev === undefined) {
     const c = loadJSON(KEY.planPrev, null);
-    planPrev = c && c.key === cfgKey() && Array.isArray(c.items) ? { items: c.items } : null;
+    planPrev = c && c.key === cfgKey() && Array.isArray(c.items) ? { items: c.items, at: c.at || 0 } : null;
   }
   const valid = (e) => !isNaN(e.start) && !isNaN(e.end);
   const events = CAL.events.map((ev) => (ev.allDay
@@ -2319,10 +2339,64 @@ function computePlan() {
   const sleep = CAL.sleep.map((x) => ({ start: new Date(x.start), end: new Date(x.end) })).filter(valid);
   const p = planSchedule({ now: new Date(), todos: DATA, events, sleep, prev: planPrev, rules: planRules(DATA.meta) });
   PLAN = { ...p, on: true };
-  if (!planPrev || JSON.stringify(planPrev.items) !== JSON.stringify(p.items)) {
-    planPrev = { items: p.items };
-    saveJSON(KEY.planPrev, { key: cfgKey(), items: p.items });
+  if (!planPrev || JSON.stringify(planPrev.items) !== JSON.stringify(p.items)) setPlanPrev(p.items, Date.now());
+}
+function setPlanPrev(items, at) {
+  planPrev = { items, at };
+  saveJSON(KEY.planPrev, { key: cfgKey(), items, at });
+}
+
+/* ---------- 提案を Google カレンダーへ ----------
+ * 提案を plan.json に書くと、Apps Script が Google カレンダー（000_AI提案）に写す。
+ * Google カレンダーで別の予定表へ移す・時間を動かすと決定、消すとその日は見送り（Apps Script が todos.json に書く）。
+ * Apps Script を設定していない（calendar.json が無い）ときは書かない */
+let planRemote = { items: null, sha: null }; // 最後に読んだ・書いた plan.json
+let planPubTimer = 0;
+let planPublishDelay = 15000; // 続けて変わるときは、落ち着いてから 1 回だけ書く
+let calReady = false; // このセッションで calendar.json を読み終えたか
+async function fetchPlanRemote(key) {
+  try {
+    const f = await readSideFile('plan.json');
+    if (!cfg || cfgKey() !== key) return;
+    const items = Array.isArray(f.data.items) ? f.data.items : [];
+    planRemote = { items, sha: f.sha };
+    // 他の端末が後から決めた提案を、続きの元にする（端末ごとに提案がずれないように）
+    const at = Date.parse(f.data.generatedAt) || 0;
+    if (!planPrev || at > (planPrev.at || 0)) setPlanPrev(items.map(({ taskId, date, start, end, reason }) => ({ taskId, date, start, end, reason })), at);
+  } catch (e) {
+    if (e.status === 404) planRemote = { items: [], sha: null };
+    else console.warn('plan:', explain(e));
   }
+}
+const planItemsOut = () => (PLAN.on ? PLAN.items : []).map((p) => ({ taskId: p.taskId, title: findTask(p.taskId)?.title || '', date: p.date, start: p.start, end: p.end, reason: p.reason }));
+function schedulePlanPublish() {
+  if (!cfg || CAL.state !== 'ok' || !calReady || planRemote.items === null) return;
+  if (JSON.stringify(planItemsOut()) === JSON.stringify(planRemote.items)) { clearTimeout(planPubTimer); planPubTimer = 0; return; }
+  if (!planPubTimer) planPubTimer = setTimeout(publishPlan, planPublishDelay);
+}
+async function publishPlan() {
+  planPubTimer = 0;
+  if (!cfg || CAL.state !== 'ok') return;
+  if (!st.loaded || st.pending.length || st.syncing) { planPubTimer = setTimeout(publishPlan, planPublishDelay); return; } // タスクの保存が先
+  const key = cfgKey();
+  const items = planItemsOut();
+  if (JSON.stringify(items) === JSON.stringify(planRemote.items)) return;
+  const body = { version: 1, items, summary: PLAN.on ? PLAN.summary : '', generatedAt: nowIso() };
+  for (let i = 0; i < 3; i++) {
+    try {
+      const res = await gh('PUT', contentsUrlFor(sidePath('plan.json')), {
+        message: 'plan: 提案を更新', content: b64encode(JSON.stringify(body, null, 2) + '\n'), ...(planRemote.sha ? { sha: planRemote.sha } : {}),
+      });
+      if (!cfg || cfgKey() !== key) return;
+      planRemote = { items, sha: res.content.sha };
+      if (planPrev) planPrev.at = Date.parse(body.generatedAt);
+      return;
+    } catch (e) {
+      if (e.status !== 409 && e.status !== 422) { console.warn('plan:', explain(e)); break; }
+      try { planRemote.sha = (await readSideFile('plan.json')).sha; } catch (e2) { if (e2.status === 404) planRemote.sha = null; else break; } // 書き手が提案だけなので、最新の上に書く
+    }
+  }
+  if (cfg && cfgKey() === key) planPubTimer = setTimeout(publishPlan, 60000);
 }
 // まだ使える提案（承認・完了・見送り・時間が過ぎたもの、アプリで日付を前にしたものは出さない）
 function liveProposals(d, T) {
@@ -2703,7 +2777,8 @@ function planBody() {
     const todays = live.filter((p) => p.date === T);
     body.push(h('div', { class: 'gsec', style: 'margin-top:12px;display:flex;align-items:baseline;gap:8px' }, '空き時間への提案', h('span', { class: 'sp', style: 'flex:1' }),
       todays.length > 1 ? h('button', { class: 'link-btn', type: 'button', onclick: () => acceptProposals(todays) }, `今日の ${todays.length} 件を承認`) : null));
-    body.push(h('p', { class: 'hint', style: 'margin:2px 0 6px' }, live.length ? PLAN.summary : '今は提案できるタスクはありません。'));
+    body.push(h('p', { class: 'hint', style: 'margin:2px 0 6px' }, live.length ? PLAN.summary : '今は提案できるタスクはありません。',
+      CAL.proposalCalendar ? `　Google カレンダーの「${CAL.proposalCalendar}」にも出ます（別のカレンダーへ移すと決定、消すとその日は見送り）。` : ''));
     let lastDay = '';
     for (const p of live) {
       if (p.date !== lastDay) { lastDay = p.date; body.push(h('div', { class: 'hint', style: 'margin:10px 2px 0;font-weight:700' }, `${fmtShort(p.date)} ${relWord(p.date, T)}`)); }
@@ -3487,6 +3562,10 @@ function logout(bad, detail) {
   vault.del('login');
   setCal(null, 'none');
   planPrev = undefined;
+  planRemote = { items: null, sha: null };
+  clearTimeout(planPubTimer);
+  planPubTimer = 0;
+  calReady = false;
   cfg = null;
   Object.assign(st, { base: null, sha: null, loaded: false, pending: [], syncing: false });
   clearTimeout(st.timer);
