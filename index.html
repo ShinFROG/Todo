@@ -71,9 +71,9 @@
     </p>
     <form id="setupForm">
       <label for="repo">データ用リポジトリ（owner/repo）</label>
-      <input id="repo" type="text" value="ShinFROG/Resource" autocomplete="off" spellcheck="false" required>
+      <input id="repo" type="text" placeholder="owner/repo" autocomplete="off" spellcheck="false" required>
       <label for="path">ファイル</label>
-      <input id="path" type="text" value="todos.json" autocomplete="off" spellcheck="false" required>
+      <input id="path" type="text" placeholder="例: data.json" autocomplete="off" spellcheck="false" required>
       <label for="token">トークン</label>
       <input id="token" type="password" autocomplete="off" spellcheck="false" required placeholder="github_pat_...">
       <div style="margin-top:16px"><button class="primary" id="connectBtn">接続する</button></div>
@@ -405,11 +405,15 @@ window.addEventListener('beforeunload', (ev) => {
 
 // ---- 起動
 (function init() {
+  // 初期値は持たない（公開ページに非公開リポジトリの名前を書かないため）。
+  // 一度接続した端末では、その端末に保存した値を使う。
   const token = store.get(KEY.token);
-  if (store.get(KEY.repo)) $('repo').value = store.get(KEY.repo);
-  if (store.get(KEY.path)) $('path').value = store.get(KEY.path);
-  if (token) {
-    cfg = { token, repo: $('repo').value, path: $('path').value };
+  const repo = store.get(KEY.repo);
+  const path = store.get(KEY.path);
+  if (repo) $('repo').value = repo;
+  if (path) $('path').value = path;
+  if (token && repo && path) {
+    cfg = { token, repo, path };
     showApp();
   } else {
     showSetup();
