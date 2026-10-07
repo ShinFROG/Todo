@@ -458,7 +458,7 @@
   }
   .sug .add.on { background: var(--ok); color: #fff; }
   .sug .add .ic { width: 18px; height: 18px; }
-  /* AI 秘書の提案（点線の枠。✓ で入れる、× で見送る） */
+  /* 空き時間への提案（点線の枠。✓ で入れる、× で見送る） */
   .tl-item.pp .tl-pill { background: transparent; border: 2px dashed var(--col); }
   .pp-card { display: flex; align-items: center; gap: 6px; min-width: 0; margin: 6px 0; padding: 8px 8px 8px 12px; border: 1.5px dashed var(--line); border-radius: 14px; }
   .pp-body { flex: 1; min-width: 0; text-align: left; background: none; border: 0; padding: 0; color: inherit; font: inherit; cursor: pointer; min-height: 0; }
@@ -470,6 +470,12 @@
   .pp-btn { flex: none; width: 36px; height: 36px; min-height: 0; padding: 0; border-radius: 50%; border: 0; display: grid; place-items: center; background: var(--chip); color: var(--muted); }
   .pp-btn.ok { background: var(--accent-soft); color: var(--accent); }
   .pp-btn .ic { width: 18px; height: 18px; }
+  .pp-card.pp-row { display: block; padding: 0 8px 8px 0; }
+  .pp-row .tasks { margin: 0; }
+  .pp-row .acts { display: none; } /* 今日やる・集中は詳細から。下の ✓ × と並べない */
+  .pp-foot { display: flex; align-items: center; gap: 6px; padding-left: 12px; }
+  .pp-foot .pp-why { flex: 1; min-width: 0; margin: 0; }
+  .pp-foot .pp-btn { width: 32px; height: 32px; }
   .pp-list { margin: 2px 0 4px; }
   .pp-list .pp-card { margin: 4px 0; }
   .pp-un { font-size: 13px; color: var(--muted); padding: 6px 2px; border-top: 1px solid var(--line); }
@@ -649,7 +655,7 @@ const API = 'https://api.github.com';
 const KEY = {
   token: 'todo.token', repo: 'todo.repo', path: 'todo.path',
   cache: 'todo.cache', pending: 'todo.pending', timer: 'todo.timer', view: 'todo.view',
-  accent: 'todo.accent', sound: 'todo.sound', cal: 'todo.cal', tip: 'todo.tip', plan: 'todo.plan',
+  accent: 'todo.accent', sound: 'todo.sound', cal: 'todo.cal', tip: 'todo.tip', planPrev: 'todo.planPrev',
 };
 const $ = (id) => document.getElementById(id);
 
@@ -1390,6 +1396,7 @@ function onSearch(q) {
 function render() {
   if ($('app').hidden) return;
   DATA = current();
+  computePlan();
   const T = todayYmd();
   renderedDay = T;
   const model = navModel(DATA, T);
@@ -2011,17 +2018,20 @@ function tipCard() {
  * データ用リポジトリの calendar.json（Google Apps Script が 1 時間ごとに書き出す）を読むだけ。
  * ブラウザから Google には一切つながない
  * ========================================================================= */
-let CAL = { events: [], calendars: [], updatedAt: null, state: 'none', fetchedAt: 0 };
+let CAL = { events: [], calendars: [], sleep: [], errors: [], updatedAt: null, state: 'none', fetchedAt: 0 };
 const sidePath = (name) => cfg.path.replace(/[^/]*$/, name);
 function setCal(data, state) {
   const ok = (e) => e && typeof e.title === 'string' && typeof e.start === 'string' && typeof e.end === 'string';
+  const okSleep = (x) => x && typeof x.start === 'string' && typeof x.end === 'string';
   CAL = {
     events: Array.isArray(data?.events) ? data.events.filter(ok) : [],
     calendars: Array.isArray(data?.calendars) ? data.calendars : [],
+    sleep: Array.isArray(data?.sleep) ? data.sleep.filter(okSleep) : [],
+    errors: Array.isArray(data?.errors) ? data.errors.map(String) : [],
     updatedAt: data?.updatedAt || null, state, fetchedAt: CAL.fetchedAt,
   };
 }
-// todos.json と同じ場所にある、GAS が書くファイル（calendar.json / plan.json）を読む
+// todos.json と同じ場所にある、Apps Script が書くファイルを読む
 async function readSide(name) {
   const f = await gh('GET', contentsUrlFor(sidePath(name)));
   let b64 = f.content;
@@ -2032,33 +2042,287 @@ async function fetchCalendar() {
   if (!cfg) return;
   CAL.fetchedAt = Date.now();
   const key = cfgKey();
-  const load = async (name, setter, cacheKey) => {
-    try {
-      const data = await readSide(name);
-      if (!cfg || cfgKey() !== key) return;
-      setter(data, 'ok');
-      saveJSON(cacheKey, { key, data });
-    } catch (e) {
-      if (e.status !== 404) { console.warn(name + ':', explain(e)); return; } // 前回の内容を使い続ける
-      setter(null, 'none');
-      store.del(cacheKey);
-    }
-  };
-  await Promise.all([load('calendar.json', setCal, KEY.cal), load('plan.json', setPlan, KEY.plan)]);
+  try {
+    const data = await readSide('calendar.json');
+    if (!cfg || cfgKey() !== key) return;
+    setCal(data, 'ok');
+    saveJSON(KEY.cal, { key, data });
+  } catch (e) {
+    if (e.status !== 404) { console.warn('calendar:', explain(e)); return; } // 前回の内容を使い続ける
+    setCal(null, 'none');
+    store.del(KEY.cal);
+  }
   if (cfg) { render(); refreshPlan(); }
 }
 
-/* ---------- AI 秘書の提案（plan.json）。GAS が 1 時間ごとに、未定のタスクを空き時間に並べて書く ---------- */
-let PLAN = { items: [], unplaced: [], summary: '', generatedAt: null, state: 'none' };
-function setPlan(data, state) {
-  const ok = (x) => x && typeof x.taskId === 'string' && YMD_RE.test(x.date) && HM_RE.test(x.start) && HM_RE.test(x.end) && x.end > x.start;
-  PLAN = {
-    items: Array.isArray(data?.items) ? data.items.filter(ok) : [],
-    unplaced: Array.isArray(data?.unplaced) ? data.unplaced.filter((x) => x && typeof x.taskId === 'string') : [],
-    summary: typeof data?.summary === 'string' ? data.summary : '',
-    generatedAt: typeof data?.generatedAt === 'string' ? data.generatedAt : null,
-    state,
+/* =========================================================================
+ * 空き時間への提案（アプリの中で計算する。AI は使わず、決まった手順なので同じ状況なら同じ結果）
+ * 日時の決まっていないタスクを、カレンダーの予定・睡眠・食事・余白を避けて、決まりごとどおりに並べる。
+ * ✓ で日時が入り、× でその日は見送り。前回の提案がまだ使えるなら、その時刻のまま残す（並べ替わらないように）
+ * ========================================================================= */
+const PLAN_RULES = {
+  days: 7,              // 何日先まで提案するか
+  dayStart: 5.5,        // 始められる時刻（5.5 = 5:30）
+  labDayStart: 7,       // 研究室の日（通勤がある日）の開始
+  dayEnd: 22,           // 睡眠の記録が無い日の終わり
+  sleepGap: 60,         // 寝る前に空ける時間（分）
+  meals: [[12, 13], [18.5, 19.5]],
+  buffer: 15,           // 予定やタスクのあいだに空ける時間（分）
+  goldenEnd: 12,        // 深い思考はできるだけこの時刻までに
+  eveningStart: 17,     // ここから後は軽い作業だけ
+  maxDeepPerDay: 240,   // 深い思考の 1 日の上限（分）
+  labWords: ['TX', '研究室', '大学', '出張'],
+  physicalWords: ['筋トレ', 'ジム', 'トレーニング', 'Training', 'ランニング', 'ヨガ'],
+};
+const KIND_LABEL = { deep: '深い思考', shallow: '事務・連絡', physical: '体を動かす', errand: '外出・用事' };
+const PLACE_LABEL = { lab: '研究室', home: '自宅' };
+// meta.planRules で決まりを変えられる（おかしな値は無視）
+function planRules(meta) {
+  const o = meta.planRules && typeof meta.planRules === 'object' ? meta.planRules : {};
+  const r = { ...PLAN_RULES };
+  for (const k of Object.keys(PLAN_RULES)) {
+    const v = o[k];
+    if (typeof PLAN_RULES[k] === 'number') { if (Number.isFinite(v) && v >= 0) r[k] = v; }
+    else if (k === 'meals') { if (Array.isArray(v)) r.meals = v.filter((m) => Array.isArray(m) && m.length === 2 && m.every(Number.isFinite)); }
+    else if (Array.isArray(v)) r[k] = v.filter((w) => typeof w === 'string' && w);
+  }
+  r.days = Math.max(1, Math.min(14, Math.round(r.days)));
+  return r;
+}
+// 実績（集中タイマーの時間）と見積もりの比。種類ごとに 3 件以上あれば使う（0.7〜2 倍）
+function estimateRatios(todos) {
+  const by = { all: [] };
+  for (const t of todos) {
+    if (!t.done || !(t.estimate > 0) || !Array.isArray(t.focus)) continue;
+    const spent = t.focus.reduce((s, f) => s + (Number(f.min) || 0), 0);
+    if (spent < 10) continue;
+    const k = t.kind || 'shallow';
+    (by[k] = by[k] || []).push(spent / t.estimate);
+    by.all.push(spent / t.estimate);
+  }
+  const out = {};
+  for (const [k, list] of Object.entries(by)) {
+    const a = list.sort((x, y) => x - y);
+    if (a.length < 3) continue;
+    const med = a.length % 2 ? a[(a.length - 1) / 2] : (a[a.length / 2 - 1] + a[a.length / 2]) / 2;
+    out[k] = Math.max(0.7, Math.min(2, med));
+  }
+  return out;
+}
+// 区間の引き算（分単位）。15 分に満たない空きは捨てる
+function subtractRanges(free, busy) {
+  let out = free.map((f) => f.slice());
+  for (const b of busy) {
+    const next = [];
+    for (const f of out) {
+      if (b[1] <= f[0] || b[0] >= f[1]) { next.push(f); continue; }
+      if (b[0] > f[0]) next.push([f[0], b[0]]);
+      if (b[1] < f[1]) next.push([b[1], f[1]]);
+    }
+    out = next;
+  }
+  return out.filter((f) => f[1] - f[0] >= 15).sort((a, b) => a[0] - b[0]);
+}
+const minOfDay = (t, day) => Math.round((t.getTime() - day.getTime()) / 60000);
+const mdLabel = (s) => `${+s.slice(5, 7)}/${+s.slice(8, 10)}`;
+// input: { now, todos（todos.json の中身）, events: [{title,start,end,allDay}]（Date）, sleep: [{start,end}], prev（前回の結果）, rules }
+function planSchedule(input) {
+  const R = input.rules || PLAN_RULES;
+  const data = input.todos || { todos: [] };
+  const meta = data.meta || {};
+  const cap = Number.isFinite(meta.capacity) && meta.capacity > 0 ? meta.capacity : 360;
+  const now = input.now;
+  const today = ymd(now);
+  const events = input.events || [];
+  const sleep = input.sleep || [];
+  const all = (data.todos || []).filter((t) => t && typeof t === 'object');
+  const active = all.filter((t) => !t.done);
+  const ratios = estimateRatios(all);
+  const kindOf = (t) => (KIND_LABEL[t.kind] ? t.kind : 'shallow');
+  const durOf = (t) => {
+    const r = ratios[kindOf(t)] || ratios.all || 1;
+    return Math.max(15, Math.min(240, Math.round(((t.estimate || 30) * r) / 5) * 5));
   };
+  const has = (title, words) => words.some((w) => String(title).includes(w));
+
+  // ---- 日ごとの枠 ----
+  const days = [];
+  for (let i = 0; i < R.days; i++) {
+    const date = addDays(parseYmd(today), i);
+    const k = ymd(date);
+    const next = addDays(date, 1);
+    const dayEvents = events.filter((e) => (e.allDay ? ymd(e.start) <= k && k < ymd(e.end) : e.start < next && e.end > date));
+    const labEv = dayEvents.find((e) => has(e.title, R.labWords));
+    let start = (labEv ? R.labDayStart : R.dayStart) * 60;
+    // 睡眠の記録: 朝は起きた時刻から、夜は寝る時刻の sleepGap 分前まで
+    const noon = new Date(date.getTime() + 12 * 3600000);
+    const wake = sleep.filter((x) => x.end > date && x.end <= noon).sort((x, y) => y.end - x.end)[0];
+    if (wake) start = Math.max(start, minOfDay(wake.end, date));
+    if (i === 0) start = Math.max(start, Math.ceil((minOfDay(now, date) + 1) / 15) * 15);
+    const bed = sleep.filter((x) => x.start >= noon && x.start < new Date(date.getTime() + 36 * 3600000)).sort((x, y) => x.start - y.start)[0];
+    const end = Math.min(bed ? minOfDay(bed.start, date) - R.sleepGap : R.dayEnd * 60, 24 * 60 - 1); // 日付はまたがない
+    const busy = [];
+    let eventMin = 0;
+    for (const e of dayEvents) {
+      if (e.allDay) continue;
+      const s = Math.max(0, minOfDay(e.start, date));
+      const f = Math.min(24 * 60, minOfDay(e.end, date));
+      if (f <= s) continue;
+      eventMin += f - s;
+      busy.push([s - R.buffer, f + R.buffer]);
+    }
+    for (const m of R.meals) busy.push([m[0] * 60, m[1] * 60]);
+    const day = {
+      k, date, isLab: !!labEv, labWord: labEv ? R.labWords.find((w) => has(labEv.title, [w])) : '',
+      start, end, free: [], load: 0, deep: 0,
+      physical: dayEvents.some((e) => has(e.title, R.physicalWords)),
+      budget: Math.max(0, cap - eventMin),
+    };
+    // 日時が決まっているタスクも埋まっている時間として扱う
+    for (const t of active) {
+      if (t.due !== k || !HM_RE.test(t.time || '')) continue;
+      const s = hmToMin(t.time);
+      const d = t.estimate || 30;
+      busy.push([s - R.buffer, s + d + R.buffer]);
+      day.load += d;
+      if (kindOf(t) === 'deep') day.deep += d;
+      if (kindOf(t) === 'physical') day.physical = true;
+    }
+    day.free = start < end ? subtractRanges([[start, end]], busy) : [];
+    days.push(day);
+  }
+  const dayOf = Object.fromEntries(days.map((d) => [d.k, d]));
+  const lastDay = days[days.length - 1].k;
+
+  // ---- 並べるタスク ----
+  // 「見送り」（planSkipUntil）は、その日までを避けるだけで、次の日以降には提案する
+  const skipped = (t, k) => !!t.planSkipUntil && k <= t.planSkipUntil;
+  const allowedDays = (t) => {
+    let list;
+    if (t.myDay === today) list = [days[0]];
+    else if (t.repeat && t.due && t.due >= today) list = dayOf[t.due] ? [dayOf[t.due]] : [];
+    else if (t.due && t.due >= today) list = days.filter((d) => d.k <= t.due);
+    else list = days;
+    return list.filter((d) => !skipped(t, d.k));
+  };
+  const prio = (t) => t.priority || 4;
+  const group = (t) => (t.myDay === today ? 0 : t.due && t.due < today ? 1 : t.due ? 2 : 3);
+  const cands = active.filter((t) => !t.someday && !t.time && t.id
+      && !(t.repeat && t.due && t.due > lastDay) // 繰り返しの次の回がまだ先
+      && !(t.myDay === today && skipped(t, today)))
+    .sort((a, b) => group(a) - group(b) || cmp(a.due || '~', b.due || '~') || prio(a) - prio(b) || cmp(a.createdAt || '', b.createdAt || '') || cmp(a.id, b.id));
+
+  // mode: golden = 深い思考を朝に / late = 事務などは朝を避ける / normal / over = 1 日の作業量を超えても入れる
+  const fits = (t, day, s, e, mode) => {
+    const kind = kindOf(t);
+    if (kind === 'deep' && e > R.eveningStart * 60) return false;
+    if (kind === 'deep' && mode === 'golden' && e > R.goldenEnd * 60) return false;
+    if (kind === 'deep' && day.deep + (e - s) > R.maxDeepPerDay) return false;
+    if (mode === 'late' && s < R.goldenEnd * 60) return false;
+    if (kind === 'physical' && day.physical) return false;
+    if (t.place === 'lab' && !day.isLab) return false;
+    if (t.place === 'home' && day.isLab && s < R.eveningStart * 60) return false;
+    if (mode !== 'over' && day.load + (e - s) > day.budget) return false;
+    return true;
+  };
+  const reasonFor = (t, day, s, dur, mode) => {
+    const r = [];
+    if (t.myDay === today) r.push('今日やると決めたもの');
+    else if (t.due && t.due < today) r.push('期限を過ぎています');
+    else if (t.due) r.push('締切 ' + mdLabel(t.due));
+    if (kindOf(t) === 'deep' && s + dur <= R.goldenEnd * 60) r.push('頭が冴えている朝に（深い思考）');
+    if (t.place === 'lab') r.push(`研究室の日（${day.labWord}）`);
+    if (t.place === 'home') r.push('自宅にいる時間');
+    if (kindOf(t) === 'physical') r.push('体を動かすのは 1 日 1 回');
+    if (s >= R.eveningStart * 60) r.push('夕方以降は軽い作業');
+    const ratio = ratios[kindOf(t)] || ratios.all;
+    if (ratio && Math.abs(ratio - 1) >= 0.15) r.push(`実績から見積もりの ${ratio.toFixed(1)} 倍で確保`);
+    if (mode === 'over') r.push('1 日の作業量を超えますが期限のため');
+    return r.join(' · ') || '空いている時間';
+  };
+  const items = [];
+  const unplaced = [];
+  const place = (t, day, s, dur, mode) => {
+    const e = s + dur;
+    day.free = subtractRanges(day.free, [[s - R.buffer, e + R.buffer]]);
+    day.load += dur;
+    if (kindOf(t) === 'deep') day.deep += dur;
+    if (kindOf(t) === 'physical') day.physical = true;
+    items.push({ taskId: t.id, date: day.k, start: minToHm(s), end: minToHm(e), reason: reasonFor(t, day, s, dur, mode) });
+  };
+  // 前回の提案がまだ有効なら、その時刻のまま残す
+  const prevBy = {};
+  for (const p of (input.prev && input.prev.items) || []) if (p && typeof p.taskId === 'string') prevBy[p.taskId] = p;
+  const keep = (t) => {
+    const p = prevBy[t.id];
+    const day = p && dayOf[p.date];
+    if (!day || !allowedDays(t).includes(day) || !HM_RE.test(p.start || '') || !HM_RE.test(p.end || '')) return false;
+    const dur = durOf(t);
+    const s = hmToMin(p.start);
+    if (s < day.start || s + dur !== hmToMin(p.end) || !day.free.some((f) => f[0] <= s && s + dur <= f[1])) return false;
+    if (!fits(t, day, s, s + dur, 'normal')) return false;
+    place(t, day, s, dur, 'normal');
+    return true;
+  };
+  // 残りは、決まりを満たす一番早い時間へ
+  const fill = (t) => {
+    const dur = durOf(t);
+    const dlist = allowedDays(t);
+    const kind = kindOf(t);
+    const modes = kind === 'deep' ? ['golden', 'normal'] : kind === 'shallow' || kind === 'errand' ? ['late', 'normal'] : ['normal'];
+    if (t.myDay === today || (t.due && t.due <= lastDay)) modes.push('over');
+    for (const mode of modes) {
+      // 空きの途中から始めてよい（朝を避ける・研究室の日の「自宅で」は夕方から）
+      const from = Math.max(mode === 'late' ? R.goldenEnd * 60 : 0, 0);
+      for (const day of dlist) {
+        const lo = Math.max(from, t.place === 'home' && day.isLab ? R.eveningStart * 60 : 0);
+        for (const f of day.free) {
+          const s = Math.max(f[0], lo);
+          if (s + dur <= f[1] && fits(t, day, s, s + dur, mode)) { place(t, day, s, dur, mode); return; }
+        }
+      }
+    }
+    const why = !dlist.length ? '見送り中'
+      : t.place === 'lab' && !dlist.some((d) => d.isLab) ? '研究室の日がありません'
+        : t.myDay === today ? `今日は ${dur} 分の空きがありません`
+          : t.due && t.due >= today ? `${mdLabel(t.due)} までに ${dur} 分の空きがありません`
+            : `${R.days} 日以内に ${dur} 分の空きがありません`;
+    unplaced.push({ taskId: t.id, reason: why });
+  };
+  // 「今日やる」と期限切れを先に。その中でも前回の提案を優先し、次に残りのタスク
+  const urgent = cands.filter((t) => group(t) <= 1);
+  const others = cands.filter((t) => group(t) > 1);
+  for (const list of [urgent, others]) list.filter((t) => !keep(t)).forEach(fill);
+
+  items.sort((a, b) => cmp(a.date + a.start, b.date + b.start));
+  const nToday = items.filter((x) => x.date === today).length;
+  return {
+    items, unplaced,
+    summary: items.length || unplaced.length
+      ? `${items.length} 件を提案（今日 ${nToday} 件）${unplaced.length ? `。入らなかったもの ${unplaced.length} 件` : ''}`
+      : '提案するタスクはありません',
+  };
+}
+let PLAN = { items: [], unplaced: [], summary: '', on: false };
+let planPrev; // 前回の結果（未読み込みは undefined）
+const suggestOn = () => DATA.meta.suggest !== false;
+function computePlan() {
+  if (!cfg || !suggestOn()) { PLAN = { items: [], unplaced: [], summary: '', on: false }; return; }
+  if (planPrev === undefined) {
+    const c = loadJSON(KEY.planPrev, null);
+    planPrev = c && c.key === cfgKey() && Array.isArray(c.items) ? { items: c.items } : null;
+  }
+  const valid = (e) => !isNaN(e.start) && !isNaN(e.end);
+  const events = CAL.events.map((ev) => (ev.allDay
+    ? { title: ev.title, start: parseYmd(ev.start), end: parseYmd(ev.end), allDay: true }
+    : { title: ev.title, start: new Date(ev.start), end: new Date(ev.end), allDay: false })).filter(valid);
+  const sleep = CAL.sleep.map((x) => ({ start: new Date(x.start), end: new Date(x.end) })).filter(valid);
+  const p = planSchedule({ now: new Date(), todos: DATA, events, sleep, prev: planPrev, rules: planRules(DATA.meta) });
+  PLAN = { ...p, on: true };
+  if (!planPrev || JSON.stringify(planPrev.items) !== JSON.stringify(p.items)) {
+    planPrev = { items: p.items };
+    saveJSON(KEY.planPrev, { key: cfgKey(), items: p.items });
+  }
 }
 // まだ使える提案（承認・完了・見送り・時間が過ぎたもの、アプリで日付を前にしたものは出さない）
 function liveProposals(d, T) {
@@ -2070,7 +2334,7 @@ function liveProposals(d, T) {
     if (!t || t.done || t.someday || t.time || p.date < T || (p.date === T && p.end <= nowHm)) continue;
     if (t.planSkipUntil && t.planSkipUntil >= p.date) continue;
     if (t.due && t.due >= T && p.date > t.due) continue;
-    out.push({ ...p, reason: typeof p.reason === 'string' ? p.reason : '', t });
+    out.push({ ...p, t });
   }
   return out;
 }
@@ -2092,13 +2356,16 @@ function skipProposal(p) {
   toast(`「${p.t.title}」は${p.date === T ? '今日' : fmtShort(p.date)}は見送りました`, { t: 'restore', tasks: [clone(p.t)] });
   refreshPlan();
 }
+const proposalButtons = (p) => [
+  h('button', { class: 'pp-btn ok', type: 'button', title: 'この時間に入れる', 'aria-label': `この時間に入れる: ${p.t.title}`, onclick: () => acceptProposals([p]) }, icon('check')),
+  h('button', { class: 'pp-btn', type: 'button', title: 'この日は見送る', 'aria-label': `見送る: ${p.t.title}`, onclick: () => skipProposal(p) }, icon('x')),
+];
 function proposalCard(p, withWhen) {
   return h('div', { class: 'pp-card', 'data-prop': p.t.id },
     h('button', { class: 'pp-body', type: 'button', title: '詳細を開く', onclick: () => openDetail(p.t.id) },
       h('div', { class: 'title' }, h('span', { class: 'pp-tag' }, icon('sparkle'), '提案'), withWhen ? h('span', { class: 'pp-when' }, withWhen) : null, p.t.title),
       p.reason ? h('div', { class: 'pp-why' }, p.reason) : null),
-    h('button', { class: 'pp-btn ok', type: 'button', title: 'この時間に入れる', 'aria-label': `承認: ${p.t.title}`, onclick: () => acceptProposals([p]) }, icon('check')),
-    h('button', { class: 'pp-btn', type: 'button', title: 'この日は見送る', 'aria-label': `見送る: ${p.t.title}`, onclick: () => skipProposal(p) }, icon('x')));
+    ...proposalButtons(p));
 }
 const CAL_COLORS = ['var(--c7)', 'var(--c3)', 'var(--c5)', 'var(--c4)', 'var(--c1)', 'var(--c2)'];
 function calColor(cid) {
@@ -2199,10 +2466,14 @@ function timeline(items, events, T, props = []) {
       continue;
     }
     if (p) {
+      // 今日の提案は、ふつうのタスクの行（丸で完了・スワイプ・タップで詳細）に、理由と ✓ × を添える
+      const [pe] = splitEmoji(p.t.title);
       out.push(h('div', { class: 'tl-item pp', style: `--h:${hgt}px;--col:${taskColor(p.t)}` },
         h('div', { class: 'tl-time' }, p.start, h('small', null, p.end)),
-        h('div', { class: 'tl-rail' }, h('span', { class: 'tl-pill', 'aria-hidden': 'true' })),
-        proposalCard(p)));
+        h('div', { class: 'tl-rail' }, h('span', { class: 'tl-pill', 'aria-hidden': 'true' }, pe || '')),
+        h('div', { class: 'pp-card pp-row', 'data-prop': p.t.id },
+          h('ul', { class: 'tasks' }, taskRow(p.t, T, { plan: true, hideDate: true, noEmoji: !!pe })),
+          h('div', { class: 'pp-foot' }, h('span', { class: 'pp-tag' }, icon('sparkle'), '提案'), h('span', { class: 'pp-why' }, p.reason), ...proposalButtons(p)))));
       continue;
     }
     const [emo] = splitEmoji(t.title);
@@ -2427,13 +2698,12 @@ function planBody() {
     sheetHead('今日の計画'),
     h('p', { class: 'hint', style: 'margin-top:-4px' }, `今日 ${today.length} 件 · 見積もり ${fmtMin(est)} / 使える時間 ${fmtMin(Math.max(0, cap - busy))}${busy ? `（予定 ${fmtMin(busy)}）` : ''}`),
   ];
-  if (PLAN.state === 'ok') {
+  if (PLAN.on) {
     const live = liveProposals(DATA, T);
     const todays = live.filter((p) => p.date === T);
-    body.push(h('div', { class: 'gsec', style: 'margin-top:12px;display:flex;align-items:baseline;gap:8px' }, 'AI 秘書の提案', h('span', { class: 'sp', style: 'flex:1' }),
+    body.push(h('div', { class: 'gsec', style: 'margin-top:12px;display:flex;align-items:baseline;gap:8px' }, '空き時間への提案', h('span', { class: 'sp', style: 'flex:1' }),
       todays.length > 1 ? h('button', { class: 'link-btn', type: 'button', onclick: () => acceptProposals(todays) }, `今日の ${todays.length} 件を承認`) : null));
-    body.push(h('p', { class: 'hint', style: 'margin:2px 0 6px' }, `${PLAN.summary || ''}${PLAN.generatedAt ? `（${fmtStamp(PLAN.generatedAt)} 作成）` : ''}`));
-    if (!live.length) body.push(h('p', { class: 'hint' }, '今出せる提案はありません。1 時間ごとに作り直します。'));
+    body.push(h('p', { class: 'hint', style: 'margin:2px 0 6px' }, live.length ? PLAN.summary : '今は提案できるタスクはありません。'));
     let lastDay = '';
     for (const p of live) {
       if (p.date !== lastDay) { lastDay = p.date; body.push(h('div', { class: 'hint', style: 'margin:10px 2px 0;font-weight:700' }, `${fmtShort(p.date)} ${relWord(p.date, T)}`)); }
@@ -2509,8 +2779,6 @@ function applySchedule(t, fields, label) {
  * 操作
  * ========================================================================= */
 const findTask = (id) => DATA.todos.find((x) => x.id === id);
-const KIND_LABEL = { deep: '深い思考', shallow: '事務・連絡', physical: '体を動かす', errand: '外出・用事' };
-const PLACE_LABEL = { lab: '研究室', home: '自宅' };
 function toggleDone(id) {
   const t = findTask(id);
   if (!t) return;
@@ -2787,7 +3055,7 @@ function renderDetail(force) {
         onchange: (e) => { const v = Math.round(+e.target.value); set({ estimate: v > 0 ? v : null }, false); } }), h('span', { class: 'muted' }, '分')),
   ];
 
-  // AI 秘書が並べるときに使う（深い思考は朝、研究室でしかできないことは研究室の日、など）
+  // 空き時間への提案に使う（深い思考は朝、研究室でしかできないことは研究室の日、など）
   const kindEd = () => h('div', { class: 'mini', role: 'group', 'aria-label': '種類' }, [['', 'なし'], ...Object.entries(KIND_LABEL)].map(([v, l]) =>
     h('button', { type: 'button', 'aria-pressed': String((t.kind || '') === v), onclick: () => set({ kind: v || null }) }, l)));
   const placeEd = () => h('div', { class: 'mini', role: 'group', 'aria-label': '場所' }, [['', 'どこでも'], ...Object.entries(PLACE_LABEL)].map(([v, l]) =>
@@ -3057,6 +3325,14 @@ function openSettings() {
     h('input', { type: 'number', min: '0', step, value: String(value), 'data-k': key, 'aria-label': label,
       onchange: (e) => { const v = +e.target.value; if (v > 0) mutate({ t: 'meta', set: { [key]: toStore(v) } }); } }));
   const perm = 'Notification' in window ? Notification.permission : 'unsupported';
+  const rules = planRules(m);
+  const timeRow = (label, key) => h('div', { class: 'set-row' }, h('label', null, label),
+    h('input', { type: 'time', step: '900', value: minToHm(Math.round(rules[key] * 60)), 'data-k': 'plan-' + key, 'aria-label': label,
+      onchange: (e) => {
+        if (!HM_RE.test(e.target.value)) return;
+        const cur = m.planRules && typeof m.planRules === 'object' ? m.planRules : {};
+        mutate({ t: 'meta', set: { planRules: { ...cur, [key]: hmToMin(e.target.value) / 60 } } });
+      } }));
   openSheet(h('div', null,
     sheetHead('設定'),
     h('div', { class: 'gsec', style: 'margin-top:4px' }, 'テーマカラー（この端末）'),
@@ -3078,12 +3354,17 @@ function openSettings() {
         : perm === 'denied' ? h('span', { class: 'muted' }, 'ブラウザで拒否')
           : perm === 'unsupported' ? h('span', { class: 'muted' }, '非対応')
             : h('button', { type: 'button', onclick: () => { askNotify(); closeSheet(); } }, '許可する')),
+    h('div', { class: 'gsec' }, '空き時間への提案'),
+    h('div', { class: 'set-row' }, h('span', { class: 'lbl' }, '日時の決まっていないタスクを空き時間に提案'),
+      h('button', { class: 'switch', type: 'button', role: 'switch', 'aria-checked': String(suggestOn()), 'aria-label': '空き時間に提案',
+        onclick: () => { mutate({ t: 'meta', set: { suggest: !suggestOn() } }); openSettings(); } })),
+    suggestOn() ? timeRow('始める時刻', 'dayStart') : null,
+    suggestOn() ? timeRow('終える時刻（睡眠の記録が無い日）', 'dayEnd') : null,
+    h('div', { class: 'gsec' }, 'つながり'),
     h('div', { class: 'set-row' }, h('span', { class: 'lbl' }, 'Google カレンダー'),
       h('span', { class: 'muted', style: 'font-size:14px;text-align:right' }, CAL.state === 'ok'
         ? `${CAL.events.length} 件${CAL.updatedAt ? `（${fmtStamp(CAL.updatedAt)} 更新）` : ''}` : '未設定')),
-    h('div', { class: 'set-row' }, h('span', { class: 'lbl' }, 'AI 秘書'),
-      h('span', { class: 'muted', style: 'font-size:14px;text-align:right' }, PLAN.state === 'ok'
-        ? `提案 ${liveProposals(DATA, todayYmd()).length} 件${PLAN.generatedAt ? `（${fmtStamp(PLAN.generatedAt)} 作成）` : ''}` : '未設定')),
+    CAL.errors.length ? h('p', { class: 'hint', style: 'color:var(--danger);margin-top:-2px' }, CAL.errors.join(' / ')) : null,
     h('div', { class: 'set-row' }, h('span', { class: 'lbl' }, 'データ'),
       h('a', { href: `https://github.com/${cfg.repo}/commits/HEAD/${cfg.path}`, target: '_blank', rel: 'noopener noreferrer' }, '変更履歴')),
     h('p', { class: 'hint' }, 'ホーム画面に追加すると、アプリのように全画面で使えます（iPhone は共有ボタン →「ホーム画面に追加」）。'),
@@ -3187,8 +3468,6 @@ async function showApp() {
   st.pending = (loadJSON(KEY.pending, []) || []).filter((op) => op && typeof op.t === 'string');
   const calCache = loadJSON(KEY.cal, null);
   if (calCache && calCache.key === cfgKey()) setCal(calCache.data, 'ok');
-  const planCache = loadJSON(KEY.plan, null);
-  if (planCache && planCache.key === cfgKey()) setPlan(planCache.data, 'ok');
   render();
   tick();
   setSync('loading');
@@ -3204,10 +3483,10 @@ async function showApp() {
   }
 }
 function logout(bad, detail) {
-  for (const k of [KEY.token, KEY.cache, KEY.pending, KEY.timer, KEY.cal, KEY.plan]) store.del(k);
+  for (const k of [KEY.token, KEY.cache, KEY.pending, KEY.timer, KEY.cal, KEY.planPrev]) store.del(k);
   vault.del('login');
   setCal(null, 'none');
-  setPlan(null, 'none');
+  planPrev = undefined;
   cfg = null;
   Object.assign(st, { base: null, sha: null, loaded: false, pending: [], syncing: false });
   clearTimeout(st.timer);
