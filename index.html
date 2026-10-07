@@ -1,0 +1,420 @@
+<!doctype html>
+<html lang="ja">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<meta name="referrer" content="no-referrer">
+<!-- 外部スクリプトは一切読み込まない。通信先は GitHub API のみに制限する -->
+<meta http-equiv="Content-Security-Policy" content="default-src 'none'; script-src 'unsafe-inline'; style-src 'unsafe-inline'; connect-src https://api.github.com; img-src data:; base-uri 'none'; form-action 'none'">
+<title>Todo</title>
+<style>
+  :root {
+    --bg: #f6f7f9; --card: #fff; --text: #1d2330; --muted: #6b7280;
+    --line: #e3e6eb; --accent: #2563eb; --danger: #c2410c; --ok: #15803d;
+  }
+  @media (prefers-color-scheme: dark) {
+    :root {
+      --bg: #12151b; --card: #1b2029; --text: #e6e9ef; --muted: #9aa3b2;
+      --line: #2b323e; --accent: #6b9cff; --danger: #fb923c; --ok: #4ade80;
+    }
+  }
+  * { box-sizing: border-box; }
+  body {
+    margin: 0; background: var(--bg); color: var(--text);
+    font: 16px/1.5 system-ui, -apple-system, "Hiragino Sans", "Noto Sans JP", sans-serif;
+  }
+  main { max-width: 640px; margin: 0 auto; padding: 24px 16px 48px; }
+  h1 { font-size: 22px; margin: 0 0 16px; }
+  .card { background: var(--card); border: 1px solid var(--line); border-radius: 12px; padding: 16px; }
+  label { display: block; font-size: 13px; color: var(--muted); margin: 12px 0 4px; }
+  input[type=text], input[type=password] {
+    width: 100%; padding: 10px 12px; font: inherit; color: inherit;
+    background: var(--bg); border: 1px solid var(--line); border-radius: 8px;
+  }
+  button {
+    font: inherit; padding: 10px 14px; border-radius: 8px; cursor: pointer;
+    border: 1px solid var(--line); background: var(--card); color: var(--text);
+  }
+  button.primary { background: var(--accent); border-color: var(--accent); color: #fff; }
+  button.link { border: 0; background: none; padding: 4px 6px; color: var(--muted); font-size: 14px; }
+  button:disabled { opacity: .5; cursor: default; }
+  .row { display: flex; gap: 8px; }
+  .row input { flex: 1; }
+  .note { font-size: 13px; color: var(--muted); }
+  .error { color: var(--danger); font-size: 14px; margin-top: 10px; white-space: pre-wrap; }
+  ul { list-style: none; margin: 16px 0 0; padding: 0; }
+  li { display: flex; align-items: center; gap: 10px; padding: 10px 2px; border-top: 1px solid var(--line); }
+  li:first-child { border-top: 0; }
+  li input[type=checkbox] { width: 20px; height: 20px; flex: none; }
+  li .title { flex: 1; overflow-wrap: anywhere; }
+  li.done .title { color: var(--muted); text-decoration: line-through; }
+  li .del { color: var(--muted); }
+  .empty { color: var(--muted); padding: 16px 0 4px; text-align: center; }
+  .bar { display: flex; flex-wrap: wrap; align-items: center; justify-content: space-between; gap: 8px; margin-top: 12px; }
+  #status { font-size: 13px; color: var(--muted); }
+  #status.err { color: var(--danger); }
+  #status.ok { color: var(--ok); }
+  a { color: var(--accent); }
+  [hidden] { display: none !important; }
+</style>
+</head>
+<body>
+<main>
+  <h1>Todo</h1>
+
+  <!-- 初回設定 -->
+  <section id="setup" class="card" hidden>
+    <p class="note" style="margin-top:0">
+      データは非公開リポジトリに保存されます。このページ自体にはデータは含まれません。
+      接続には、データ用リポジトリだけを対象にした fine-grained personal access token
+      （Contents: Read and write）が必要です。トークンはこの端末のブラウザ内にだけ保存されます。
+    </p>
+    <form id="setupForm">
+      <label for="repo">データ用リポジトリ（owner/repo）</label>
+      <input id="repo" type="text" value="ShinFROG/Resource" autocomplete="off" spellcheck="false" required>
+      <label for="path">ファイル</label>
+      <input id="path" type="text" value="todos.json" autocomplete="off" spellcheck="false" required>
+      <label for="token">トークン</label>
+      <input id="token" type="password" autocomplete="off" spellcheck="false" required placeholder="github_pat_...">
+      <div style="margin-top:16px"><button class="primary" id="connectBtn">接続する</button></div>
+      <div id="setupError" class="error" hidden></div>
+    </form>
+  </section>
+
+  <!-- Todo 本体 -->
+  <section id="app" class="card" hidden>
+    <form id="addForm" class="row">
+      <input id="newTitle" type="text" placeholder="やることを追加" autocomplete="off" required>
+      <button class="primary">追加</button>
+    </form>
+    <ul id="list"></ul>
+    <div class="bar">
+      <span id="status"></span>
+      <span>
+        <button class="link" id="reloadBtn" type="button">再読み込み</button>
+        <button class="link" id="retryBtn" type="button" hidden>再試行</button>
+        <a class="note" id="fileLink" target="_blank" rel="noopener noreferrer">GitHub で見る</a>
+        <button class="link" id="logoutBtn" type="button">接続解除</button>
+      </span>
+    </div>
+  </section>
+</main>
+
+<script>
+'use strict';
+
+const API = 'https://api.github.com';
+const KEY = { token: 'todo.token', repo: 'todo.repo', path: 'todo.path' };
+const $ = (id) => document.getElementById(id);
+
+// ---- localStorage は使えない環境（プライベートモード等）もあるので必ず try で包む
+const store = {
+  get(k) { try { return localStorage.getItem(k); } catch { return null; } },
+  set(k, v) { try { localStorage.setItem(k, v); } catch {} },
+  del(k) { try { localStorage.removeItem(k); } catch {} },
+};
+
+let cfg = null; // { token, repo, path }
+
+// ---- base64 <-> UTF-8 文字列（日本語を壊さないため TextEncoder を経由する）
+function b64encode(str) {
+  const bytes = new TextEncoder().encode(str);
+  let bin = '';
+  for (let i = 0; i < bytes.length; i += 0x8000) {
+    bin += String.fromCharCode.apply(null, bytes.subarray(i, i + 0x8000));
+  }
+  return btoa(bin);
+}
+function b64decode(b64) {
+  const bin = atob(b64.replace(/\s/g, ''));
+  return new TextDecoder().decode(Uint8Array.from(bin, (c) => c.charCodeAt(0)));
+}
+
+// ---- GitHub API
+async function gh(method, url, body) {
+  const res = await fetch(API + url, {
+    method,
+    cache: 'no-store', // API 応答はブラウザに 60 秒キャッシュされるため、古い sha を掴まないよう無効化
+    headers: {
+      'Accept': 'application/vnd.github+json',
+      'Authorization': 'Bearer ' + cfg.token,
+      'X-GitHub-Api-Version': '2022-11-28',
+      ...(body ? { 'Content-Type': 'application/json' } : {}),
+    },
+    body: body ? JSON.stringify(body) : undefined,
+  });
+  let json = null;
+  try { json = await res.json(); } catch {}
+  if (!res.ok) {
+    const err = new Error((json && json.message) || res.statusText || 'HTTP ' + res.status);
+    err.status = res.status;
+    throw err;
+  }
+  return json;
+}
+
+function contentsUrl() {
+  const path = cfg.path.split('/').map(encodeURIComponent).join('/');
+  return `/repos/${cfg.repo}/contents/${path}`;
+}
+
+function explain(e) {
+  if (e instanceof TypeError) return 'GitHub に接続できませんでした（ネットワークを確認してください）。';
+  switch (e.status) {
+    case 401: return 'トークンが無効か、期限切れです。';
+    case 403: return 'トークンの権限が足りません（Contents: Read and write が必要です）。\n' + e.message;
+    case 404: return 'リポジトリが見つかりません。名前と、トークンの対象リポジトリに含まれているかを確認してください。';
+    default: return e.message;
+  }
+}
+
+// ---- データ
+// base: GitHub 上の最新として把握している内容 / sha: その版
+// pending: まだ保存していない操作。表示は base に pending を順に適用したもの。
+// 保存時に他の端末の変更とぶつかったら（409）、最新を読み直して pending を適用し直す。
+const st = { base: null, sha: null, pending: [], syncing: false };
+
+function emptyData() { return { version: 1, todos: [] }; }
+function normalize(d) {
+  if (!d || typeof d !== 'object' || !Array.isArray(d.todos)) return emptyData();
+  return d;
+}
+function clone(d) { return JSON.parse(JSON.stringify(d)); }
+function current() {
+  const d = clone(st.base);
+  for (const p of st.pending) p.op(d);
+  return d;
+}
+
+async function fetchBase() {
+  try {
+    const f = await gh('GET', contentsUrl());
+    st.base = normalize(JSON.parse(b64decode(f.content)));
+    st.sha = f.sha;
+  } catch (e) {
+    if (e.status !== 404) throw e;
+    st.base = emptyData(); // ファイルがまだ無い → 最初の保存で作成
+    st.sha = null;
+  }
+}
+
+function putFile(data, sha, message) {
+  const body = { message, content: b64encode(JSON.stringify(data, null, 2) + '\n') };
+  if (sha) body.sha = sha;
+  return gh('PUT', contentsUrl(), body);
+}
+
+let syncTimer = null;
+function mutate(op, msg) {
+  st.pending.push({ op, msg });
+  render();
+  setStatus('未保存の変更があります');
+  clearTimeout(syncTimer);
+  syncTimer = setTimeout(sync, 800); // 連続操作はまとめて 1 コミットにする
+}
+
+async function sync() {
+  if (st.syncing || !st.pending.length) return;
+  st.syncing = true;
+  $('retryBtn').hidden = true;
+  let conflicts = 0;
+  try {
+    while (st.pending.length) {
+      const batch = st.pending.slice();
+      const next = clone(st.base);
+      for (const p of batch) p.op(next);
+      const msg = batch.length === 1 ? batch[0].msg : `todo: ${batch.length} 件の変更`;
+      setStatus('保存中…');
+      try {
+        const r = await putFile(next, st.sha, msg);
+        st.base = next;
+        st.sha = r.content.sha;
+        st.pending.splice(0, batch.length);
+        conflicts = 0;
+      } catch (e) {
+        // 409: 他の端末が先に更新した / 422: sha の指定が合わない
+        if ((e.status === 409 || e.status === 422) && ++conflicts <= 3) {
+          setStatus('他の変更を取り込み中…');
+          await fetchBase();
+          render();
+          continue;
+        }
+        throw e;
+      }
+    }
+    setStatus('保存しました ' + new Date().toLocaleTimeString('ja-JP', { hour: '2-digit', minute: '2-digit' }), 'ok');
+  } catch (e) {
+    setStatus('保存できませんでした: ' + explain(e), 'err');
+    $('retryBtn').hidden = false;
+  } finally {
+    st.syncing = false;
+  }
+}
+
+async function reload() {
+  if (st.syncing || st.pending.length) return;
+  setStatus('読み込み中…');
+  try {
+    await fetchBase();
+    render();
+    setStatus('最新です', 'ok');
+  } catch (e) {
+    setStatus('読み込めませんでした: ' + explain(e), 'err');
+  }
+}
+
+// ---- 操作（どれも id で対象を特定し、何度適用しても結果が同じになるようにしてある）
+function newId() {
+  return Date.now().toString(36) + Math.random().toString(36).slice(2, 8);
+}
+function addTodo(title) {
+  const t = { id: newId(), title, done: false, createdAt: new Date().toISOString() };
+  mutate((d) => { if (!d.todos.some((x) => x.id === t.id)) d.todos.push(t); }, 'todo: 追加');
+}
+function setDone(id, done) {
+  const at = done ? new Date().toISOString() : null;
+  mutate((d) => {
+    const t = d.todos.find((x) => x.id === id);
+    if (t) { t.done = done; t.doneAt = at; }
+  }, done ? 'todo: 完了' : 'todo: 未完了に戻す');
+}
+function removeTodo(id) {
+  mutate((d) => { d.todos = d.todos.filter((x) => x.id !== id); }, 'todo: 削除');
+}
+
+// ---- 表示
+function render() {
+  const list = $('list');
+  list.textContent = '';
+  const todos = current().todos.slice().sort((a, b) => (a.done - b.done));
+  if (!todos.length) {
+    const li = document.createElement('div');
+    li.className = 'empty';
+    li.textContent = 'まだ何もありません';
+    list.append(li);
+    return;
+  }
+  for (const t of todos) {
+    const li = document.createElement('li');
+    if (t.done) li.className = 'done';
+    const cb = document.createElement('input');
+    cb.type = 'checkbox';
+    cb.checked = !!t.done;
+    cb.setAttribute('aria-label', '完了');
+    cb.addEventListener('change', () => setDone(t.id, cb.checked));
+    const span = document.createElement('span');
+    span.className = 'title';
+    span.textContent = t.title; // textContent なので HTML として解釈されない
+    const del = document.createElement('button');
+    del.type = 'button';
+    del.className = 'link del';
+    del.textContent = '削除';
+    del.setAttribute('aria-label', '削除: ' + t.title);
+    del.addEventListener('click', () => removeTodo(t.id));
+    li.append(cb, span, del);
+    list.append(li);
+  }
+}
+
+function setStatus(text, kind) {
+  const s = $('status');
+  s.textContent = text;
+  s.className = kind || '';
+}
+
+function showSetup(message) {
+  $('app').hidden = true;
+  $('setup').hidden = false;
+  $('setupError').hidden = !message;
+  $('setupError').textContent = message || '';
+}
+
+async function showApp() {
+  $('setup').hidden = true;
+  $('app').hidden = false;
+  $('fileLink').href = `https://github.com/${cfg.repo}/commits/HEAD/${cfg.path}`;
+  setStatus('読み込み中…');
+  try {
+    await fetchBase();
+    render();
+    setStatus(`${cfg.repo}/${cfg.path} に接続中`, 'ok');
+  } catch (e) {
+    if (e.status === 401) {
+      store.del(KEY.token);
+      showSetup(explain(e));
+      return;
+    }
+    setStatus('読み込めませんでした: ' + explain(e), 'err');
+  }
+}
+
+// ---- イベント
+$('setupForm').addEventListener('submit', async (ev) => {
+  ev.preventDefault();
+  const repo = $('repo').value.trim().replace(/^https:\/\/github\.com\//, '').replace(/\/+$/, '');
+  const path = $('path').value.trim().replace(/^\/+/, '');
+  const token = $('token').value.trim();
+  if (!/^[\w.-]+\/[\w.-]+$/.test(repo)) return showSetup('リポジトリは owner/repo の形で入力してください。');
+  cfg = { token, repo, path };
+  $('connectBtn').disabled = true;
+  try {
+    const info = await gh('GET', `/repos/${repo}`);
+    if (!info.private) {
+      cfg = null;
+      return showSetup('このリポジトリは公開されています。個人データは非公開リポジトリに置いてください。');
+    }
+    store.set(KEY.token, token);
+    store.set(KEY.repo, repo);
+    store.set(KEY.path, path);
+    $('token').value = '';
+    await showApp();
+  } catch (e) {
+    cfg = null;
+    showSetup(explain(e));
+  } finally {
+    $('connectBtn').disabled = false;
+  }
+});
+
+$('addForm').addEventListener('submit', (ev) => {
+  ev.preventDefault();
+  const title = $('newTitle').value.trim();
+  if (!title) return;
+  addTodo(title);
+  $('newTitle').value = '';
+});
+
+$('reloadBtn').addEventListener('click', reload);
+$('retryBtn').addEventListener('click', sync);
+$('logoutBtn').addEventListener('click', () => {
+  if (st.pending.length && !confirm('未保存の変更があります。破棄して接続を解除しますか？')) return;
+  store.del(KEY.token);
+  cfg = null;
+  st.base = null; st.sha = null; st.pending = [];
+  $('list').textContent = '';
+  showSetup();
+});
+
+// 別の端末での変更を拾うため、タブに戻ってきたら読み直す
+document.addEventListener('visibilitychange', () => {
+  if (document.visibilityState === 'visible' && cfg && st.base) reload();
+});
+window.addEventListener('beforeunload', (ev) => {
+  if (st.pending.length || st.syncing) { ev.preventDefault(); ev.returnValue = ''; }
+});
+
+// ---- 起動
+(function init() {
+  const token = store.get(KEY.token);
+  if (store.get(KEY.repo)) $('repo').value = store.get(KEY.repo);
+  if (store.get(KEY.path)) $('path').value = store.get(KEY.path);
+  if (token) {
+    cfg = { token, repo: $('repo').value, path: $('path').value };
+    showApp();
+  } else {
+    showSetup();
+  }
+})();
+</script>
+</body>
+</html>
