@@ -458,6 +458,22 @@
   }
   .sug .add.on { background: var(--ok); color: #fff; }
   .sug .add .ic { width: 18px; height: 18px; }
+  /* AI 秘書の提案（点線の枠。✓ で入れる、× で見送る） */
+  .tl-item.pp .tl-pill { background: transparent; border: 2px dashed var(--col); }
+  .pp-card { display: flex; align-items: center; gap: 6px; min-width: 0; margin: 6px 0; padding: 8px 8px 8px 12px; border: 1.5px dashed var(--line); border-radius: 14px; }
+  .pp-body { flex: 1; min-width: 0; text-align: left; background: none; border: 0; padding: 0; color: inherit; font: inherit; cursor: pointer; min-height: 0; }
+  .pp-body .title { font-weight: 600; overflow-wrap: anywhere; }
+  .pp-tag { display: inline-flex; align-items: center; gap: 3px; font-size: 11px; font-weight: 700; color: var(--accent); margin-right: 6px; vertical-align: 1px; }
+  .pp-tag .ic { width: 13px; height: 13px; }
+  .pp-when { color: var(--muted); font-variant-numeric: tabular-nums; margin-right: 6px; font-weight: 600; }
+  .pp-why { font-size: 12px; color: var(--muted); margin-top: 2px; }
+  .pp-btn { flex: none; width: 36px; height: 36px; min-height: 0; padding: 0; border-radius: 50%; border: 0; display: grid; place-items: center; background: var(--chip); color: var(--muted); }
+  .pp-btn.ok { background: var(--accent-soft); color: var(--accent); }
+  .pp-btn .ic { width: 18px; height: 18px; }
+  .pp-list { margin: 2px 0 4px; }
+  .pp-list .pp-card { margin: 4px 0; }
+  .pp-un { font-size: 13px; color: var(--muted); padding: 6px 2px; border-top: 1px solid var(--line); }
+  .pp-un b { color: var(--text); font-weight: 600; }
 
   /* ======================= 詳細 ======================= */
   #detail {
@@ -633,7 +649,7 @@ const API = 'https://api.github.com';
 const KEY = {
   token: 'todo.token', repo: 'todo.repo', path: 'todo.path',
   cache: 'todo.cache', pending: 'todo.pending', timer: 'todo.timer', view: 'todo.view',
-  accent: 'todo.accent', sound: 'todo.sound', cal: 'todo.cal', tip: 'todo.tip',
+  accent: 'todo.accent', sound: 'todo.sound', cal: 'todo.cal', tip: 'todo.tip', plan: 'todo.plan',
 };
 const $ = (id) => document.getElementById(id);
 
@@ -740,6 +756,7 @@ const ICONS = {
   sofa: '<path d="M4 11V8a2 2 0 0 1 2-2h12a2 2 0 0 1 2 2v3"/><path d="M2 13a2 2 0 0 1 4 0v2h12v-2a2 2 0 0 1 4 0v5H2z"/><path d="M5 18v2M19 18v2"/>',
   ban: '<circle cx="12" cy="12" r="9"/><path d="M5.6 5.6l12.8 12.8"/>',
   bolt: '<path d="M13 2L4 14h7l-1 8 9-12h-7z"/>',
+  pin: '<path d="M12 21s-6.5-5.6-6.5-11a6.5 6.5 0 0 1 13 0c0 5.4-6.5 11-6.5 11z"/><circle cx="12" cy="10" r="2.3"/>',
 };
 function icon(name) {
   const s = document.createElement('span');
@@ -1562,8 +1579,11 @@ function renderMain(d, T, model) {
         nodes.push(h('div', { class: 'nudge' }, icon('inbox'), `受信箱に未整理が ${inboxN} 件`,
           h('button', { class: 'link-btn', type: 'button', onclick: () => setView({ type: 'inbox' }) }, '整理する')));
       }
-      const late = list.filter((t) => isLate(t, T)).sort(byDefault);
-      const rest = list.filter((t) => !isLate(t, T));
+      // 今日の提案があるタスクはタイムラインに出す（下の一覧とは重ねない）
+      const props = liveProposals(d, T).filter((p) => p.date === T);
+      const proposed = new Set(props.map((p) => p.t.id));
+      const late = list.filter((t) => isLate(t, T) && !proposed.has(t.id)).sort(byDefault);
+      const rest = list.filter((t) => !isLate(t, T) && !proposed.has(t.id));
       const timed = rest.filter((t) => t.time).sort(byDay);
       const untimed = rest.filter((t) => !t.time).sort(byDay);
       if (late.length) {
@@ -1572,9 +1592,15 @@ function renderMain(d, T, model) {
           action: h('button', { class: 'link-btn', type: 'button', onclick: () => moveToToday(late) }, 'すべて今日に'),
         }));
       }
-      if (timed.length || evs.timed.length) nodes.push(h('section', { class: 'group' }, h('div', { class: 'group-h' }, h('h3', null, 'タイムライン')), timeline(timed, evs.timed, T)));
-      if (untimed.length) nodes.push(group(timed.length || evs.timed.length ? '時間未定' : late.length ? '今日' : 'タスク', untimed, T, { plan: true }));
-      if (!list.length) {
+      const hasTl = timed.length || evs.timed.length || props.length;
+      if (hasTl) {
+        nodes.push(h('section', { class: 'group' },
+          h('div', { class: 'group-h' }, h('h3', null, 'タイムライン'), h('span', { class: 'sp' }),
+            props.length > 1 ? h('button', { class: 'link-btn', type: 'button', onclick: () => acceptProposals(props) }, `提案 ${props.length} 件を承認`) : null),
+          timeline(timed, evs.timed, T, props)));
+      }
+      if (untimed.length) nodes.push(group(hasTl ? '時間未定' : late.length ? '今日' : 'タスク', untimed, T, { plan: true }));
+      if (!list.length && !props.length) {
         nodes.push(doneToday.length
           ? emptyState('done', '今日のタスクはすべて完了', 'おつかれさまでした。')
           : emptyState('today', '今日のタスクはまだありません', '「計画」から今日やることを選ぶか、＋ で追加しましょう。'));
@@ -1590,11 +1616,13 @@ function renderMain(d, T, model) {
     case 'upcoming': {
       title = '予定'; sub = '日付の決まっているこれからのタスク';
       const list = act.filter((t) => isUpcoming(t, T));
+      const live = liveProposals(d, T);
+      const propsOn = (k) => live.filter((p) => p.date === k);
       const strip = h('div', { class: 'week', role: 'list', 'aria-label': '日付へ移動' });
       for (let i = 1; i <= 14; i++) {
         const dd = addDays(Td, i);
         const k = ymd(dd);
-        const n = list.filter((t) => t.due === k).length + (() => { const e = eventsOn(k); return e.allDay.length + e.timed.length; })();
+        const n = list.filter((t) => t.due === k).length + propsOn(k).length + (() => { const e = eventsOn(k); return e.allDay.length + e.timed.length; })();
         strip.append(h('button', {
           class: 'day-chip' + (dd.getDay() === 6 ? ' sat' : dd.getDay() === 0 ? ' sun' : '') + (n ? ' has' : ''), type: 'button', role: 'listitem',
           'aria-label': `${fmtShort(k)} ${n}件`,
@@ -1606,7 +1634,11 @@ function renderMain(d, T, model) {
         const k = ymd(addDays(Td, i));
         const items = list.filter((t) => t.due === k).sort(byDay);
         const evList = evRows(eventsOn(k), k);
-        nodes.push(group(`${fmtShort(k)}  ${relWord(k, T)}`, items, T, { id: 'day-' + k, cls: items.length || evList ? '' : 'faint', pre: evList }));
+        const pp = propsOn(k);
+        const ppList = pp.length ? h('div', { class: 'pp-list' }, pp.map((p) => proposalCard(p, `${p.start}–${p.end}`))) : null;
+        nodes.push(group(`${fmtShort(k)}  ${relWord(k, T)}`, items, T, {
+          id: 'day-' + k, cls: items.length || evList || ppList ? '' : 'faint', pre: evList || ppList ? h('div', null, evList, ppList) : null,
+        }));
       }
       const end = ymd(addDays(Td, 14));
       const months = new Map();
@@ -1976,11 +2008,11 @@ function tipCard() {
 
 /* =========================================================================
  * Google カレンダー
- * データ用リポジトリの calendar.json（GitHub Actions が定期的に書き出す）を読むだけ。
+ * データ用リポジトリの calendar.json（Google Apps Script が 1 時間ごとに書き出す）を読むだけ。
  * ブラウザから Google には一切つながない
  * ========================================================================= */
 let CAL = { events: [], calendars: [], updatedAt: null, state: 'none', fetchedAt: 0 };
-const calPath = () => cfg.path.replace(/[^/]*$/, 'calendar.json');
+const sidePath = (name) => cfg.path.replace(/[^/]*$/, name);
 function setCal(data, state) {
   const ok = (e) => e && typeof e.title === 'string' && typeof e.start === 'string' && typeof e.end === 'string';
   CAL = {
@@ -1989,25 +2021,91 @@ function setCal(data, state) {
     updatedAt: data?.updatedAt || null, state, fetchedAt: CAL.fetchedAt,
   };
 }
+// todos.json と同じ場所にある、GAS が書くファイル（calendar.json / plan.json）を読む
+async function readSide(name) {
+  const f = await gh('GET', contentsUrlFor(sidePath(name)));
+  let b64 = f.content;
+  if (!b64 && f.sha && f.size > 0) b64 = (await gh('GET', `/repos/${cfg.repo}/git/blobs/${f.sha}`)).content;
+  return JSON.parse((b64 && b64decode(b64)) || '{}');
+}
 async function fetchCalendar() {
   if (!cfg) return;
   CAL.fetchedAt = Date.now();
-  try {
-    const f = await gh('GET', contentsUrlFor(calPath()));
-    let b64 = f.content;
-    if (!b64 && f.sha && f.size > 0) b64 = (await gh('GET', `/repos/${cfg.repo}/git/blobs/${f.sha}`)).content;
-    const data = JSON.parse((b64 && b64decode(b64)) || '{}');
-    setCal(data, 'ok');
-    saveJSON(KEY.cal, { key: cfgKey(), data });
-  } catch (e) {
-    if (e.status !== 404) { console.warn('calendar:', explain(e)); return; } // 前回の内容を使い続ける
-    setCal(null, 'none');
-    store.del(KEY.cal);
+  const key = cfgKey();
+  const load = async (name, setter, cacheKey) => {
+    try {
+      const data = await readSide(name);
+      if (!cfg || cfgKey() !== key) return;
+      setter(data, 'ok');
+      saveJSON(cacheKey, { key, data });
+    } catch (e) {
+      if (e.status !== 404) { console.warn(name + ':', explain(e)); return; } // 前回の内容を使い続ける
+      setter(null, 'none');
+      store.del(cacheKey);
+    }
+  };
+  await Promise.all([load('calendar.json', setCal, KEY.cal), load('plan.json', setPlan, KEY.plan)]);
+  if (cfg) { render(); refreshPlan(); }
+}
+
+/* ---------- AI 秘書の提案（plan.json）。GAS が 1 時間ごとに、未定のタスクを空き時間に並べて書く ---------- */
+let PLAN = { items: [], unplaced: [], summary: '', generatedAt: null, state: 'none' };
+function setPlan(data, state) {
+  const ok = (x) => x && typeof x.taskId === 'string' && YMD_RE.test(x.date) && HM_RE.test(x.start) && HM_RE.test(x.end) && x.end > x.start;
+  PLAN = {
+    items: Array.isArray(data?.items) ? data.items.filter(ok) : [],
+    unplaced: Array.isArray(data?.unplaced) ? data.unplaced.filter((x) => x && typeof x.taskId === 'string') : [],
+    summary: typeof data?.summary === 'string' ? data.summary : '',
+    generatedAt: typeof data?.generatedAt === 'string' ? data.generatedAt : null,
+    state,
+  };
+}
+// まだ使える提案（承認・完了・見送り・時間が過ぎたもの、アプリで日付を前にしたものは出さない）
+function liveProposals(d, T) {
+  const now = new Date();
+  const nowHm = `${pad(now.getHours())}:${pad(now.getMinutes())}`;
+  const out = [];
+  for (const p of PLAN.items) {
+    const t = d.todos.find((x) => x.id === p.taskId);
+    if (!t || t.done || t.someday || t.time || p.date < T || (p.date === T && p.end <= nowHm)) continue;
+    if (t.planSkipUntil && t.planSkipUntil >= p.date) continue;
+    if (t.due && t.due >= T && p.date > t.due) continue;
+    out.push({ ...p, reason: typeof p.reason === 'string' ? p.reason : '', t });
   }
-  render();
+  return out;
+}
+function acceptProposals(list) {
+  if (!list.length) return;
+  const T = todayYmd();
+  const snaps = list.map((p) => clone(p.t));
+  mutate(list.map((p) => ({ t: 'patch', id: p.t.id, set: {
+    due: p.date, time: p.start, someday: false, ...(p.t.estimate ? {} : { estimate: hmToMin(p.end) - hmToMin(p.start) }),
+  } })));
+  haptic();
+  toast(list.length === 1 ? `「${list[0].t.title}」を${fmtDate(list[0].date, T)} ${list[0].start} に入れました` : `提案 ${list.length} 件を予定に入れました`,
+    { t: 'restore', tasks: snaps });
+  refreshPlan();
+}
+function skipProposal(p) {
+  const T = todayYmd();
+  mutate({ t: 'patch', id: p.t.id, set: { planSkipUntil: p.date } });
+  toast(`「${p.t.title}」は${p.date === T ? '今日' : fmtShort(p.date)}は見送りました`, { t: 'restore', tasks: [clone(p.t)] });
+  refreshPlan();
+}
+function proposalCard(p, withWhen) {
+  return h('div', { class: 'pp-card', 'data-prop': p.t.id },
+    h('button', { class: 'pp-body', type: 'button', title: '詳細を開く', onclick: () => openDetail(p.t.id) },
+      h('div', { class: 'title' }, h('span', { class: 'pp-tag' }, icon('sparkle'), '提案'), withWhen ? h('span', { class: 'pp-when' }, withWhen) : null, p.t.title),
+      p.reason ? h('div', { class: 'pp-why' }, p.reason) : null),
+    h('button', { class: 'pp-btn ok', type: 'button', title: 'この時間に入れる', 'aria-label': `承認: ${p.t.title}`, onclick: () => acceptProposals([p]) }, icon('check')),
+    h('button', { class: 'pp-btn', type: 'button', title: 'この日は見送る', 'aria-label': `見送る: ${p.t.title}`, onclick: () => skipProposal(p) }, icon('x')));
 }
 const CAL_COLORS = ['var(--c7)', 'var(--c3)', 'var(--c5)', 'var(--c4)', 'var(--c1)', 'var(--c2)'];
-function calColor(cid) { const i = CAL.calendars.findIndex((c) => c.id === cid); return CAL_COLORS[Math.max(0, i) % CAL_COLORS.length]; }
+function calColor(cid) {
+  const i = CAL.calendars.findIndex((c) => c.id === cid);
+  const c = CAL.calendars[i];
+  return c && /^#[0-9a-f]{6}$/i.test(c.color) ? c.color : CAL_COLORS[Math.max(0, i) % CAL_COLORS.length]; // Google カレンダーの色があれば使う
+}
 function calName(cid) { return CAL.calendars.find((c) => c.id === cid)?.name || 'カレンダー'; }
 function gcalDayUrl(day) { const [y, m, d] = day.split('-').map(Number); return `https://calendar.google.com/calendar/r/day/${y}/${m}/${d}`; }
 // その日の予定（終日 / 時刻あり）。日をまたぐ予定はその日の分だけに切る
@@ -2068,7 +2166,7 @@ function planBar(list, d, T, evs) {
 }
 
 // 時刻のあるタスクとカレンダーの予定を 1 日の流れとして並べる（空き時間と現在時刻も出す）
-function timeline(items, events, T) {
+function timeline(items, events, T, props = []) {
   const now = new Date();
   const nowMin = now.getHours() * 60 + now.getMinutes();
   const out = [];
@@ -2078,8 +2176,9 @@ function timeline(items, events, T) {
   const entries = [
     ...items.map((t) => ({ t, start: hmToMin(t.time), end: hmToMin(t.time) + (t.estimate || 30) })),
     ...events.map((ev) => ({ ev, start: ev.sm, end: ev.em })),
-  ].sort((a, b) => a.start - b.start || (a.ev ? -1 : 1));
-  for (const { t, ev, start, end } of entries) {
+    ...props.map((p) => ({ p, start: hmToMin(p.start), end: hmToMin(p.end) })),
+  ].sort((a, b) => a.start - b.start || (a.ev ? -1 : b.ev ? 1 : 0));
+  for (const { t, ev, p, start, end } of entries) {
     const dur = end - start;
     if (prevEnd != null && start - prevEnd >= 30) {
       if (!nowDone && nowMin >= prevEnd && nowMin < start) { out.push(nowLine()); nowDone = true; }
@@ -2097,6 +2196,13 @@ function timeline(items, events, T) {
           h('div', { class: 'body' },
             h('div', { class: 'title' }, ev.title),
             h('div', { class: 'meta' }, h('span', { class: 'mchip' }, calName(ev.cal)), ev.location ? h('span', { class: 'mchip' }, ev.location) : null)))));
+      continue;
+    }
+    if (p) {
+      out.push(h('div', { class: 'tl-item pp', style: `--h:${hgt}px;--col:${taskColor(p.t)}` },
+        h('div', { class: 'tl-time' }, p.start, h('small', null, p.end)),
+        h('div', { class: 'tl-rail' }, h('span', { class: 'tl-pill', 'aria-hidden': 'true' })),
+        proposalCard(p)));
       continue;
     }
     const [emo] = splitEmoji(t.title);
@@ -2321,6 +2427,25 @@ function planBody() {
     sheetHead('今日の計画'),
     h('p', { class: 'hint', style: 'margin-top:-4px' }, `今日 ${today.length} 件 · 見積もり ${fmtMin(est)} / 使える時間 ${fmtMin(Math.max(0, cap - busy))}${busy ? `（予定 ${fmtMin(busy)}）` : ''}`),
   ];
+  if (PLAN.state === 'ok') {
+    const live = liveProposals(DATA, T);
+    const todays = live.filter((p) => p.date === T);
+    body.push(h('div', { class: 'gsec', style: 'margin-top:12px;display:flex;align-items:baseline;gap:8px' }, 'AI 秘書の提案', h('span', { class: 'sp', style: 'flex:1' }),
+      todays.length > 1 ? h('button', { class: 'link-btn', type: 'button', onclick: () => acceptProposals(todays) }, `今日の ${todays.length} 件を承認`) : null));
+    body.push(h('p', { class: 'hint', style: 'margin:2px 0 6px' }, `${PLAN.summary || ''}${PLAN.generatedAt ? `（${fmtStamp(PLAN.generatedAt)} 作成）` : ''}`));
+    if (!live.length) body.push(h('p', { class: 'hint' }, '今出せる提案はありません。1 時間ごとに作り直します。'));
+    let lastDay = '';
+    for (const p of live) {
+      if (p.date !== lastDay) { lastDay = p.date; body.push(h('div', { class: 'hint', style: 'margin:10px 2px 0;font-weight:700' }, `${fmtShort(p.date)} ${relWord(p.date, T)}`)); }
+      body.push(proposalCard(p, `${p.start}–${p.end}`));
+    }
+    const un = PLAN.unplaced.map((u) => ({ ...u, t: findTask(u.taskId) })).filter((u) => u.t && !u.t.done && !u.t.time && !u.t.someday);
+    if (un.length) {
+      body.push(h('div', { class: 'hint', style: 'margin:12px 2px 2px;font-weight:700' }, `入らなかったもの ${un.length} 件`));
+      for (const u of un) body.push(h('div', { class: 'pp-un' }, h('b', null, u.t.title), ' — ', String(u.reason || '')));
+    }
+    body.push(h('div', { class: 'gsec', style: 'margin-top:18px' }, '自分で選ぶ'));
+  }
   if (!planGroups.length) body.push(emptyState('done', '提案できるタスクはありません', '期限の近いもの・優先度の高いもの・受信箱から提案します。'));
   for (const [name, ids] of planGroups) {
     body.push(h('div', { class: 'gsec', style: 'margin-top:16px' }, name));
@@ -2384,6 +2509,8 @@ function applySchedule(t, fields, label) {
  * 操作
  * ========================================================================= */
 const findTask = (id) => DATA.todos.find((x) => x.id === id);
+const KIND_LABEL = { deep: '深い思考', shallow: '事務・連絡', physical: '体を動かす', errand: '外出・用事' };
+const PLACE_LABEL = { lab: '研究室', home: '自宅' };
 function toggleDone(id) {
   const t = findTask(id);
   if (!t) return;
@@ -2660,6 +2787,12 @@ function renderDetail(force) {
         onchange: (e) => { const v = Math.round(+e.target.value); set({ estimate: v > 0 ? v : null }, false); } }), h('span', { class: 'muted' }, '分')),
   ];
 
+  // AI 秘書が並べるときに使う（深い思考は朝、研究室でしかできないことは研究室の日、など）
+  const kindEd = () => h('div', { class: 'mini', role: 'group', 'aria-label': '種類' }, [['', 'なし'], ...Object.entries(KIND_LABEL)].map(([v, l]) =>
+    h('button', { type: 'button', 'aria-pressed': String((t.kind || '') === v), onclick: () => set({ kind: v || null }) }, l)));
+  const placeEd = () => h('div', { class: 'mini', role: 'group', 'aria-label': '場所' }, [['', 'どこでも'], ...Object.entries(PLACE_LABEL)].map(([v, l]) =>
+    h('button', { type: 'button', 'aria-pressed': String((t.place && t.place !== 'any' ? t.place : '') === v), onclick: () => set({ place: v || null }) }, l)));
+
   const cl = t.checklist;
   const curCl = () => cur().checklist;
   const setCl = (list, rebuild = true) => set({ checklist: list }, rebuild);
@@ -2720,7 +2853,9 @@ function renderDetail(force) {
       prop('prio', 'flag', '優先度', ['なし', '高', '中', '低'][t.priority], !!t.priority, prioEd),
       prop('project', 'folder', 'プロジェクト', t.project || 'なし', !!t.project, projEd),
       prop('tags', 'tag', 'タグ', t.tags.length ? t.tags.join('、') : 'なし', !!t.tags.length, tagEd),
-      prop('est', 'timer', '見積もり', t.estimate ? fmtMin(t.estimate) : 'なし', !!t.estimate, estEd)),
+      prop('est', 'timer', '見積もり', t.estimate ? fmtMin(t.estimate) : 'なし', !!t.estimate, estEd),
+      prop('kind', 'bolt', '種類', KIND_LABEL[t.kind] || 'なし', !!KIND_LABEL[t.kind], kindEd),
+      prop('place', 'pin', '場所', PLACE_LABEL[t.place] || 'どこでも', !!PLACE_LABEL[t.place], placeEd)),
     t.done ? null : h('div', { class: 'props' },
       toggleRow('sun', '今日やる', t.myDay === T, () => set(t.myDay === T ? { myDay: null } : { myDay: T, someday: false })),
       toggleRow('box', 'いつか', t.someday, () => set({ someday: !t.someday, myDay: null }))),
@@ -2946,6 +3081,9 @@ function openSettings() {
     h('div', { class: 'set-row' }, h('span', { class: 'lbl' }, 'Google カレンダー'),
       h('span', { class: 'muted', style: 'font-size:14px;text-align:right' }, CAL.state === 'ok'
         ? `${CAL.events.length} 件${CAL.updatedAt ? `（${fmtStamp(CAL.updatedAt)} 更新）` : ''}` : '未設定')),
+    h('div', { class: 'set-row' }, h('span', { class: 'lbl' }, 'AI 秘書'),
+      h('span', { class: 'muted', style: 'font-size:14px;text-align:right' }, PLAN.state === 'ok'
+        ? `提案 ${liveProposals(DATA, todayYmd()).length} 件${PLAN.generatedAt ? `（${fmtStamp(PLAN.generatedAt)} 作成）` : ''}` : '未設定')),
     h('div', { class: 'set-row' }, h('span', { class: 'lbl' }, 'データ'),
       h('a', { href: `https://github.com/${cfg.repo}/commits/HEAD/${cfg.path}`, target: '_blank', rel: 'noopener noreferrer' }, '変更履歴')),
     h('p', { class: 'hint' }, 'ホーム画面に追加すると、アプリのように全画面で使えます（iPhone は共有ボタン →「ホーム画面に追加」）。'),
@@ -3049,6 +3187,8 @@ async function showApp() {
   st.pending = (loadJSON(KEY.pending, []) || []).filter((op) => op && typeof op.t === 'string');
   const calCache = loadJSON(KEY.cal, null);
   if (calCache && calCache.key === cfgKey()) setCal(calCache.data, 'ok');
+  const planCache = loadJSON(KEY.plan, null);
+  if (planCache && planCache.key === cfgKey()) setPlan(planCache.data, 'ok');
   render();
   tick();
   setSync('loading');
@@ -3064,9 +3204,10 @@ async function showApp() {
   }
 }
 function logout(bad, detail) {
-  for (const k of [KEY.token, KEY.cache, KEY.pending, KEY.timer, KEY.cal]) store.del(k);
+  for (const k of [KEY.token, KEY.cache, KEY.pending, KEY.timer, KEY.cal, KEY.plan]) store.del(k);
   vault.del('login');
   setCal(null, 'none');
+  setPlan(null, 'none');
   cfg = null;
   Object.assign(st, { base: null, sha: null, loaded: false, pending: [], syncing: false });
   clearTimeout(st.timer);
