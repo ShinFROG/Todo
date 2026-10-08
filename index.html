@@ -133,7 +133,7 @@
   /* 下のタブ（スマホ） */
   #tabbar {
     position: fixed; z-index: 30; left: 0; right: 0; bottom: 0;
-    display: grid; grid-template-columns: repeat(4, minmax(0, 1fr));
+    display: grid; grid-template-columns: repeat(5, minmax(0, 1fr));
     padding: 4px 8px env(safe-area-inset-bottom);
     background: color-mix(in srgb, var(--bg) 82%, transparent);
     -webkit-backdrop-filter: saturate(1.6) blur(18px); backdrop-filter: saturate(1.6) blur(18px);
@@ -585,6 +585,16 @@
   .cal-mnum.sun { color: var(--danger); } .cal-mnum.sat { color: var(--p3); }
   .cal-mcell.today .cal-mnum { background: var(--accent); color: var(--accent-ink); }
   @media (max-width: 639px) { .cal-mcell { min-height: 76px; } .cal-mcell .cal-chip { font-size: 11px; padding: 0 2px; } }
+  /* ニュース */
+  .news-cats { margin-top: 4px; }
+  .card.news { margin-top: 10px; }
+  .news-meta { display: flex; flex-wrap: wrap; gap: 6px; align-items: center; font-size: 13px; color: var(--muted); }
+  .news-t { font-size: 16px; line-height: 1.45; margin: 6px 0 4px; }
+  .news-t a { color: var(--text); text-decoration: none; }
+  .news-t a:hover { text-decoration: underline; }
+  .news-sum { font-size: 14px; line-height: 1.65; margin: 0; }
+  .news-why { font-size: 13px; color: var(--muted); margin: 6px 0 0; line-height: 1.6; }
+  .news-why b { color: var(--accent); font-weight: 700; }
   /* 研究・締切 */
   .dl-seg { display: flex; flex-wrap: wrap; gap: 6px; margin-top: 4px; }
   .dl-seg button { border: 1px solid var(--line); background: var(--card); color: var(--text); border-radius: 999px; padding: 5px 12px; font-size: 13px; min-height: 0; }
@@ -764,7 +774,7 @@ const API = 'https://api.github.com';
 const KEY = {
   token: 'todo.token', repo: 'todo.repo', path: 'todo.path',
   cache: 'todo.cache', pending: 'todo.pending', timer: 'todo.timer', view: 'todo.view',
-  accent: 'todo.accent', sound: 'todo.sound', cal: 'todo.cal', tip: 'todo.tip', planPrev: 'todo.planPrev', portal: 'todo.portal', portalMode: 'todo.portalMode', calMode: 'todo.calMode',
+  accent: 'todo.accent', sound: 'todo.sound', cal: 'todo.cal', tip: 'todo.tip', planPrev: 'todo.planPrev', portal: 'todo.portal', portalMode: 'todo.portalMode', calMode: 'todo.calMode', news: 'todo.news', newsCat: 'todo.newsCat',
 };
 const $ = (id) => document.getElementById(id);
 
@@ -1464,7 +1474,7 @@ let showTodayDone = false;
 let syncState = 'loading';
 let syncErrStatus = 0;
 let syncText = '';
-const MAIN_TABS = ['today', 'upcoming', 'portal'];
+const MAIN_TABS = ['today', 'upcoming', 'portal', 'news'];
 
 // タイトル先頭の絵文字は、そのタスクのアイコンとして使う（Structured / Tiimo 風）
 const EMOJI_RE = /^(\p{Extended_Pictographic}(?:\uFE0F|\u200D\p{Extended_Pictographic}|\p{Emoji_Modifier})*)[\s\u3000]*/u;
@@ -1528,6 +1538,7 @@ function navModel(d, T) {
     { v: { type: 'inbox' }, label: '受信箱', ic: 'inbox', count: act.filter((t) => isInbox(t, T)).length },
     { v: { type: 'anytime' }, label: 'すべて', ic: 'list', count: act.filter(isAnytime).length },
     { v: { type: 'someday' }, label: 'いつか', ic: 'box', count: act.filter((t) => t.someday).length },
+    { v: { type: 'news' }, label: 'ニュース', ic: 'note' },
     { v: { type: 'portal' }, label: '研究・締切', ic: 'flag', count: portalDeadlines(T).filter((x) => x.daysLeft <= 7 && x.status !== '候補' && x.status !== '条件付き').length || null, alert: true },
     { sec: 'ふりかえり' },
     { v: { type: 'matrix' }, label: 'マトリクス', ic: 'grid' },
@@ -1579,6 +1590,7 @@ function renderTabbar(model) {
     tab('today', '今日', 'sun', today.count, today.alert),
     tab('upcoming', '予定', 'calendar'),
     tab('portal', '締切', 'flag', portal.count, portal.alert),
+    tab('news', 'ニュース', 'note'),
     tab('browse', 'メニュー', 'list'));
 }
 function renderSyncPill(state) {
@@ -1861,6 +1873,11 @@ function renderMain(d, T, model) {
             h('p', null, `今週の完了 ${doneWeek} 件・集中 ${fmtMin(focusMinutes(d, (k) => k >= mon && k <= T))}`)))));
       nodes.push(h('div', { class: 'dlg-foot', style: 'justify-content:flex-start' },
         h('button', { class: 'btn-primary', type: 'button', onclick: () => { mutate({ t: 'meta', set: { lastReview: T } }); toast('週次レビューを記録しました'); celebrate(); } }, 'レビューを完了する')));
+      break;
+    }
+    case 'news': {
+      title = 'ニュース';
+      nodes.push(...newsView());
       break;
     }
     case 'portal': {
@@ -2445,6 +2462,66 @@ function monthGrid(d, T, A) {
 }
 
 /* =========================================================================
+ * ニュース（データ用リポジトリの news.json を読むだけ。クラウドの定期実行が数時間ごとに書く）
+ * ========================================================================= */
+let NEWS = { items: [], updatedAt: null, state: 'none' };
+function setNews(data, state) {
+  const ok = (x) => x && typeof x.title === 'string' && safeUrl(x.url);
+  NEWS = { items: Array.isArray(data?.items) ? data.items.filter(ok) : [], updatedAt: data?.updatedAt || null, state };
+}
+async function fetchNews() {
+  if (!cfg) return;
+  const key = cfgKey();
+  try {
+    const data = await readSide('news.json');
+    if (!cfg || cfgKey() !== key) return;
+    setNews(data, 'ok');
+    saveJSON(KEY.news, { key, data });
+  } catch (e) {
+    if (e.status !== 404) { console.warn('news:', explain(e)); return; }
+    setNews(null, 'none');
+    store.del(KEY.news);
+  }
+  if (!cfg || cfgKey() !== key) return;
+  if (view.type === 'news') render();
+}
+function agoLabel(iso) {
+  const t = new Date(iso);
+  if (isNaN(t)) return '';
+  const m = Math.round((Date.now() - t) / 60000);
+  return m < 60 ? `${Math.max(1, m)}分前` : m < 60 * 24 ? `${Math.round(m / 60)}時間前` : `${Math.round(m / 1440)}日前`;
+}
+function newsView() {
+  const nodes = [];
+  if (NEWS.state !== 'ok' || !NEWS.items.length) {
+    nodes.push(h('div', { class: 'card' }, 'まだニュースがありません。数時間ごとに自動でまとめられ、ここに出ます。'));
+    return nodes;
+  }
+  const items = [...NEWS.items].sort((a, b) => cmp(b.fetchedAt || '', a.fetchedAt || '') || cmp(b.publishedAt || '', a.publishedAt || ''));
+  const cats = [...new Set(items.map((x) => x.category).filter(Boolean))];
+  let cat = store.get(KEY.newsCat) || 'all';
+  if (cat !== 'all' && !cats.includes(cat)) cat = 'all';
+  nodes.push(h('div', { class: 'dl-seg news-cats', role: 'tablist', 'aria-label': '分野' }, ['all', ...cats].map((c) =>
+    h('button', { type: 'button', role: 'tab', class: cat === c ? 'on' : '', 'aria-selected': String(cat === c),
+      onclick: () => { store.set(KEY.newsCat, c); render(); } }, c === 'all' ? `すべて ${items.length}` : c))));
+  const latest = items[0].fetchedAt;
+  const list = items.filter((x) => cat === 'all' || x.category === cat);
+  const card = (x) => h('article', { class: 'card news', 'data-id': x.id || '' },
+    h('div', { class: 'news-meta' }, x.category ? h('span', { class: 'dl-tag' }, x.category) : null,
+      h('span', null, [x.source, x.publishedAt ? agoLabel(x.publishedAt) : ''].filter(Boolean).join(' · '))),
+    h('h3', { class: 'news-t' }, h('a', { href: safeUrl(x.url), target: '_blank', rel: 'noopener noreferrer' }, x.title, ' ↗')),
+    x.summary ? h('p', { class: 'news-sum' }, x.summary) : null,
+    x.why ? h('p', { class: 'news-why' }, h('b', null, 'なぜ大事か '), x.why) : null);
+  const now = list.filter((x) => x.fetchedAt === latest);
+  const old = list.filter((x) => x.fetchedAt !== latest);
+  if (now.length) nodes.push(h('section', { class: 'group' }, h('div', { class: 'group-h' }, h('h3', null, '最新'), h('span', { class: 'count' }, String(now.length))), now.map(card)));
+  if (old.length) nodes.push(h('section', { class: 'group' }, h('div', { class: 'group-h faint' }, h('h3', null, 'それ以前'), h('span', { class: 'count' }, String(old.length))), old.map(card)));
+  if (!list.length) nodes.push(h('div', { class: 'hint' }, 'この分野のニュースはありません'));
+  nodes.push(h('div', { class: 'hint' }, NEWS.updatedAt ? `更新：${fmtShort(localYmd(NEWS.updatedAt))} ${new Date(NEWS.updatedAt).toTimeString().slice(0, 5)}（AI が公開記事から要約。詳しくは元記事へ）` : ''));
+  return nodes;
+}
+
+/* =========================================================================
  * Google カレンダー
  * データ用リポジトリの calendar.json（任意。Apps Script を設定したときだけ、Google カレンダーから写される）を読むだけ。
  * ブラウザから Google には一切つながない
@@ -2474,6 +2551,7 @@ async function fetchCalendar() {
   if (!cfg) return;
   CAL.fetchedAt = Date.now();
   fetchPortal();
+  fetchNews();
   const key = cfgKey();
   try {
     const data = await readSide('calendar.json');
@@ -3953,6 +4031,8 @@ async function showApp() {
   if (calCache && calCache.key === cfgKey()) setCal(calCache.data, 'ok');
   const portalCache = loadJSON(KEY.portal, null);
   if (portalCache && portalCache.key === cfgKey()) setPortal(portalCache.data, 'ok');
+  const newsCache = loadJSON(KEY.news, null);
+  if (newsCache && newsCache.key === cfgKey()) setNews(newsCache.data, 'ok');
   render();
   tick();
   setSync('loading');
@@ -3968,10 +4048,11 @@ async function showApp() {
   }
 }
 function logout(bad, detail) {
-  for (const k of [KEY.token, KEY.cache, KEY.pending, KEY.timer, KEY.cal, KEY.planPrev, KEY.portal]) store.del(k);
+  for (const k of [KEY.token, KEY.cache, KEY.pending, KEY.timer, KEY.cal, KEY.planPrev, KEY.portal, KEY.news]) store.del(k);
   vault.del('login');
   setCal(null, 'none');
   setPortal(null, 'none');
+  setNews(null, 'none');
   planPrev = undefined;
   cfg = null;
   Object.assign(st, { base: null, sha: null, loaded: false, pending: [], syncing: false });
