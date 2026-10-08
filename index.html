@@ -516,6 +516,30 @@
   .switch[aria-checked=true] { background: var(--ok); }
   .switch[aria-checked=true]::after { transform: translateX(20px); }
   .row { display: flex; gap: 8px; align-items: center; }
+  /* 研究・締切 */
+  .dl-seg { display: flex; flex-wrap: wrap; gap: 6px; margin-top: 4px; }
+  .dl-seg button { border: 1px solid var(--line); background: var(--card); color: var(--text); border-radius: 999px; padding: 5px 12px; font-size: 13px; min-height: 0; }
+  .dl-seg button.on { background: var(--accent); border-color: var(--accent); color: var(--accent-ink); }
+  .dl-list { list-style: none; margin: 6px 0 0; padding: 0; }
+  .dl-row { display: flex; gap: 12px; align-items: flex-start; padding: 10px 2px; border-top: 1px solid var(--line); }
+  .dl-row:first-child { border-top: 0; }
+  .dl-left { flex: none; min-width: 64px; text-align: center; font-size: 13px; font-weight: 700; font-variant-numeric: tabular-nums; border-radius: 8px; padding: 4px 6px; background: var(--sunk); color: var(--muted); }
+  .dl-left.soon { background: var(--danger); color: #fff; }
+  .dl-left.near { background: color-mix(in srgb, var(--warn) 18%, transparent); color: var(--warn); }
+  .dl-body { flex: 1; min-width: 0; }
+  .dl-title { font-weight: 600; overflow-wrap: anywhere; }
+  .dl-title a { color: inherit; text-decoration: underline; text-decoration-color: var(--faint); }
+  .dl-meta { font-size: 13px; color: var(--muted); display: flex; flex-wrap: wrap; gap: 6px; align-items: center; margin-top: 2px; }
+  .dl-tag { font-size: 12px; border: 1px solid var(--line); border-radius: 999px; padding: 0 8px; color: var(--muted); white-space: nowrap; }
+  .dl-tag.st-出す { border-color: var(--accent); color: var(--accent); }
+  .dl-tag.st-要確認 { border-color: var(--warn); color: var(--warn); }
+  .dl-note { font-size: 13px; color: var(--muted); margin-top: 2px; overflow-wrap: anywhere; }
+  .dl-note.mono { font-family: ui-monospace, SFMono-Regular, Menlo, monospace; font-size: 11.5px; color: var(--faint); }
+  .dl-card .dl-list { margin-top: 2px; }
+  .paper { margin-top: 10px; }
+  .paper-t { overflow-wrap: anywhere; }
+  .paper-next { font-size: 14px; margin-top: 6px; }
+  .group-toggle { color: var(--text); font-size: 15px; font-weight: 700; }
   .row > * { min-width: 0; }
   .mini { display: flex; flex-wrap: wrap; gap: 6px; margin-top: 8px; }
   .mini button { padding: 4px 13px; font-size: 14px; border-radius: 999px; min-height: 34px; }
@@ -655,7 +679,7 @@ const API = 'https://api.github.com';
 const KEY = {
   token: 'todo.token', repo: 'todo.repo', path: 'todo.path',
   cache: 'todo.cache', pending: 'todo.pending', timer: 'todo.timer', view: 'todo.view',
-  accent: 'todo.accent', sound: 'todo.sound', cal: 'todo.cal', tip: 'todo.tip', planPrev: 'todo.planPrev',
+  accent: 'todo.accent', sound: 'todo.sound', cal: 'todo.cal', tip: 'todo.tip', planPrev: 'todo.planPrev', portal: 'todo.portal',
 };
 const $ = (id) => document.getElementById(id);
 
@@ -1419,6 +1443,7 @@ function navModel(d, T) {
     { v: { type: 'inbox' }, label: '受信箱', ic: 'inbox', count: act.filter((t) => isInbox(t, T)).length },
     { v: { type: 'anytime' }, label: 'すべて', ic: 'list', count: act.filter(isAnytime).length },
     { v: { type: 'someday' }, label: 'いつか', ic: 'box', count: act.filter((t) => t.someday).length },
+    { v: { type: 'portal' }, label: '研究・締切', ic: 'flag', count: portalDeadlines(T).filter((x) => x.daysLeft <= 7 && x.status !== '候補' && x.status !== '条件付き').length || null, alert: true },
     { sec: 'ふりかえり' },
     { v: { type: 'matrix' }, label: 'マトリクス', ic: 'grid' },
     { v: { type: 'review' }, label: '週次レビュー', ic: 'review', count: !last || daysBetween(last, T) >= 7 ? '●' : null, alert: true },
@@ -1576,7 +1601,7 @@ function renderMain(d, T, model) {
       const doneN = doneToday.length + rDone;
       if (total) extra = h('div', { class: 'ring-sm', title: `今日 ${doneN}/${total} 完了（ルーティンを含む）` }, `${doneN}/${total}`, ringSvg(doneN / total, 44, 5));
       const evs = eventsOn(T);
-      nodes.push(tipCard(), routineSection(d, T), planBar(list, d, T, evs));
+      nodes.push(tipCard(), deadlineCard(T), routineSection(d, T), planBar(list, d, T, evs));
       if (evs.allDay.length) {
         nodes.push(h('div', { class: 'allday', 'aria-label': '終日の予定' }, evs.allDay.map((ev) =>
           h('a', { class: 'ad-chip', href: gcalDayUrl(T), target: '_blank', rel: 'noopener noreferrer', style: `--col:${calColor(ev.cal)}`, title: 'Google カレンダーで開く' }, ev.title))));
@@ -1745,6 +1770,11 @@ function renderMain(d, T, model) {
             h('p', null, `今週の完了 ${doneWeek} 件・集中 ${fmtMin(focusMinutes(d, (k) => k >= mon && k <= T))}`)))));
       nodes.push(h('div', { class: 'dlg-foot', style: 'justify-content:flex-start' },
         h('button', { class: 'btn-primary', type: 'button', onclick: () => { mutate({ t: 'meta', set: { lastReview: T } }); toast('週次レビューを記録しました'); celebrate(); } }, 'レビューを完了する')));
+      break;
+    }
+    case 'portal': {
+      title = '研究・締切'; sub = '締切までの日数と、論文の状態';
+      nodes.push(...portalView(T));
       break;
     }
     case 'logbook': {
@@ -2014,6 +2044,115 @@ function tipCard() {
 }
 
 /* =========================================================================
+ * 研究・締切（データ用リポジトリの research.json を読むだけ。手元の資料から別に作られる）
+ * ========================================================================= */
+let PORTAL = { deadlines: [], papers: [], warnings: [], updatedAt: null, state: 'none' };
+let portalCat = 'all';
+const YMD_ONLY = /^\d{4}-\d{2}-\d{2}$/;
+function setPortal(data, state) {
+  const okD = (x) => x && typeof x.title === 'string' && YMD_ONLY.test(x.date || '');
+  const okP = (x) => x && typeof x.title === 'string';
+  PORTAL = {
+    deadlines: Array.isArray(data?.deadlines) ? data.deadlines.filter(okD) : [],
+    papers: Array.isArray(data?.papers) ? data.papers.filter(okP) : [],
+    warnings: Array.isArray(data?.warnings) ? data.warnings.map(String) : [],
+    updatedAt: data?.updatedAt || null, state,
+  };
+}
+async function fetchPortal() {
+  if (!cfg) return;
+  const key = cfgKey();
+  try {
+    const data = await readSide('research.json');
+    if (!cfg || cfgKey() !== key) return;
+    setPortal(data, 'ok');
+    saveJSON(KEY.portal, { key, data });
+  } catch (e) {
+    if (e.status !== 404) { console.warn('research:', explain(e)); return; }
+    setPortal(null, 'none');
+    store.del(KEY.portal);
+  }
+  if (!cfg || cfgKey() !== key) return;
+  render();
+}
+// まだ終わっていない締切（期間のあるものは終わりの日まで）。daysLeft = 始まりまでの日数
+function portalDeadlines(T) {
+  return PORTAL.deadlines
+    .filter((x) => (YMD_ONLY.test(x.endDate || '') ? x.endDate : x.date) >= T)
+    .map((x) => ({ ...x, daysLeft: daysBetween(T, x.date) }))
+    .sort((a, b) => cmp(a.date, b.date) || cmp(a.time || '99:99', b.time || '99:99'));
+}
+function leftLabel(n) { return n > 0 ? `あと${n}日` : n === 0 ? '今日' : '開催中'; }
+function leftClass(n) { return n <= 7 ? 'soon' : n <= 30 ? 'near' : 'far'; }
+const safeUrl = (u) => (typeof u === 'string' && /^https?:\/\//.test(u) ? u : null);
+function deadlineRow(x) {
+  const when = fmtShort(x.date) + (x.time ? ' ' + x.time : '') + (YMD_ONLY.test(x.endDate || '') ? '〜' + fmtShort(x.endDate) : '');
+  const url = safeUrl(x.url);
+  return h('li', { class: 'dl-row', 'data-id': x.id || '' },
+    h('span', { class: 'dl-left ' + leftClass(x.daysLeft) }, leftLabel(x.daysLeft)),
+    h('div', { class: 'dl-body' },
+      h('div', { class: 'dl-title' }, url ? h('a', { href: url, target: '_blank', rel: 'noopener noreferrer' }, x.title) : x.title),
+      h('div', { class: 'dl-meta' }, when,
+        x.category ? h('span', { class: 'dl-tag' }, x.category) : null,
+        x.status ? h('span', { class: 'dl-tag st-' + x.status }, x.status) : null),
+      x.note ? h('div', { class: 'dl-note' }, x.note) : null));
+}
+// 「今日」の画面に出す、2 週間以内の締切（候補・条件付きは出さない）
+function deadlineCard(T) {
+  const list = portalDeadlines(T).filter((x) => x.daysLeft <= 14 && x.status !== '候補' && x.status !== '条件付き').slice(0, 3);
+  if (!list.length) return null;
+  return h('section', { class: 'card dl-card' },
+    h('div', { class: 'row' }, h('b', null, '近い締切'), h('span', { class: 'sp' }),
+      h('button', { class: 'link-btn', type: 'button', onclick: () => setView({ type: 'portal' }) }, 'すべて見る')),
+    h('ul', { class: 'dl-list' }, list.map(deadlineRow)));
+}
+function portalView(T) {
+  const nodes = [];
+  if (PORTAL.state !== 'ok') {
+    nodes.push(h('div', { class: 'card' }, 'まだ研究・締切のデータがありません。データ用リポジトリに research.json が置かれると、ここに表示されます。'));
+    return nodes;
+  }
+  const all = portalDeadlines(T);
+  const cats = ['all', ...new Set(all.map((x) => x.category).filter(Boolean))];
+  nodes.push(h('div', { class: 'dl-seg', role: 'tablist', 'aria-label': '締切の種類' }, cats.map((c) =>
+    h('button', { type: 'button', role: 'tab', class: portalCat === c ? 'on' : '', 'aria-selected': String(portalCat === c),
+      onclick: () => { portalCat = c; render(); } }, c === 'all' ? `すべて ${all.length}` : `${c} ${all.filter((x) => x.category === c).length}`))));
+  const list = all.filter((x) => portalCat === 'all' || x.category === portalCat);
+  const months = new Map();
+  for (const x of list) {
+    const m = x.date.slice(0, 7);
+    if (!months.has(m)) months.set(m, []);
+    months.get(m).push(x);
+  }
+  if (!list.length) nodes.push(h('div', { class: 'hint' }, 'これからの締切はありません'));
+  for (const [m, xs] of months) {
+    nodes.push(h('section', { class: 'group' },
+      h('div', { class: 'group-h' }, h('h3', null, `${+m.slice(0, 4)}年${+m.slice(5, 7)}月`), h('span', { class: 'count' }, String(xs.length))),
+      h('ul', { class: 'dl-list' }, xs.map(deadlineRow))));
+  }
+  const groups = ['進行中', '提出済み', '止まっている'];
+  const papers = PORTAL.papers;
+  const other = [...new Set(papers.map((p) => p.group || '進行中'))].filter((g) => !groups.includes(g));
+  nodes.push(h('div', { class: 'sec-h' }, '論文'));
+  for (const g of [...groups, ...other]) {
+    const ps = papers.filter((p) => (p.group || '進行中') === g);
+    if (!ps.length) continue;
+    const open = g === '進行中' || portalOpen.has(g);
+    nodes.push(h('section', { class: 'group' },
+      h('button', { class: 'link-btn group-toggle', type: 'button', 'aria-expanded': String(open),
+        onclick: () => { portalOpen.has(g) ? portalOpen.delete(g) : portalOpen.add(g); render(); } }, `${open ? '▾' : '▸'} ${g} ${ps.length}`),
+      open ? h('div', { class: 'paper-list' }, ps.map((p) => h('div', { class: 'card paper', 'data-id': p.id || '' },
+        h('div', { class: 'row', style: 'align-items:baseline' }, h('b', { class: 'paper-t' }, p.title), h('span', { class: 'sp' }), h('span', { class: 'dl-tag' }, p.status || '')),
+        h('div', { class: 'dl-meta' }, [p.venue, p.role].filter(Boolean).join(' · ') || '投稿先未定'),
+        p.next ? h('div', { class: 'paper-next' }, '次：' + p.next) : null,
+        p.path ? h('div', { class: 'dl-note mono' }, p.path) : null))) : null));
+  }
+  nodes.push(h('div', { class: 'hint' }, PORTAL.updatedAt ? `更新：${fmtShort(localYmd(PORTAL.updatedAt))} ${new Date(PORTAL.updatedAt).toTimeString().slice(0, 5)}（手元の資料から作成）` : ''));
+  return nodes;
+}
+let portalOpen = new Set();
+
+/* =========================================================================
  * Google カレンダー
  * データ用リポジトリの calendar.json（任意。Apps Script を設定したときだけ、Google カレンダーから写される）を読むだけ。
  * ブラウザから Google には一切つながない
@@ -2041,6 +2180,7 @@ async function readSide(name) {
 async function fetchCalendar() {
   if (!cfg) return;
   CAL.fetchedAt = Date.now();
+  fetchPortal();
   const key = cfgKey();
   try {
     const data = await readSide('calendar.json');
@@ -3488,6 +3628,8 @@ async function showApp() {
   st.pending = (loadJSON(KEY.pending, []) || []).filter((op) => op && typeof op.t === 'string');
   const calCache = loadJSON(KEY.cal, null);
   if (calCache && calCache.key === cfgKey()) setCal(calCache.data, 'ok');
+  const portalCache = loadJSON(KEY.portal, null);
+  if (portalCache && portalCache.key === cfgKey()) setPortal(portalCache.data, 'ok');
   render();
   tick();
   setSync('loading');
@@ -3503,9 +3645,10 @@ async function showApp() {
   }
 }
 function logout(bad, detail) {
-  for (const k of [KEY.token, KEY.cache, KEY.pending, KEY.timer, KEY.cal, KEY.planPrev]) store.del(k);
+  for (const k of [KEY.token, KEY.cache, KEY.pending, KEY.timer, KEY.cal, KEY.planPrev, KEY.portal]) store.del(k);
   vault.del('login');
   setCal(null, 'none');
+  setPortal(null, 'none');
   planPrev = undefined;
   cfg = null;
   Object.assign(st, { base: null, sha: null, loaded: false, pending: [], syncing: false });
