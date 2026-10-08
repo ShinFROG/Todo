@@ -542,6 +542,7 @@
   .cal-nav .icon-btn { font-size: 22px; width: 36px; height: 36px; }
   .cal-today { border: 1px solid var(--line); background: var(--card); border-radius: 999px; padding: 4px 12px; font-size: 13px; min-height: 0; color: var(--text); }
   .cal-label { font-size: 16px; margin-left: 6px; }
+  .cal-note { font-size: 13px; color: var(--muted); margin: 0 2px 8px; }
   .cal-week { --gut: 40px; background: var(--card); border: 1px solid var(--line); border-radius: 12px; overflow: hidden; }
   .cal-whead, .cal-allday { display: grid; grid-template-columns: var(--gut) repeat(var(--n), minmax(0, 1fr)); border-bottom: 1px solid var(--line); }
   .cal-wday { border: 0; background: none; min-height: 0; padding: 6px 0 4px; display: flex; flex-direction: column; align-items: center; color: var(--text); }
@@ -2368,9 +2369,16 @@ function calendarView(d, T, mode) {
     h('button', { class: 'cal-today', type: 'button', onclick: () => { calAnchor = T; render(); } }, '今日'),
     h('button', { class: 'icon-btn', type: 'button', 'aria-label': '次へ', onclick: () => move(1) }, '›'),
     h('b', { class: 'cal-label' }, label)));
+  // 表示している期間が、Google カレンダーから取り込んでいる範囲の外にかかるか
+  const span = mode === 'month'
+    ? [ymd(new Date(A.getFullYear(), A.getMonth(), 1)), ymd(new Date(A.getFullYear(), A.getMonth() + 1, 0))]
+    : [days[0], days[days.length - 1]];
+  const R = CAL.range;
+  const note = CAL.state !== 'ok' ? 'Google カレンダーの予定はまだ取り込まれていません'
+    : R && (span[1] > R.to || span[0] < R.from) ? `Google カレンダーの予定は ${fmtShort(R.from)}〜${fmtShort(R.to)} の分だけ出ます（締切とタスクはすべて出ます）` : '';
+  if (note) nodes.push(h('div', { class: 'cal-note' }, note));
   if (mode === 'month') nodes.push(monthGrid(d, T, A));
   else nodes.push(weekGrid(d, T, days));
-  if (CAL.state !== 'ok') nodes.push(h('div', { class: 'hint' }, 'Google カレンダーの予定はまだ取り込まれていません'));
   return nodes;
 }
 function weekGrid(d, T, days) {
@@ -2441,7 +2449,7 @@ function monthGrid(d, T, A) {
  * データ用リポジトリの calendar.json（任意。Apps Script を設定したときだけ、Google カレンダーから写される）を読むだけ。
  * ブラウザから Google には一切つながない
  * ========================================================================= */
-let CAL = { events: [], calendars: [], sleep: [], errors: [], updatedAt: null, state: 'none', fetchedAt: 0 };
+let CAL = { events: [], calendars: [], sleep: [], errors: [], range: null, updatedAt: null, state: 'none', fetchedAt: 0 };
 const sidePath = (name) => cfg.path.replace(/[^/]*$/, name);
 function setCal(data, state) {
   const ok = (e) => e && typeof e.title === 'string' && typeof e.start === 'string' && typeof e.end === 'string';
@@ -2451,6 +2459,7 @@ function setCal(data, state) {
     calendars: Array.isArray(data?.calendars) ? data.calendars : [],
     sleep: Array.isArray(data?.sleep) ? data.sleep.filter(okSleep) : [],
     errors: Array.isArray(data?.errors) ? data.errors.map(String) : [],
+    range: YMD_ONLY.test(data?.range?.from || '') && YMD_ONLY.test(data?.range?.to || '') ? data.range : null,
     updatedAt: data?.updatedAt || null, state, fetchedAt: CAL.fetchedAt,
   };
 }
