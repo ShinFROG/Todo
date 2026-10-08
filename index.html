@@ -643,6 +643,15 @@
   .dl-table .dl-left { min-width: 0; display: inline-block; }
   .dl-table .dl-note { margin: 0; }
   .paper { margin-top: 10px; }
+  .ball { display: flex; flex-wrap: wrap; gap: 4px 10px; align-items: center; font-size: 13px; color: var(--muted); margin-top: 6px; }
+  .ball-who { font-weight: 700; color: var(--warn); }
+  .ball.mine .ball-who { color: var(--accent); }
+  .ball-wait { font-variant-numeric: tabular-nums; }
+  .ball-wait.long { color: var(--danger); font-weight: 700; }
+  .subs { margin-top: 6px; font-size: 13px; }
+  .subs summary { cursor: pointer; color: var(--muted); }
+  .subs ol { margin: 4px 0 0; padding-left: 20px; }
+  .group.waiting .dl-list { padding: 4px 12px; }
   .paper-t { overflow-wrap: anywhere; }
   .paper-next { font-size: 14px; margin-top: 6px; }
   .group-toggle { color: var(--text); font-size: 15px; font-weight: 700; }
@@ -2166,7 +2175,7 @@ function tipCard() {
 /* =========================================================================
  * 研究・締切（データ用リポジトリの research.json を読むだけ。手元の資料から別に作られる）
  * ========================================================================= */
-let PORTAL = { deadlines: [], papers: [], warnings: [], updatedAt: null, state: 'none' };
+let PORTAL = { deadlines: [], papers: [], reviews: [], warnings: [], updatedAt: null, state: 'none' };
 let portalCat = 'all';
 const YMD_ONLY = /^\d{4}-\d{2}-\d{2}$/;
 function setPortal(data, state) {
@@ -2175,6 +2184,7 @@ function setPortal(data, state) {
   PORTAL = {
     deadlines: Array.isArray(data?.deadlines) ? data.deadlines.filter(okD) : [],
     papers: Array.isArray(data?.papers) ? data.papers.filter(okP) : [],
+    reviews: Array.isArray(data?.reviews) ? data.reviews.filter((r) => r && typeof r.journal === 'string') : [],
     warnings: Array.isArray(data?.warnings) ? data.warnings.map(String) : [],
     updatedAt: data?.updatedAt || null, state,
   };
@@ -2223,13 +2233,14 @@ function deadlineTable(list) {
 }
 function paperTable(papers) {
   return h('div', { class: 'dl-tablewrap' }, h('table', { class: 'dl-table' },
-    h('thead', null, h('tr', null, ['論文', '区分', '状態', '投稿先', '次の一手'].map((c) => h('th', { scope: 'col' }, c)))),
+    h('thead', null, h('tr', null, ['論文', '区分', '状態', 'ボール', '投稿先', '次の一手'].map((c) => h('th', { scope: 'col' }, c)))),
     h('tbody', null, papers.map((p) => {
       const url = safeUrl(p.url);
       return h('tr', { 'data-id': p.id || '' },
         h('td', null, h('b', null, p.title), p.role ? h('div', { class: 'dl-note' }, p.role) : null),
         h('td', { class: 'nowrap' }, p.group || '進行中'),
         h('td', { class: 'nowrap' }, p.status || ''),
+        h('td', { class: 'nowrap' }, ballOf(p).who + (waitDays(p, todayYmd()) != null ? `（${waitDays(p, todayYmd())}日）` : '')),
         h('td', null, url ? h('a', { href: url, target: '_blank', rel: 'noopener noreferrer' }, p.venue || '投稿先のページ', ' ↗') : p.venue || '未定'),
         h('td', { class: 'dl-note' }, p.next || ''));
     }))));
@@ -2267,6 +2278,48 @@ function deadlineCard(T) {
       h('button', { class: 'link-btn', type: 'button', onclick: () => setView({ type: 'portal' }) }, 'すべて見る')),
     h('ul', { class: 'dl-list' }, list.map((x) => deadlineRow(x, { compact: true }))));
 }
+// 論文のボール（今だれが持っているか）。自分以外なら待っている日数
+const ballOf = (p) => (p.ball && typeof p.ball.who === 'string' ? p.ball : { who: '自分' });
+const waitDays = (p, T) => { const b = ballOf(p); return b.who !== '自分' && YMD_ONLY.test(b.since || '') ? daysBetween(b.since, T) : null; };
+function ballLine(p, T) {
+  const b = ballOf(p);
+  const w = waitDays(p, T);
+  return h('div', { class: 'ball' + (b.who === '自分' ? ' mine' : '') },
+    h('span', { class: 'ball-who' }, b.who === '自分' ? '● 自分の番' : `○ ${b.who}の番`),
+    b.name ? h('span', null, b.name) : null,
+    w != null ? h('span', { class: 'ball-wait' + (w >= 30 ? ' long' : '') }, `${w}日待ち`) : null);
+}
+function submissionList(p) {
+  const subs = Array.isArray(p.submissions) ? p.submissions : [];
+  if (!subs.length) return null;
+  return h('details', { class: 'subs' }, h('summary', null, `投稿の履歴 ${subs.length}`),
+    h('ol', null, subs.map((x) => h('li', null,
+      h('b', null, x.venue || ''), ` ${YMD_ONLY.test(x.submitted || '') ? fmtShort(x.submitted) + ' 投稿' : ''}`,
+      x.decision ? ` → ${x.decision}${YMD_ONLY.test(x.decisionDate || '') ? '（' + fmtShort(x.decisionDate) + '）' : ''}` : '',
+      x.note ? h('div', { class: 'dl-note' }, x.note) : null))));
+}
+// 年度（4 月始まり）
+const fiscalYear = (k) => (+k.slice(5, 7) >= 4 ? +k.slice(0, 4) : +k.slice(0, 4) - 1);
+function reviewSection(T) {
+  const rs = PORTAL.reviews;
+  const open = rs.filter((r) => r.decision !== '辞退' && !r.submitted).sort((a, b) => cmp(a.due || '~', b.due || '~'));
+  const fy = fiscalYear(T);
+  const doneFy = rs.filter((r) => YMD_ONLY.test(r.submitted || '') && fiscalYear(r.submitted) === fy);
+  const nodes = [h('div', { class: 'sec-h' }, `査読　${fy}年度に提出 ${doneFy.length}件`)];
+  if (!rs.length) { nodes.push(h('div', { class: 'hint' }, '査読の依頼はまだ記録されていません')); return nodes; }
+  if (open.length) nodes.push(h('ul', { class: 'dl-list card' }, open.map((r) => {
+    const n = YMD_ONLY.test(r.due || '') ? daysBetween(T, r.due) : null;
+    return h('li', { class: 'dl-row', 'data-review': r.id || '' },
+      h('span', { class: 'dl-left ' + (n == null ? 'far' : n < 0 ? 'soon' : leftClass(n)) }, n == null ? '期限なし' : n < 0 ? `${-n}日超過` : leftLabel(n)),
+      h('div', { class: 'dl-body' }, h('div', { class: 'dl-title' }, r.journal),
+        h('div', { class: 'dl-meta' }, [YMD_ONLY.test(r.invited || '') ? `依頼 ${fmtShort(r.invited)}` : '', YMD_ONLY.test(r.due || '') ? `期限 ${fmtShort(r.due)}` : ''].filter(Boolean).join(' · ')),
+        r.title ? h('div', { class: 'dl-note clamp' }, r.title) : null));
+  })));
+  const past = rs.filter((r) => r.submitted || r.decision === '辞退').sort((a, b) => cmp(b.submitted || b.invited || '', a.submitted || a.invited || ''));
+  if (past.length) nodes.push(h('details', { class: 'subs' }, h('summary', null, `これまでの査読 ${past.length}`),
+    h('ol', null, past.map((r) => h('li', null, h('b', null, r.journal), ' ', r.decision === '辞退' ? '辞退' : `${fmtShort(r.submitted)} 提出`)))));
+  return nodes;
+}
 function portalView(T) {
   const nodes = [];
   if (PORTAL.state !== 'ok') {
@@ -2285,7 +2338,7 @@ function portalView(T) {
   const list = all.filter((x) => portalCat === 'all' || x.category === portalCat);
   if (mode === 'table') {
     nodes.push(list.length ? deadlineTable(list) : h('div', { class: 'hint' }, 'これからの締切はありません'));
-    nodes.push(h('div', { class: 'sec-h' }, '論文'), paperTable(PORTAL.papers));
+    nodes.push(h('div', { class: 'sec-h' }, '論文'), paperTable(PORTAL.papers), ...reviewSection(T));
     nodes.push(h('div', { class: 'hint' }, PORTAL.updatedAt ? `更新：${fmtShort(localYmd(PORTAL.updatedAt))} ${new Date(PORTAL.updatedAt).toTimeString().slice(0, 5)}（手元の資料から作成）` : ''));
     return nodes;
   }
@@ -2303,8 +2356,13 @@ function portalView(T) {
   }
   const groups = ['進行中', '提出済み', '止まっている'];
   const papers = PORTAL.papers;
+  const waiting = papers.filter((p) => ballOf(p).who !== '自分').sort((a, b) => (waitDays(b, T) ?? -1) - (waitDays(a, T) ?? -1));
   const other = [...new Set(papers.map((p) => p.group || '進行中'))].filter((g) => !groups.includes(g));
   nodes.push(h('div', { class: 'sec-h' }, '論文'));
+  if (waiting.length) nodes.push(h('section', { class: 'group waiting' }, h('div', { class: 'group-h' }, h('h3', null, '相手待ち'), h('span', { class: 'count' }, String(waiting.length))),
+    h('ul', { class: 'dl-list card' }, waiting.map((p) => h('li', { class: 'dl-row', 'data-wait': p.id || '' },
+      h('span', { class: 'dl-left ' + ((waitDays(p, T) ?? 0) >= 30 ? 'soon' : 'far') }, waitDays(p, T) != null ? `${waitDays(p, T)}日` : '—'),
+      h('div', { class: 'dl-body' }, h('div', { class: 'dl-title' }, p.title), h('div', { class: 'dl-meta' }, `${ballOf(p).who}${ballOf(p).name ? '（' + ballOf(p).name + '）' : ''}の番`)))))));
   for (const g of [...groups, ...other]) {
     const ps = papers.filter((p) => (p.group || '進行中') === g);
     if (!ps.length) continue;
@@ -2315,9 +2373,11 @@ function portalView(T) {
       open ? h('div', { class: 'paper-list' }, ps.map((p) => h('div', { class: 'card paper', 'data-id': p.id || '' },
         h('div', { class: 'row', style: 'align-items:baseline' }, h('b', { class: 'paper-t' }, p.title), h('span', { class: 'sp' }), h('span', { class: 'dl-tag' }, p.status || '')),
         h('div', { class: 'dl-meta' }, [p.venue, p.role].filter(Boolean).join(' · ') || '投稿先未定', safeUrl(p.url) ? linkChip(safeUrl(p.url), '投稿先のページ') : null),
+        ballLine(p, T),
         p.next ? h('div', { class: 'paper-next' }, '次：' + p.next) : null,
-        null))) : null));
+        submissionList(p)))) : null));
   }
+  nodes.push(...reviewSection(T));
   nodes.push(h('div', { class: 'hint' }, PORTAL.updatedAt ? `更新：${fmtShort(localYmd(PORTAL.updatedAt))} ${new Date(PORTAL.updatedAt).toTimeString().slice(0, 5)}（手元の資料から作成）` : ''));
   return nodes;
 }
