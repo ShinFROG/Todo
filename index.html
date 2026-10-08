@@ -553,6 +553,7 @@
   .cal-axis { font-size: 12px; color: var(--muted); text-align: right; padding: 4px 4px 0 0; }
   .cal-adcell { min-width: 0; padding: 3px 2px; display: flex; flex-direction: column; gap: 2px; border-left: 1px solid var(--line); }
   .cal-chip { display: block; min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; font-size: 12px; line-height: 1.5; border-radius: 4px; padding: 0 4px; border: 0; text-align: left; min-height: 0; text-decoration: none; color: var(--text); background: color-mix(in srgb, var(--col, var(--accent)) 18%, var(--card)); font-weight: 600; }
+  .cal-chip.hol { background: transparent; color: var(--danger); font-weight: 600; }
   .cal-chip.dl { background: color-mix(in srgb, var(--danger) 14%, var(--card)); color: var(--danger); }
   .cal-chip.task { background: transparent; border-left: 3px solid var(--col); border-radius: 2px; font-weight: 500; }
   .cal-chip.timed { background: transparent; font-weight: 500; }
@@ -1687,7 +1688,7 @@ function renderMain(d, T, model) {
 
   switch (view.type) {
     case 'today': {
-      title = '今日'; sub = fmtFull(T);
+      title = '今日'; sub = fmtFull(T) + (holidayName(T) ? `　${holidayName(T)}` : '');
       const list = act.filter((t) => isToday(t, T));
       const doneToday = d.todos.filter((t) => t.done && t.doneAt && localYmd(t.doneAt) === T).sort((a, b) => cmp(b.doneAt, a.doneAt));
       // 進み具合はタスクとルーティンを合わせて数える
@@ -1758,7 +1759,7 @@ function renderMain(d, T, model) {
         const k = ymd(dd);
         const n = list.filter((t) => t.due === k).length + propsOn(k).length + (() => { const e = eventsOn(k); return e.allDay.length + e.timed.length; })();
         strip.append(h('button', {
-          class: 'day-chip' + (dd.getDay() === 6 ? ' sat' : dd.getDay() === 0 ? ' sun' : '') + (n ? ' has' : ''), type: 'button', role: 'listitem',
+          class: 'day-chip' + (dd.getDay() === 6 ? ' sat' : dd.getDay() === 0 || holidayName(k) ? ' sun' : '') + (n ? ' has' : ''), type: 'button', role: 'listitem',
           'aria-label': `${fmtShort(k)} ${n}件`,
           onclick: () => document.getElementById('day-' + k)?.scrollIntoView({ behavior: reduceMotion() ? 'auto' : 'smooth', block: 'start' }),
         }, WD[dd.getDay()], h('b', null, String(dd.getDate())), h('span', { class: 'dot' })));
@@ -1770,8 +1771,8 @@ function renderMain(d, T, model) {
         const evList = evRows(eventsOn(k), k);
         const pp = propsOn(k);
         const ppList = pp.length ? h('div', { class: 'pp-list' }, pp.map((p) => proposalCard(p, `${p.start}–${p.end}`))) : null;
-        if (!items.length && !evList && !ppList) continue; // 何もない日は出さない
-        nodes.push(group(`${fmtShort(k)}  ${relWord(k, T)}`, items, T, {
+        if (!items.length && !evList && !ppList && !holidayName(k)) continue; // 何もない日は出さない（祝日は出す）
+        nodes.push(group(`${fmtShort(k)}  ${relWord(k, T)}${holidayName(k) ? '　' + holidayName(k) : ''}`, items, T, {
           id: 'day-' + k, pre: evList || ppList ? h('div', null, evList, ppList) : null,
         }));
       }
@@ -2353,6 +2354,7 @@ function calChip(kind, label, opts = {}) {
 }
 function dayChips(d, k, it, max) {
   const chips = [
+    ...(holidayName(k) ? [calChip('hol', holidayName(k))] : []),
     ...it.dls.map((x) => calChip('dl', '⚑ ' + x.title, { href: safeUrl(x.url), title: `締切: ${x.title}` })),
     ...it.evs.allDay.map((ev) => calChip('ev', ev.title, { col: calColor(ev.cal), href: gcalDayUrl(k) })),
     ...it.dayTasks.map((t) => calChip('task', splitEmoji(t.title)[1], { col: taskColor(t), task: t.id })),
@@ -2411,7 +2413,7 @@ function weekGrid(d, T, days) {
   const now = new Date();
   const nowMin = now.getHours() * 60 + now.getMinutes();
   const head = h('div', { class: 'cal-whead', style: `--n:${days.length}` }, h('span'),
-    days.map((k) => { const dd = parseYmd(k); return h('button', { type: 'button', class: 'cal-wday' + (k === T ? ' today' : '') + (dd.getDay() === 0 ? ' sun' : dd.getDay() === 6 ? ' sat' : ''),
+    days.map((k) => { const dd = parseYmd(k); return h('button', { type: 'button', class: 'cal-wday' + (k === T ? ' today' : '') + (dd.getDay() === 0 || holidayName(k) ? ' sun' : dd.getDay() === 6 ? ' sat' : ''),
       onclick: () => { calAnchor = k; store.set(KEY.calMode, 'list'); render(); requestAnimationFrame(() => document.getElementById('day-' + k)?.scrollIntoView({ block: 'start' })); } },
       h('small', null, WD[dd.getDay()]), h('b', null, String(dd.getDate()))); }));
   const allday = h('div', { class: 'cal-allday', style: `--n:${days.length}` }, h('span', { class: 'cal-axis' }, '終日'),
@@ -2452,7 +2454,7 @@ function monthGrid(d, T, A) {
       ...it.timedTasks.map((t) => calChip('task timed', calNarrow() ? splitEmoji(t.title)[1] : `${t.time} ${splitEmoji(t.title)[1]}`, { col: taskColor(t), task: t.id })),
     ];
     cells.push(h('div', { class: 'cal-mcell' + (dd.getMonth() !== A.getMonth() ? ' other' : '') + (k === T ? ' today' : ''), 'data-day': k },
-      h('button', { type: 'button', class: 'cal-mnum' + (dd.getDay() === 0 ? ' sun' : dd.getDay() === 6 ? ' sat' : ''), 'aria-label': `${fmtShort(k)}を週で見る`,
+      h('button', { type: 'button', class: 'cal-mnum' + (dd.getDay() === 0 || holidayName(k) ? ' sun' : dd.getDay() === 6 ? ' sat' : ''), 'aria-label': `${fmtShort(k)}を週で見る`,
         onclick: () => { calAnchor = k; store.set(KEY.calMode, 'week'); render(); } }, String(dd.getDate())),
       chips.length > max ? [...chips.slice(0, max), h('span', { class: 'cal-more' }, `+${chips.length - max}`)] : chips));
   }
@@ -2522,11 +2524,20 @@ function newsView() {
 }
 
 /* =========================================================================
+ * 祝日。Google カレンダーの「日本の祝日」を取り込んでいればそれを使い、無い分は内閣府の祝日表（2026〜2027 年）で補う
+ * ========================================================================= */
+const HOLIDAYS_JP = { '2026-01-01': '元日', '2026-01-12': '成人の日', '2026-02-11': '建国記念の日', '2026-02-23': '天皇誕生日', '2026-03-20': '春分の日', '2026-04-29': '昭和の日', '2026-05-03': '憲法記念日', '2026-05-04': 'みどりの日', '2026-05-05': 'こどもの日', '2026-05-06': '休日', '2026-07-20': '海の日', '2026-08-11': '山の日', '2026-09-21': '敬老の日', '2026-09-22': '休日', '2026-09-23': '秋分の日', '2026-10-12': 'スポーツの日', '2026-11-03': '文化の日', '2026-11-23': '勤労感謝の日', '2027-01-01': '元日', '2027-01-11': '成人の日', '2027-02-11': '建国記念の日', '2027-02-23': '天皇誕生日', '2027-03-21': '春分の日', '2027-03-22': '休日', '2027-04-29': '昭和の日', '2027-05-03': '憲法記念日', '2027-05-04': 'みどりの日', '2027-05-05': 'こどもの日', '2027-07-19': '海の日', '2027-08-11': '山の日', '2027-09-20': '敬老の日', '2027-09-23': '秋分の日', '2027-10-11': 'スポーツの日', '2027-11-03': '文化の日', '2027-11-23': '勤労感謝の日' };
+function holidayName(k) {
+  const g = CAL.holidays && CAL.holidays[k];
+  return g || HOLIDAYS_JP[k] || '';
+}
+
+/* =========================================================================
  * Google カレンダー
  * データ用リポジトリの calendar.json（任意。Apps Script を設定したときだけ、Google カレンダーから写される）を読むだけ。
  * ブラウザから Google には一切つながない
  * ========================================================================= */
-let CAL = { events: [], calendars: [], sleep: [], errors: [], range: null, updatedAt: null, state: 'none', fetchedAt: 0 };
+let CAL = { events: [], calendars: [], sleep: [], errors: [], range: null, holidays: null, updatedAt: null, state: 'none', fetchedAt: 0 };
 const sidePath = (name) => cfg.path.replace(/[^/]*$/, name);
 function setCal(data, state) {
   const ok = (e) => e && typeof e.title === 'string' && typeof e.start === 'string' && typeof e.end === 'string';
@@ -2537,6 +2548,7 @@ function setCal(data, state) {
     sleep: Array.isArray(data?.sleep) ? data.sleep.filter(okSleep) : [],
     errors: Array.isArray(data?.errors) ? data.errors.map(String) : [],
     range: YMD_ONLY.test(data?.range?.from || '') && YMD_ONLY.test(data?.range?.to || '') ? data.range : null,
+    holidays: Array.isArray(data?.holidays) ? Object.fromEntries(data.holidays.filter((x) => x && YMD_ONLY.test(x.date || '') && typeof x.name === 'string').map((x) => [x.date, x.name])) : null,
     updatedAt: data?.updatedAt || null, state, fetchedAt: CAL.fetchedAt,
   };
 }
@@ -2670,6 +2682,7 @@ function planSchedule(input) {
     const dayEvents = events.filter((e) => (e.allDay ? ymd(e.start) <= k && k < ymd(e.end) : e.start < next && e.end > date));
     const labEv = dayEvents.find((e) => has(e.title, R.labWords));
     const offEv = dayEvents.find((e) => e.allDay && has(e.title, R.offWords));
+    const hol = (input.holidays && input.holidays[k]) || '';
     let start = (labEv ? R.labDayStart : R.dayStart) * 60;
     // 睡眠の記録: 朝は起きた時刻から、夜は寝る時刻の sleepGap 分前まで
     const noon = new Date(date.getTime() + 12 * 3600000);
@@ -2701,7 +2714,7 @@ function planSchedule(input) {
     for (const m of R.meals) busy.push([m[0] * 60, m[1] * 60]);
     const day = {
       k, date, isLab: !!labEv, labWord: labEv ? R.labWords.find((w) => has(labEv.title, [w])) : '',
-      off: offEv ? offEv.title : '',
+      off: offEv ? offEv.title : '', holiday: hol,
       start, freeFrom, end, free: [], load: 0, deep: 0,
       physical: dayEvents.some((e) => has(e.title, R.physicalWords)),
       budget: Math.max(0, cap - eventMin),
@@ -2749,6 +2762,7 @@ function planSchedule(input) {
     if (mode === 'late' && s < R.goldenEnd * 60) return false;
     if (kind === 'physical' && day.physical) return false;
     if (t.place === 'lab' && !day.isLab) return false;
+    if (kind === 'errand' && day.holiday) return false; // 祝日は役所や窓口が閉まっているので外出・用事は入れない
     if (t.place === 'home' && day.isLab && s < R.eveningStart * 60) return false;
     if (mode !== 'over' && day.load + (e - s) > day.budget) return false;
     return true;
@@ -2847,7 +2861,9 @@ function computePlan() {
     ? { title: ev.title, start: parseYmd(ev.start), end: parseYmd(ev.end), allDay: true }
     : { title: ev.title, start: new Date(ev.start), end: new Date(ev.end), allDay: false })).filter(valid);
   const sleep = CAL.sleep.map((x) => ({ start: new Date(x.start), end: new Date(x.end) })).filter(valid);
-  const p = planSchedule({ now: new Date(), todos: DATA, events, sleep, prev: planPrev, rules: planRules(DATA.meta) });
+  const holidays = {};
+  for (let i = 0; i < 15; i++) { const k = ymd(addDays(new Date(), i)); if (holidayName(k)) holidays[k] = holidayName(k); }
+  const p = planSchedule({ now: new Date(), todos: DATA, events, sleep, holidays, prev: planPrev, rules: planRules(DATA.meta) });
   PLAN = { ...p, on: true };
   if (!planPrev || JSON.stringify(planPrev.items) !== JSON.stringify(p.items)) setPlanPrev(p.items);
 }
