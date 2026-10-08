@@ -256,25 +256,47 @@
   .pill-btn .ic { width: 18px; height: 18px; }
   .nudge { display: flex; align-items: center; gap: 8px; margin-top: 14px; font-size: 14px; color: var(--muted); }
   .nudge .ic { width: 18px; height: 18px; }
-  /* タイムライン（Structured / Tiimo 風） */
-  .timeline { margin-top: 6px; }
-  .tl-item { display: grid; grid-template-columns: 46px 34px minmax(0, 1fr); min-height: var(--h); }
-  .tl-time { text-align: right; font-size: 13px; font-weight: 600; padding-top: 12px; font-variant-numeric: tabular-nums; line-height: 1.2; }
-  .tl-time small { display: block; font-weight: 400; color: var(--faint); font-size: 11px; margin-top: 2px; }
-  .tl-rail { position: relative; display: flex; justify-content: center; }
-  .tl-rail::before { content: ""; position: absolute; top: 0; bottom: 0; left: 50%; border-left: 2px dotted var(--line); transform: translateX(-1px); }
-  .tl-pill {
-    position: relative; z-index: 1; width: 26px; margin: 8px 0; border-radius: 13px; height: calc(var(--h) - 16px);
-    background: var(--col); display: flex; justify-content: center; padding-top: 3px; font-size: 14px; line-height: 20px;
+  /* タイムライン（縦軸は時刻に固定。1 分 = 2px） */
+  .timeline { position: relative; margin: 10px 0 8px; --gut: 50px; }
+  .tl-hour { position: absolute; left: 0; right: 0; height: 0; border-top: 1px solid var(--line); }
+  .tl-hour span { position: absolute; left: 0; width: calc(var(--gut) - 8px); top: -8px; text-align: right; font-size: 11px; color: var(--faint); background: var(--bg); padding-right: 4px; font-variant-numeric: tabular-nums; }
+  .tl-item {
+    position: absolute; box-sizing: border-box; overflow: hidden;
+    top: 0; left: calc(var(--gut) + (100% - var(--gut)) * var(--lane) / var(--lanes)); width: calc((100% - var(--gut)) / var(--lanes) - 3px);
+    border-radius: 8px; border-left: 4px solid var(--col); background: color-mix(in srgb, var(--col) 12%, var(--card));
+    display: flex; flex-direction: column; padding: 2px 6px 2px 4px; border-bottom: 2px solid var(--bg);
   }
-  .tl-item.done .tl-pill { opacity: .35; }
+  .tl-item.done { opacity: .5; }
+  .tl-time { font-size: 11px; color: var(--muted); font-variant-numeric: tabular-nums; line-height: 1.3; padding-left: 4px; }
+  .tl-time small { font-size: 11px; }
+  .tl-time small::before { content: "–"; }
+  .tl-item .tasks { min-width: 0; }
+  .tl-item .task-inner { padding-top: 2px; padding-bottom: 2px; min-height: 0; background: transparent; }
   .tl-item .task-inner::before { display: none; }
-  .tl-gap, .tl-now { display: grid; grid-template-columns: 46px 34px minmax(0, 1fr); align-items: center; min-height: 30px; font-size: 12px; color: var(--faint); }
-  .tl-gap .tl-rail, .tl-now .tl-rail { align-self: stretch; }
-  .tl-now { color: var(--danger); font-weight: 700; min-height: 18px; }
-  .tl-now .bar { height: 2px; background: var(--danger); border-radius: 1px; position: relative; }
+  .tl-item .check { margin-top: 0; }
+  .tl-item .task .title { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+  .tl-item.sm .task .meta, .tl-item.xs .task .meta { display: none; }
+  .tl-item.xs { flex-direction: row; align-items: center; gap: 4px; padding-top: 0; padding-bottom: 0; }
+  .tl-item.xs .tl-time small { display: none; }
+  .tl-item.xs .tasks, .tl-item.xs .ev-card, .tl-item.xs .pp-card { flex: 1; }
+  .tl-item .ev-card { padding: 2px 0; gap: 6px; }
+  .tl-item .ev-card > .ic { width: 16px; height: 16px; margin: 1px 0 0 2px; }
+  .tl-item .ev-card .title { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+  .tl-item.sm .ev-card .meta, .tl-item.xs .ev-card .meta, .tl-item.xs .ev-card > .ic { display: none; }
+  .tl-item.pp { background: var(--bg); border: 1.5px dashed var(--col); border-left: 4px dashed var(--col); }
+  .tl-item .pp-card.pp-row { display: flex; margin: 0; padding: 0; border: 0; border-radius: 0; flex-wrap: wrap; align-items: center; }
+  .tl-item .pp-card .tasks { flex: 1 1 140px; }
+  .tl-item .pp-foot { display: flex; align-items: center; gap: 4px; margin-left: auto; padding-left: 4px; }
+  .tl-item:not(.sm):not(.xs) .pp-foot { flex-basis: 100%; }
+  .tl-item.sm .pp-why, .tl-item.xs .pp-why, .tl-item.xs .pp-tag { display: none; }
+  .tl-item.sm .pp-card.pp-row, .tl-item.xs .pp-card.pp-row { flex-wrap: nowrap; }
+  .tl-item.sm .pp-btn, .tl-item.xs .pp-btn { width: 26px; height: 26px; }
+  .tl-gap { position: absolute; left: var(--gut); right: 0; display: flex; align-items: center; justify-content: center; font-size: 12px; color: var(--faint); pointer-events: none; }
+  .tl-gap span { background: var(--bg); padding: 0 6px; }
+  .tl-now { position: absolute; left: 0; right: 0; height: 0; z-index: 3; pointer-events: none; color: var(--danger); font-weight: 700; font-size: 11px; }
+  .tl-now span { position: absolute; left: 0; width: calc(var(--gut) - 8px); top: -8px; text-align: right; background: var(--bg); padding-right: 4px; font-variant-numeric: tabular-nums; }
+  .tl-now .bar { position: absolute; left: var(--gut); right: 0; top: -1px; height: 2px; background: var(--danger); border-radius: 1px; }
   .tl-now .bar::before { content: ""; position: absolute; left: -5px; top: -4px; width: 10px; height: 10px; border-radius: 50%; background: var(--danger); }
-  .tl-now span:first-child { text-align: right; }
   /* 空のとき */
   .empty { color: var(--muted); text-align: center; padding: 40px 16px 24px; font-size: 15px; }
   .empty svg { width: 120px; height: 120px; display: block; margin: 0 auto 14px; }
@@ -426,7 +448,6 @@
     text-decoration: none; color: var(--text); background: color-mix(in srgb, var(--col) 16%, transparent);
   }
   .ad-chip::before { content: ""; width: 8px; height: 8px; border-radius: 50%; background: var(--col); }
-  .tl-item.ev .tl-pill { background: color-mix(in srgb, var(--col) 22%, var(--bg)); border: 2px solid var(--col); }
   .ev-card { display: flex; gap: 10px; padding: 10px 0; color: inherit; text-decoration: none; min-width: 0; }
   .ev-card > .ic { width: 22px; height: 22px; margin: 1px 4px 0 3px; color: var(--col); }
   .ev-card .body { cursor: pointer; }
@@ -459,7 +480,6 @@
   .sug .add.on { background: var(--ok); color: #fff; }
   .sug .add .ic { width: 18px; height: 18px; }
   /* 空き時間への提案（点線の枠。✓ で入れる、× で見送る） */
-  .tl-item.pp .tl-pill { background: transparent; border: 2px dashed var(--col); }
   .pp-card { display: flex; align-items: center; gap: 6px; min-width: 0; margin: 6px 0; padding: 8px 8px 8px 12px; border: 1.5px dashed var(--line); border-radius: 14px; }
   .pp-body { flex: 1; min-width: 0; text-align: left; background: none; border: 0; padding: 0; color: inherit; font: inherit; cursor: pointer; min-height: 0; }
   .pp-body .title { font-weight: 600; overflow-wrap: anywhere; }
@@ -2592,32 +2612,66 @@ function planBar(list, d, T, evs) {
     busy && list.length ? h('div', { class: 'hint', style: 'margin-top:4px;text-align:right' }, `予定 ${fmtMin(busy)}を除く`) : null);
 }
 
-// 時刻のあるタスクとカレンダーの予定を 1 日の流れとして並べる（空き時間と現在時刻も出す）
+// 時刻のあるタスクとカレンダーの予定を、時間の長さどおりの高さで 1 日の流れとして並べる
+// 縦軸は固定（1 分 = TL_PX px、毎時の線つき）。重なるものは横に並べる。空き時間と現在時刻も出す
+const TL_PX = 2;
 function timeline(items, events, T, props = []) {
   const now = new Date();
   const nowMin = now.getHours() * 60 + now.getMinutes();
-  const out = [];
-  let prevEnd = null;
-  let nowDone = false;
-  const nowLine = () => h('div', { class: 'tl-now', 'aria-label': '現在時刻' }, h('span', null, minToHm(nowMin)), h('span', { class: 'tl-rail' }), h('div', { class: 'bar' }));
   const entries = [
     ...items.map((t) => ({ t, start: hmToMin(t.time), end: hmToMin(t.time) + (t.estimate || 30) })),
     ...events.map((ev) => ({ ev, start: ev.sm, end: ev.em })),
     ...props.map((p) => ({ p, start: hmToMin(p.start), end: hmToMin(p.end) })),
-  ].sort((a, b) => a.start - b.start || (a.ev ? -1 : b.ev ? 1 : 0));
-  for (const { t, ev, p, start, end } of entries) {
-    const dur = end - start;
+  ].map((e) => ({ ...e, end: Math.min(24 * 60, Math.max(e.end, e.start + 5)) }))
+    .sort((a, b) => a.start - b.start || (a.ev ? -1 : b.ev ? 1 : 0) || b.end - a.end);
+  // 表示する範囲（毎時で区切る）。今の時刻は、予定の前後 2 時間以内なら範囲に含める
+  let lo = Math.min(...entries.map((e) => e.start));
+  let hi = Math.max(...entries.map((e) => e.end));
+  const showNow = nowMin >= lo - 120 && nowMin <= hi + 120;
+  if (showNow) { lo = Math.min(lo, nowMin); hi = Math.max(hi, nowMin + 1); }
+  lo = Math.floor(lo / 60) * 60;
+  hi = Math.min(24 * 60, Math.ceil(hi / 60) * 60);
+  const y = (m) => (m - lo) * TL_PX;
+  // 重なりの塊ごとに列を割り当てる
+  let cluster = [];
+  let clusterEnd = -1;
+  const flush = () => {
+    const lanes = [];
+    for (const e of cluster) {
+      let k = lanes.findIndex((end) => end <= e.start);
+      if (k < 0) { k = lanes.length; lanes.push(0); }
+      lanes[k] = e.end;
+      e.lane = k;
+    }
+    for (const e of cluster) e.lanes = lanes.length;
+    cluster = [];
+  };
+  for (const e of entries) {
+    if (e.start >= clusterEnd) flush();
+    cluster.push(e);
+    clusterEnd = Math.max(clusterEnd, e.end);
+  }
+  flush();
+
+  const out = [];
+  for (let m = lo; m <= hi; m += 60) out.push(h('div', { class: 'tl-hour', style: `top:${y(m)}px`, 'aria-hidden': 'true' }, h('span', null, minToHm(m % (24 * 60)))));
+  const nowLine = () => h('div', { class: 'tl-now', style: `top:${y(nowMin)}px`, 'aria-label': '現在時刻' }, h('span', null, minToHm(nowMin)), h('div', { class: 'bar' }));
+  let nowDone = !showNow;
+  let prevEnd = null;
+  const place = (e) => `top:${y(e.start)}px;height:${(e.end - e.start) * TL_PX}px;--lane:${e.lane};--lanes:${e.lanes}`;
+  const size = (e) => ((e.end - e.start) * TL_PX < 44 ? ' xs' : (e.end - e.start) * TL_PX < 90 ? ' sm' : '');
+  for (const e of entries) {
+    const { t, ev, p, start, end } = e;
     if (prevEnd != null && start - prevEnd >= 30) {
       if (!nowDone && nowMin >= prevEnd && nowMin < start) { out.push(nowLine()); nowDone = true; }
-      out.push(h('div', { class: 'tl-gap' }, h('span'), h('span', { class: 'tl-rail' }), h('span', null, `空き ${fmtMin(start - prevEnd)}`)));
+      out.push(h('div', { class: 'tl-gap', style: `top:${y(prevEnd)}px;height:${(start - prevEnd) * TL_PX}px` }, h('span', null, `空き ${fmtMin(start - prevEnd)}`)));
     }
     if (!nowDone && nowMin < start) { out.push(nowLine()); nowDone = true; }
-    const hgt = Math.round(Math.max(60, Math.min(200, dur * 1.1)));
     prevEnd = prevEnd == null ? end : Math.max(prevEnd, end);
+    const time = (a, b) => h('div', { class: 'tl-time' }, a, h('small', null, b));
     if (ev) {
-      out.push(h('div', { class: 'tl-item ev', style: `--h:${hgt}px;--col:${calColor(ev.cal)}` },
-        h('div', { class: 'tl-time' }, minToHm(start), h('small', null, hmEnd(end))),
-        h('div', { class: 'tl-rail' }, h('span', { class: 'tl-pill', 'aria-hidden': 'true' })),
+      out.push(h('div', { class: 'tl-item ev' + size(e), style: `${place(e)};--col:${calColor(ev.cal)}` },
+        time(minToHm(start), hmEnd(end)),
         h('a', { class: 'ev-card', href: gcalDayUrl(T), target: '_blank', rel: 'noopener noreferrer', title: 'Google カレンダーで開く' },
           icon('calendar'),
           h('div', { class: 'body' },
@@ -2627,23 +2681,19 @@ function timeline(items, events, T, props = []) {
     }
     if (p) {
       // 今日の提案は、ふつうのタスクの行（丸で完了・スワイプ・タップで詳細）に、理由と ✓ × を添える
-      const [pe] = splitEmoji(p.t.title);
-      out.push(h('div', { class: 'tl-item pp', style: `--h:${hgt}px;--col:${taskColor(p.t)}` },
-        h('div', { class: 'tl-time' }, p.start, h('small', null, p.end)),
-        h('div', { class: 'tl-rail' }, h('span', { class: 'tl-pill', 'aria-hidden': 'true' }, pe || '')),
+      out.push(h('div', { class: 'tl-item pp' + size(e), style: `${place(e)};--col:${taskColor(p.t)}`, title: p.reason },
+        time(p.start, p.end),
         h('div', { class: 'pp-card pp-row', 'data-prop': p.t.id },
-          h('ul', { class: 'tasks' }, taskRow(p.t, T, { plan: true, hideDate: true, noEmoji: !!pe })),
+          h('ul', { class: 'tasks' }, taskRow(p.t, T, { plan: true, hideDate: true })),
           h('div', { class: 'pp-foot' }, h('span', { class: 'pp-tag' }, icon('sparkle'), '提案'), h('span', { class: 'pp-why' }, p.reason), ...proposalButtons(p)))));
       continue;
     }
-    const [emo] = splitEmoji(t.title);
-    out.push(h('div', { class: 'tl-item' + (t.done ? ' done' : ''), style: `--h:${hgt}px;--col:${taskColor(t)}` },
-      h('div', { class: 'tl-time' }, t.time, h('small', null, minToHm(end))),
-      h('div', { class: 'tl-rail' }, h('span', { class: 'tl-pill', 'aria-hidden': 'true' }, emo || '')),
-      h('ul', { class: 'tasks' }, taskRow(t, T, { plan: true, hideDate: true, noEmoji: !!emo }))));
+    out.push(h('div', { class: 'tl-item' + (t.done ? ' done' : '') + size(e), style: `${place(e)};--col:${taskColor(t)}` },
+      time(t.time, minToHm(end)),
+      h('ul', { class: 'tasks' }, taskRow(t, T, { plan: true, hideDate: true }))));
   }
   if (!nowDone) out.push(nowLine());
-  return h('div', { class: 'timeline' }, out);
+  return h('div', { class: 'timeline', style: `height:${(hi - lo) * TL_PX}px` }, out);
 }
 
 function statsCard(d, T) {
