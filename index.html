@@ -536,6 +536,54 @@
   .switch[aria-checked=true] { background: var(--ok); }
   .switch[aria-checked=true]::after { transform: translateX(20px); }
   .row { display: flex; gap: 8px; align-items: center; }
+  /* カレンダー（週・月） */
+  .cal-mode { margin-top: 4px; }
+  .cal-nav { display: flex; align-items: center; gap: 6px; margin: 12px 0 8px; }
+  .cal-nav .icon-btn { font-size: 22px; width: 36px; height: 36px; }
+  .cal-today { border: 1px solid var(--line); background: var(--card); border-radius: 999px; padding: 4px 12px; font-size: 13px; min-height: 0; color: var(--text); }
+  .cal-label { font-size: 16px; margin-left: 6px; }
+  .cal-week { --gut: 40px; background: var(--card); border: 1px solid var(--line); border-radius: 12px; overflow: hidden; }
+  .cal-whead, .cal-allday { display: grid; grid-template-columns: var(--gut) repeat(var(--n), minmax(0, 1fr)); border-bottom: 1px solid var(--line); }
+  .cal-wday { border: 0; background: none; min-height: 0; padding: 6px 0 4px; display: flex; flex-direction: column; align-items: center; color: var(--text); }
+  .cal-wday small { font-size: 12px; color: var(--muted); }
+  .cal-wday b { font-size: 17px; width: 30px; height: 30px; line-height: 30px; border-radius: 50%; }
+  .cal-wday.today b { background: var(--accent); color: var(--accent-ink); }
+  .cal-wday.sun small { color: var(--danger); } .cal-wday.sat small { color: var(--p3); }
+  .cal-axis { font-size: 12px; color: var(--muted); text-align: right; padding: 4px 4px 0 0; }
+  .cal-adcell { min-width: 0; padding: 3px 2px; display: flex; flex-direction: column; gap: 2px; border-left: 1px solid var(--line); }
+  .cal-chip { display: block; min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; font-size: 12px; line-height: 1.5; border-radius: 4px; padding: 0 4px; border: 0; text-align: left; min-height: 0; text-decoration: none; color: var(--text); background: color-mix(in srgb, var(--col, var(--accent)) 18%, var(--card)); font-weight: 600; }
+  .cal-chip.dl { background: color-mix(in srgb, var(--danger) 14%, var(--card)); color: var(--danger); }
+  .cal-chip.task { background: transparent; border-left: 3px solid var(--col); border-radius: 2px; font-weight: 500; }
+  .cal-chip.timed { background: transparent; font-weight: 500; }
+  .cal-chip.ev.timed::before { content: ""; display: inline-block; width: 6px; height: 6px; border-radius: 50%; background: var(--col); margin-right: 3px; vertical-align: 1px; }
+  .cal-more { font-size: 12px; color: var(--muted); padding: 0 4px; }
+  .cal-grid { position: relative; display: grid; grid-template-columns: var(--gut) repeat(var(--n), minmax(0, 1fr)); }
+  .cal-hours { position: absolute; inset: 0; pointer-events: none; }
+  .cal-hour { position: absolute; left: 0; right: 0; border-top: 1px solid var(--line); }
+  .cal-hour span { position: absolute; left: 0; width: calc(var(--gut) - 6px); top: -8px; text-align: right; font-size: 12px; color: var(--faint); background: var(--card); font-variant-numeric: tabular-nums; }
+  .cal-col { grid-row: 1; position: relative; border-left: 1px solid var(--line); }
+  .cal-col:nth-child(2) { grid-column: 2; } .cal-col:nth-child(3) { grid-column: 3; } .cal-col:nth-child(4) { grid-column: 4; } .cal-col:nth-child(5) { grid-column: 5; }
+  .cal-col:nth-child(6) { grid-column: 6; } .cal-col:nth-child(7) { grid-column: 7; } .cal-col:nth-child(8) { grid-column: 8; }
+  .cal-col.today { background: color-mix(in srgb, var(--accent) 5%, transparent); }
+  .cal-block { position: absolute; box-sizing: border-box; overflow: hidden; top: 0; left: calc(100% * var(--lane) / var(--lanes) + 1px); width: calc(100% / var(--lanes) - 2px);
+    border: 0; border-radius: 5px; padding: 1px 4px; text-align: left; min-height: 0; text-decoration: none; display: flex; flex-direction: column; font-size: 12px; line-height: 1.3; color: #fff; background: var(--col); }
+  .cal-block.task { background: color-mix(in srgb, var(--col) 16%, var(--card)); color: var(--text); border-left: 3px solid var(--col); }
+  .cal-block b { font-weight: 600; overflow: hidden; text-overflow: ellipsis; overflow-wrap: anywhere; }
+  .cal-block small { font-size: 11px; opacity: .85; }
+  .cal-now { position: absolute; left: 0; right: 0; height: 2px; background: var(--danger); z-index: 2; }
+  .cal-now::before { content: ""; position: absolute; left: -4px; top: -3px; width: 8px; height: 8px; border-radius: 50%; background: var(--danger); }
+  .cal-month { background: var(--card); border: 1px solid var(--line); border-radius: 12px; overflow: hidden; }
+  .cal-mhead { display: grid; grid-template-columns: repeat(7, minmax(0, 1fr)); font-size: 12px; color: var(--muted); text-align: center; padding: 6px 0; border-bottom: 1px solid var(--line); }
+  .cal-mhead span:nth-child(6) { color: var(--p3); } .cal-mhead span:nth-child(7) { color: var(--danger); }
+  .cal-mgrid { display: grid; grid-template-columns: repeat(7, minmax(0, 1fr)); }
+  .cal-mcell { min-width: 0; min-height: 96px; padding: 2px 2px 4px; border-right: 1px solid var(--line); border-bottom: 1px solid var(--line); display: flex; flex-direction: column; gap: 2px; }
+  .cal-mcell:nth-child(7n) { border-right: 0; }
+  .cal-mcell.other { background: var(--sunk); }
+  .cal-mcell.other .cal-mnum { color: var(--faint); }
+  .cal-mnum { align-self: center; border: 0; background: none; min-height: 0; padding: 0; width: 26px; height: 26px; border-radius: 50%; font-size: 13px; font-weight: 600; color: var(--text); }
+  .cal-mnum.sun { color: var(--danger); } .cal-mnum.sat { color: var(--p3); }
+  .cal-mcell.today .cal-mnum { background: var(--accent); color: var(--accent-ink); }
+  @media (max-width: 639px) { .cal-mcell { min-height: 76px; } .cal-mcell .cal-chip { font-size: 11px; padding: 0 2px; } }
   /* 研究・締切 */
   .dl-seg { display: flex; flex-wrap: wrap; gap: 6px; margin-top: 4px; }
   .dl-seg button { border: 1px solid var(--line); background: var(--card); color: var(--text); border-radius: 999px; padding: 5px 12px; font-size: 13px; min-height: 0; }
@@ -715,7 +763,7 @@ const API = 'https://api.github.com';
 const KEY = {
   token: 'todo.token', repo: 'todo.repo', path: 'todo.path',
   cache: 'todo.cache', pending: 'todo.pending', timer: 'todo.timer', view: 'todo.view',
-  accent: 'todo.accent', sound: 'todo.sound', cal: 'todo.cal', tip: 'todo.tip', planPrev: 'todo.planPrev', portal: 'todo.portal', portalMode: 'todo.portalMode',
+  accent: 'todo.accent', sound: 'todo.sound', cal: 'todo.cal', tip: 'todo.tip', planPrev: 'todo.planPrev', portal: 'todo.portal', portalMode: 'todo.portalMode', calMode: 'todo.calMode',
 };
 const $ = (id) => document.getElementById(id);
 
@@ -1683,6 +1731,11 @@ function renderMain(d, T, model) {
     }
     case 'upcoming': {
       title = '予定';
+      const cmode = calMode();
+      nodes.push(h('div', { class: 'dl-seg cal-mode', role: 'tablist', 'aria-label': '表示のしかた' }, [['list', 'リスト'], ['week', calNarrow() ? '3日' : '週'], ['month', '月']].map(([k, label]) =>
+        h('button', { type: 'button', role: 'tab', class: cmode === k ? 'on' : '', 'aria-selected': String(cmode === k),
+          onclick: () => { store.set(KEY.calMode, k); calAnchor = T; render(); } }, label))));
+      if (cmode !== 'list') { nodes.push(...calendarView(d, T, cmode)); break; }
       const list = act.filter((t) => isUpcoming(t, T));
       const live = liveProposals(d, T);
       const propsOn = (k) => live.filter((p) => p.date === k);
@@ -2239,6 +2292,149 @@ function portalView(T) {
   return nodes;
 }
 let portalOpen = new Set();
+
+/* =========================================================================
+ * カレンダー（Google カレンダーの「週」「月」のように見る）
+ * 出すもの: Google カレンダーの予定・日付のあるタスク・研究の締切。見るだけで、予定は Google カレンダーで開く
+ * ========================================================================= */
+let calAnchor = null; // 表示の基準日（YYYY-MM-DD）
+const CAL_PX = 1;     // 週の表示で 1 分 = 1px
+const calMode = () => { const m = store.get(KEY.calMode); return m === 'week' || m === 'month' ? m : 'list'; };
+const calNarrow = () => !matchMedia('(min-width: 640px)').matches;
+function calItemsOn(d, k) {
+  const evs = eventsOn(k);
+  const tasks = d.todos.filter((t) => !t.done && t.due === k);
+  const dls = PORTAL.deadlines.filter((x) => x.date === k || (YMD_ONLY.test(x.endDate || '') && x.date <= k && k <= x.endDate));
+  return { evs, timedTasks: tasks.filter((t) => HM_RE.test(t.time || '')).sort(byDay), dayTasks: tasks.filter((t) => !HM_RE.test(t.time || '')).sort(byDay), dls };
+}
+// 重なる予定を横に並べる列を割り当てる（e.start, e.end は分）
+function assignLanes(entries) {
+  let cluster = [], clusterEnd = -1;
+  const flush = () => {
+    const lanes = [];
+    for (const e of cluster) {
+      let k = lanes.findIndex((end) => end <= e.start);
+      if (k < 0) { k = lanes.length; lanes.push(0); }
+      lanes[k] = e.end; e.lane = k;
+    }
+    for (const e of cluster) e.lanes = lanes.length;
+    cluster = [];
+  };
+  for (const e of entries.sort((a, b) => a.start - b.start || b.end - a.end)) {
+    if (e.start >= clusterEnd) flush();
+    cluster.push(e); clusterEnd = Math.max(clusterEnd, e.end);
+  }
+  flush();
+  return entries;
+}
+function calChip(kind, label, opts = {}) {
+  const attrs = { class: 'cal-chip ' + kind, style: opts.col ? `--col:${opts.col}` : null, title: opts.title || label };
+  if (opts.href) return h('a', { ...attrs, href: opts.href, target: '_blank', rel: 'noopener noreferrer' }, label);
+  if (opts.task) return h('button', { ...attrs, type: 'button', onclick: () => openDetail(opts.task) }, label);
+  return h('span', attrs, label);
+}
+function dayChips(d, k, it, max) {
+  const chips = [
+    ...it.dls.map((x) => calChip('dl', '⚑ ' + x.title, { href: safeUrl(x.url), title: `締切: ${x.title}` })),
+    ...it.evs.allDay.map((ev) => calChip('ev', ev.title, { col: calColor(ev.cal), href: gcalDayUrl(k) })),
+    ...it.dayTasks.map((t) => calChip('task', splitEmoji(t.title)[1], { col: taskColor(t), task: t.id })),
+  ];
+  if (max != null && chips.length > max) return [...chips.slice(0, max), h('span', { class: 'cal-more' }, `ほか${chips.length - max}件`)];
+  return chips;
+}
+function calendarView(d, T, mode) {
+  if (!calAnchor) calAnchor = T;
+  const A = parseYmd(calAnchor);
+  const nodes = [];
+  let label, step;
+  let days = [];
+  if (mode === 'week') {
+    const n = calNarrow() ? 3 : 7;
+    const start = n === 7 ? mondayOf(A) : A;
+    days = Array.from({ length: n }, (_, i) => ymd(addDays(start, i)));
+    step = n;
+    const a = parseYmd(days[0]), b = parseYmd(days[n - 1]);
+    label = a.getMonth() === b.getMonth() ? `${a.getMonth() + 1}月${a.getDate()}日〜${b.getDate()}日` : `${a.getMonth() + 1}/${a.getDate()}〜${b.getMonth() + 1}/${b.getDate()}`;
+  } else {
+    label = `${A.getFullYear()}年${A.getMonth() + 1}月`;
+  }
+  const move = (dir) => {
+    if (mode === 'week') calAnchor = ymd(addDays(A, dir * step));
+    else calAnchor = ymd(new Date(A.getFullYear(), A.getMonth() + dir, 1));
+    render();
+  };
+  nodes.push(h('div', { class: 'cal-nav' },
+    h('button', { class: 'icon-btn', type: 'button', 'aria-label': '前へ', onclick: () => move(-1) }, '‹'),
+    h('button', { class: 'cal-today', type: 'button', onclick: () => { calAnchor = T; render(); } }, '今日'),
+    h('button', { class: 'icon-btn', type: 'button', 'aria-label': '次へ', onclick: () => move(1) }, '›'),
+    h('b', { class: 'cal-label' }, label)));
+  if (mode === 'month') nodes.push(monthGrid(d, T, A));
+  else nodes.push(weekGrid(d, T, days));
+  if (CAL.state !== 'ok') nodes.push(h('div', { class: 'hint' }, 'Google カレンダーの予定はまだ取り込まれていません'));
+  return nodes;
+}
+function weekGrid(d, T, days) {
+  const items = days.map((k) => calItemsOn(d, k));
+  // 縦の範囲：6〜22 時を基本に、はみ出す予定があれば広げる
+  let lo = 6 * 60, hi = 22 * 60;
+  items.forEach((it) => {
+    for (const ev of it.evs.timed) { lo = Math.min(lo, ev.sm); hi = Math.max(hi, ev.em); }
+    for (const t of it.timedTasks) { const s = hmToMin(t.time); lo = Math.min(lo, s); hi = Math.max(hi, s + (t.estimate || 30)); }
+  });
+  lo = Math.floor(lo / 60) * 60; hi = Math.min(1440, Math.ceil(hi / 60) * 60);
+  const y = (m) => (m - lo) * CAL_PX;
+  const now = new Date();
+  const nowMin = now.getHours() * 60 + now.getMinutes();
+  const head = h('div', { class: 'cal-whead', style: `--n:${days.length}` }, h('span'),
+    days.map((k) => { const dd = parseYmd(k); return h('button', { type: 'button', class: 'cal-wday' + (k === T ? ' today' : '') + (dd.getDay() === 0 ? ' sun' : dd.getDay() === 6 ? ' sat' : ''),
+      onclick: () => { calAnchor = k; store.set(KEY.calMode, 'list'); render(); requestAnimationFrame(() => document.getElementById('day-' + k)?.scrollIntoView({ block: 'start' })); } },
+      h('small', null, WD[dd.getDay()]), h('b', null, String(dd.getDate()))); }));
+  const allday = h('div', { class: 'cal-allday', style: `--n:${days.length}` }, h('span', { class: 'cal-axis' }, '終日'),
+    days.map((k, i) => h('div', { class: 'cal-adcell' }, dayChips(d, k, items[i], 3))));
+  const hours = [];
+  for (let m = lo; m <= hi; m += 60) hours.push(h('div', { class: 'cal-hour', style: `top:${y(m)}px` }, h('span', null, `${m / 60}:00`)));
+  const cols = days.map((k, i) => {
+    const it = items[i];
+    const entries = assignLanes([
+      ...it.evs.timed.map((ev) => ({ ev, start: ev.sm, end: Math.max(ev.em, ev.sm + 15) })),
+      ...it.timedTasks.map((t) => ({ t, start: hmToMin(t.time), end: hmToMin(t.time) + Math.max(15, t.estimate || 30) })),
+    ]);
+    const blocks = entries.map((e) => {
+      const style = `top:${y(e.start)}px;height:${(e.end - e.start) * CAL_PX - 2}px;--lane:${e.lane};--lanes:${e.lanes};--col:${e.ev ? calColor(e.ev.cal) : taskColor(e.t)}`;
+      const time = minToHm(e.start);
+      if (e.ev) return h('a', { class: 'cal-block ev', style, href: gcalDayUrl(k), target: '_blank', rel: 'noopener noreferrer', title: `${time} ${e.ev.title}` }, h('b', null, e.ev.title), h('small', null, time));
+      return h('button', { class: 'cal-block task', type: 'button', style, title: `${time} ${e.t.title}`, onclick: () => openDetail(e.t.id) }, h('b', null, splitEmoji(e.t.title)[1]), h('small', null, time));
+    });
+    return h('div', { class: 'cal-col' + (k === T ? ' today' : '') }, blocks,
+      k === T && nowMin >= lo && nowMin <= hi ? h('div', { class: 'cal-now', style: `top:${y(nowMin)}px` }) : null);
+  });
+  const grid = h('div', { class: 'cal-grid', style: `--n:${days.length};height:${(hi - lo) * CAL_PX}px` }, h('div', { class: 'cal-hours' }, hours), cols);
+  return h('div', { class: 'cal-week' }, head, allday, grid);
+}
+function monthGrid(d, T, A) {
+  const first = new Date(A.getFullYear(), A.getMonth(), 1);
+  const start = mondayOf(first);
+  const max = calNarrow() ? 2 : 3;
+  const cells = [];
+  for (let i = 0; i < 42; i++) {
+    const dd = addDays(start, i);
+    if (i === 35 && dd.getMonth() !== A.getMonth()) break; // 5 週で足りる月は 6 週目を出さない
+    const k = ymd(dd);
+    const it = calItemsOn(d, k);
+    const chips = [
+      ...dayChips(d, k, it, null).filter((c) => !c.classList.contains('cal-more')),
+      ...it.evs.timed.map((ev) => calChip('ev timed', calNarrow() ? ev.title : `${minToHm(ev.sm)} ${ev.title}`, { col: calColor(ev.cal), href: gcalDayUrl(k) })),
+      ...it.timedTasks.map((t) => calChip('task timed', calNarrow() ? splitEmoji(t.title)[1] : `${t.time} ${splitEmoji(t.title)[1]}`, { col: taskColor(t), task: t.id })),
+    ];
+    cells.push(h('div', { class: 'cal-mcell' + (dd.getMonth() !== A.getMonth() ? ' other' : '') + (k === T ? ' today' : ''), 'data-day': k },
+      h('button', { type: 'button', class: 'cal-mnum' + (dd.getDay() === 0 ? ' sun' : dd.getDay() === 6 ? ' sat' : ''), 'aria-label': `${fmtShort(k)}を週で見る`,
+        onclick: () => { calAnchor = k; store.set(KEY.calMode, 'week'); render(); } }, String(dd.getDate())),
+      chips.length > max ? [...chips.slice(0, max), h('span', { class: 'cal-more' }, `+${chips.length - max}`)] : chips));
+  }
+  return h('div', { class: 'cal-month' },
+    h('div', { class: 'cal-mhead' }, ['月', '火', '水', '木', '金', '土', '日'].map((w) => h('span', null, w))),
+    h('div', { class: 'cal-mgrid' }, cells));
+}
 
 /* =========================================================================
  * Google カレンダー
