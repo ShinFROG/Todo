@@ -182,7 +182,7 @@
   .group { margin-top: 22px; scroll-margin-top: 16px; }
   .group-h { display: flex; align-items: baseline; gap: 8px; margin: 0 0 2px; padding: 0 2px; }
   .group-h h3 { font-size: 15px; margin: 0; font-weight: 700; }
-  .group-h.late h3 { color: var(--danger); }
+  .group-h.late h3 { color: var(--muted); }
   .group-h.faint h3 { color: var(--faint); font-weight: 600; }
   .tasks { list-style: none; margin: 0; padding: 0; }
   .task { position: relative; touch-action: pan-y; overflow: hidden; }
@@ -234,7 +234,7 @@
   .mchip { display: inline-flex; align-items: center; gap: 4px; border: 0; background: none; padding: 0; min-height: 0; color: inherit; font-size: inherit; border-radius: 0; }
   .mchip .ic { width: 14px; height: 14px; }
   button.mchip:hover { color: var(--text); }
-  .mchip.late { color: var(--danger); font-weight: 600; }
+  .mchip.late { color: var(--muted); }
   .mchip.today { color: var(--ok); font-weight: 600; }
   .mchip.sun { color: var(--warn); }
   .acts { display: flex; opacity: 0; margin: -6px 0; }
@@ -612,6 +612,28 @@
   .persp a { color: var(--accent); font-weight: 600; }
   .persp-angle { color: var(--text); margin-top: 2px; line-height: 1.6; }
   .news-q { margin-left: auto; min-width: 0; width: 160px; font-size: 14px; padding: 5px 10px; border-radius: 999px; border: 1px solid var(--line); background: var(--card); color: var(--text); }
+  /* 重要度 × 緊急度のマップ */
+  .mm { position: relative; margin-top: 12px; padding-left: 30px; }
+  .mm-ylabel { font-size: 13px; color: var(--muted); margin: 0 0 4px -30px; }
+  .mm-ycol { position: absolute; left: 0; width: 28px; }
+  .mm-ycol span { position: absolute; left: 0; font-size: 13px; color: var(--muted); }
+  .mm-plot { position: relative; background: var(--card); border: 1px solid var(--line); border-radius: 12px; overflow: hidden; }
+  .mm-layer { position: absolute; left: 0; top: 0; bottom: 0; }
+  .mm-band { position: absolute; left: 0; right: 0; border-top: 1px dashed var(--line); pointer-events: none; }
+  .mm-band:first-child { border-top: 0; }
+  .mm-q1 { position: absolute; top: 0; right: 0; background: color-mix(in srgb, var(--accent) 7%, transparent); }
+  .mm-hline { position: absolute; left: 0; right: 0; border-top: 1.5px solid var(--line); }
+  .mm-vline { position: absolute; top: 0; bottom: 0; border-left: 1.5px solid var(--line); }
+  .mm-qlabel { position: absolute; font-size: 12px; color: var(--faint); font-weight: 700; pointer-events: none; }
+  .mm-chip { position: absolute; z-index: 1; box-sizing: border-box; height: 26px; min-height: 0; padding: 0 8px 0 7px; border-radius: 999px; border: 1px solid var(--line); border-left: 4px solid var(--col);
+    background: var(--raise); color: var(--text); font-size: 13px; line-height: 24px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; box-shadow: 0 1px 3px rgba(0,0,0,.06); }
+  .mm-chip:hover { z-index: 2; max-width: none !important; }
+  .mm-chip.p1 { font-weight: 700; }
+  .mm-xaxis { position: relative; height: 18px; margin-top: 4px; }
+  .mm-tick { position: absolute; transform: translateX(-50%); font-size: 12px; color: var(--muted); white-space: nowrap; }
+  .mm-tick:first-child { transform: none; }
+  .mm-tick:last-child { transform: translateX(-100%); }
+  .mm-xlabel { text-align: right; font-size: 13px; color: var(--muted); }
   /* 研究・締切 */
   .dl-seg { display: flex; flex-wrap: wrap; gap: 6px; margin-top: 4px; }
   .dl-seg button { border: 1px solid var(--line); background: var(--card); color: var(--text); border-radius: 999px; padding: 5px 12px; font-size: 13px; min-height: 0; }
@@ -800,7 +822,7 @@ const API = 'https://api.github.com';
 const KEY = {
   token: 'todo.token', repo: 'todo.repo', path: 'todo.path',
   cache: 'todo.cache', pending: 'todo.pending', timer: 'todo.timer', view: 'todo.view',
-  accent: 'todo.accent', sound: 'todo.sound', cal: 'todo.cal', tip: 'todo.tip', planPrev: 'todo.planPrev', portal: 'todo.portal', portalMode: 'todo.portalMode', calMode: 'todo.calMode', news: 'todo.news', newsCat: 'todo.newsCat', newsMode: 'todo.newsMode',
+  accent: 'todo.accent', sound: 'todo.sound', cal: 'todo.cal', tip: 'todo.tip', planPrev: 'todo.planPrev', portal: 'todo.portal', portalMode: 'todo.portalMode', calMode: 'todo.calMode', matrixMode: 'todo.matrixMode', news: 'todo.news', newsCat: 'todo.newsCat', newsMode: 'todo.newsMode',
 };
 const $ = (id) => document.getElementById(id);
 
@@ -1554,12 +1576,76 @@ function render() {
   $('projList').replaceChildren(...projs.map((p) => h('option', { value: p })));
 }
 
+/* =========================================================================
+ * 重要度 × 緊急度のマップ。横が緊急度（右ほど近い）、縦が重要度（上ほど高い）
+ * 緊急度は期限までの日数から決める（今日・「今日やる」= 1、明日 0.8、1 週間 0.4、日付なしは左端）
+ * ========================================================================= */
+function urgencyOf(t, T) {
+  if (t.myDay === T) return 1;
+  if (!t.due) return 0.03;
+  const d = daysBetween(T, t.due);
+  if (d <= 0) return 1;
+  return Math.max(0.1, 1 - Math.log2(1 + d) / 5);
+}
+const IMP_BANDS = [[1, '高'], [2, '中'], [3, '低'], [0, 'なし']];
+function priorityMap(list, T) {
+  const W = Math.max(280, Math.min(($('content')?.clientWidth || window.innerWidth - 32) - 34, 900)); // 縦軸の名前の幅を除く
+  const ctx = (priorityMap.cv ||= document.createElement('canvas')).getContext('2d');
+  ctx.font = `600 13px ${getComputedStyle(document.body).fontFamily}`;
+  const chipW = (t) => Math.ceil(Math.min(180, 24 + ctx.measureText(t.title).width));
+  const ROW = 30;
+  const bands = IMP_BANDS.map(([p, label]) => {
+    const items = list.filter((t) => (t.priority || 0) === p).map((t) => ({ t, x: urgencyOf(t, T), w: chipW(t) })).sort((a, b) => b.x - a.x);
+    const rows = [];
+    for (const it of items) {
+      const left = it.x * (W - it.w);
+      let r = rows.findIndex((row) => row.every(([a, b]) => left + it.w + 4 <= a || left >= b + 4));
+      if (r < 0) { r = rows.length; rows.push([]); }
+      rows[r].push([left, left + it.w]);
+      it.left = left; it.row = r;
+    }
+    const top = p === 1 || p === 3 ? 18 : 0; // 象限の名前の分を空ける
+    return { p, label, items, top, h: Math.max(1, rows.length) * ROW + 14 + top };
+  });
+  const total = bands.reduce((s2, b) => s2 + b.h, 0);
+  const impH = bands[0].h + bands[1].h; // 重要（高・中）の高さ
+  const urgX = 0.8; // 明日までが「緊急」
+  let y0 = 0;
+  const layer = [];
+  const ylabels = [];
+  for (const b of bands) {
+    layer.push(h('div', { class: 'mm-band', style: `top:${y0}px;height:${b.h}px` }));
+    ylabels.push(h('span', { style: `top:${y0 + b.top + 9}px` }, b.label));
+    for (const it of b.items) {
+      const [emo, text] = splitEmoji(it.t.title);
+      layer.push(h('button', { class: 'mm-chip p' + (it.t.priority || 0), type: 'button', 'data-id': it.t.id, title: it.t.title + (it.t.due ? `（${fmtDate(it.t.due, T)}）` : ''),
+        style: `left:${it.left}px;top:${y0 + b.top + 7 + it.row * ROW}px;max-width:${it.w}px;--col:${taskColor(it.t)}`, onclick: () => openDetail(it.t.id) }, emo ? emo + ' ' : '', text));
+    }
+    y0 += b.h;
+  }
+  const xTick = (d, label) => { const x = d == null ? 0.03 : Math.max(0.1, 1 - Math.log2(1 + d) / 5); return h('span', { class: 'mm-tick', style: `left:${x * 100}%` }, label); };
+  return h('div', { class: 'mm' },
+    h('div', { class: 'mm-ylabel' }, '重要度 ↑'),
+    h('div', { class: 'mm-ycol', style: `height:${total}px` }, ylabels),
+    h('div', { class: 'mm-plot', style: `height:${total}px` },
+      h('div', { class: 'mm-q1', style: `left:${urgX * 100}%;height:${impH}px` }),
+      h('div', { class: 'mm-hline', style: `top:${impH}px` }),
+      h('div', { class: 'mm-vline', style: `left:${urgX * 100}%` }),
+      h('span', { class: 'mm-qlabel', style: `right:4px;top:2px` }, '今すぐやる'),
+      h('span', { class: 'mm-qlabel', style: `left:4px;top:2px` }, '計画してやる'),
+      h('span', { class: 'mm-qlabel', style: `right:4px;top:${impH + 2}px` }, '手短に'),
+      h('span', { class: 'mm-qlabel', style: `left:4px;top:${impH + 2}px` }, '後回し'),
+      h('div', { class: 'mm-layer', style: `width:${W}px` }, layer)),
+    h('div', { class: 'mm-xaxis' }, xTick(null, '日付なし'), xTick(14, '2週間'), xTick(7, '1週間'), xTick(1, '明日'), xTick(0, '今日')),
+    h('div', { class: 'mm-xlabel' }, '緊急度 →'),
+    list.length ? null : h('div', { class: 'hint' }, 'タスクはありません'));
+}
 /* ---------- ナビ ---------- */
 function navModel(d, T) {
   const act = d.todos.filter((t) => !t.done);
   const last = d.meta.lastReview;
   const items = [
-    { v: { type: 'today' }, label: '今日', ic: 'sun', count: act.filter((t) => isToday(t, T)).length, alert: act.some((t) => isLate(t, T)) },
+    { v: { type: 'today' }, label: '今日', ic: 'sun', count: act.filter((t) => isToday(t, T)).length, alert: false },
     { v: { type: 'upcoming' }, label: '予定', ic: 'calendar', count: act.filter((t) => isUpcoming(t, T)).length },
     { v: { type: 'inbox' }, label: '受信箱', ic: 'inbox', count: act.filter((t) => isInbox(t, T)).length },
     { v: { type: 'anytime' }, label: 'すべて', ic: 'list', count: act.filter(isAnytime).length },
@@ -1742,7 +1828,7 @@ function renderMain(d, T, model) {
       const timed = rest.filter((t) => t.time).sort(byDay);
       const untimed = rest.filter((t) => !t.time).sort(byDay);
       if (late.length) {
-        nodes.push(group('期限切れ', late, T, {
+        nodes.push(group('持ち越し', late, T, {
           cls: 'late', plan: true,
           action: h('button', { class: 'link-btn', type: 'button', onclick: () => moveToToday(late) }, 'すべて今日に'),
         }));
@@ -1866,6 +1952,11 @@ function renderMain(d, T, model) {
         ['q3', '手短に済ませる', '重要でない × 緊急', (t) => !imp(t) && urg(t)],
         ['q4', 'やらない・後回し', '重要でない × 緊急でない', (t) => !imp(t) && !urg(t)],
       ];
+      const mmode = store.get(KEY.matrixMode) === 'quad' ? 'quad' : 'map';
+      nodes.push(h('div', { class: 'dl-seg', role: 'tablist', 'aria-label': '表示のしかた' }, [['map', 'マップ'], ['quad', '4つに分ける']].map(([k, label]) =>
+        h('button', { type: 'button', role: 'tab', class: mmode === k ? 'on' : '', 'aria-selected': String(mmode === k),
+          onclick: () => { store.set(KEY.matrixMode, k); render(); } }, label))));
+      if (mmode === 'map') { nodes.push(priorityMap(list, T)); break; }
       nodes.push(h('div', { class: 'matrix' }, quads.map(([cls, name, desc, f]) => {
         const items = list.filter(f).sort(byDefault);
         return h('section', { class: 'card quad ' + cls, 'data-quad': cls },
@@ -1883,7 +1974,7 @@ function renderMain(d, T, model) {
       const doneWeek = d.todos.filter((t) => t.done && t.doneAt && localYmd(t.doneAt) >= mon).length;
       const steps = [
         ['受信箱を空にする', '日付・プロジェクト・「いつか」を決めるか、不要なら削除', act.filter((t) => isInbox(t, T)).sort(byDefault)],
-        ['期限切れを片付ける', '今日やるか、日付を付け直すか、手放す', act.filter((t) => isLate(t, T)).sort(byDefault)],
+        ['持ち越しを見直す', '今日やるか、日付を付け直すか、手放す', act.filter((t) => isLate(t, T)).sort(byDefault)],
         ['この先 1 週間の予定を確認する', '準備が必要なものはないか', act.filter((t) => isUpcoming(t, T) && t.due <= ymd(addDays(Td, 7))).sort((a, b) => cmp(a.due, b.due) || byDay(a, b))],
         ['止まっているタスクを見直す', '2 週間以上動きのない、日付のないタスク', act.filter((t) => !t.someday && !t.due && localYmd(t.updatedAt) <= old).sort(byDefault)],
         ['「いつか」リストを見直す', '今週から始めるものはないか', act.filter((t) => t.someday).sort((a, b) => cmp(a.createdAt, b.createdAt))],
@@ -2316,7 +2407,7 @@ function reviewSection(T) {
   if (open.length) nodes.push(h('ul', { class: 'dl-list card' }, open.map((r) => {
     const n = YMD_ONLY.test(r.due || '') ? daysBetween(T, r.due) : null;
     return h('li', { class: 'dl-row', 'data-review': r.id || '' },
-      h('span', { class: 'dl-left ' + (n == null ? 'far' : n < 0 ? 'soon' : leftClass(n)) }, n == null ? '期限なし' : n < 0 ? `${-n}日超過` : leftLabel(n)),
+      h('span', { class: 'dl-left ' + (n == null || n < 0 ? 'far' : leftClass(n)) }, n == null ? '期限なし' : n < 0 ? '提出待ち' : leftLabel(n)),
       h('div', { class: 'dl-body' }, h('div', { class: 'dl-title' }, r.journal),
         h('div', { class: 'dl-meta' }, [YMD_ONLY.test(r.invited || '') ? `依頼 ${fmtShort(r.invited)}` : '', YMD_ONLY.test(r.due || '') ? `期限 ${fmtShort(r.due)}` : ''].filter(Boolean).join(' · ')),
         r.title ? h('div', { class: 'dl-note clamp' }, r.title) : null));
@@ -2974,7 +3065,7 @@ function planSchedule(input) {
   const reasonFor = (t, day, s, dur, mode) => {
     const r = [];
     if (t.myDay === today) r.push('今日やると決めたもの');
-    else if (t.due && t.due < today) r.push('期限を過ぎています');
+    else if (t.due && t.due < today) r.push('前からの続き');
     else if (t.due) r.push('締切 ' + mdLabel(t.due));
     if (kindOf(t) === 'deep' && s + dur <= R.goldenEnd * 60) r.push('頭が冴えている朝に（深い思考）');
     if (t.place === 'lab') r.push(`研究室の日（${day.labWord}）`);
