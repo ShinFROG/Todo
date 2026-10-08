@@ -2074,6 +2074,7 @@ const PLAN_RULES = {
   eveningStart: 17,     // ここから後は軽い作業だけ
   maxDeepPerDay: 240,   // 深い思考の 1 日の上限（分）
   labWords: ['TX', '研究室', '大学', '出張'],
+  offWords: ['旅行', '泊', '休暇', '休み', '帰省'], // この言葉が入った終日の予定がある日は提案しない
   physicalWords: ['筋トレ', 'ジム', 'トレーニング', 'Training', 'ランニング', 'ヨガ'],
 };
 const KIND_LABEL = { deep: '深い思考', shallow: '事務・連絡', physical: '体を動かす', errand: '外出・用事' };
@@ -2157,6 +2158,7 @@ function planSchedule(input) {
     const next = addDays(date, 1);
     const dayEvents = events.filter((e) => (e.allDay ? ymd(e.start) <= k && k < ymd(e.end) : e.start < next && e.end > date));
     const labEv = dayEvents.find((e) => has(e.title, R.labWords));
+    const offEv = dayEvents.find((e) => e.allDay && has(e.title, R.offWords));
     let start = (labEv ? R.labDayStart : R.dayStart) * 60;
     // 睡眠の記録: 朝は起きた時刻から、夜は寝る時刻の sleepGap 分前まで
     const noon = new Date(date.getTime() + 12 * 3600000);
@@ -2188,6 +2190,7 @@ function planSchedule(input) {
     for (const m of R.meals) busy.push([m[0] * 60, m[1] * 60]);
     const day = {
       k, date, isLab: !!labEv, labWord: labEv ? R.labWords.find((w) => has(labEv.title, [w])) : '',
+      off: offEv ? offEv.title : '',
       start, freeFrom, end, free: [], load: 0, deep: 0,
       physical: dayEvents.some((e) => has(e.title, R.physicalWords)),
       budget: Math.max(0, cap - eventMin),
@@ -2202,7 +2205,7 @@ function planSchedule(input) {
       if (kindOf(t) === 'deep') day.deep += d;
       if (kindOf(t) === 'physical') day.physical = true;
     }
-    day.free = freeFrom < end ? subtractRanges([[freeFrom, end]], busy) : [];
+    day.free = !day.off && freeFrom < end ? subtractRanges([[freeFrom, end]], busy) : [];
     days.push(day);
   }
   const dayOf = Object.fromEntries(days.map((d) => [d.k, d]));
@@ -2299,6 +2302,7 @@ function planSchedule(input) {
     }
     const why = !dlist.length ? '見送り中'
       : t.place === 'lab' && !dlist.some((d) => d.isLab) ? '研究室の日がありません'
+        : t.myDay === today && days[0].off ? `今日は提案しない日です（${days[0].off}）`
         : t.myDay === today ? `今日は ${dur} 分の空きがありません`
           : t.due && t.due >= today ? `${mdLabel(t.due)} までに ${dur} 分の空きがありません`
             : `${R.days} 日以内に ${dur} 分の空きがありません`;
