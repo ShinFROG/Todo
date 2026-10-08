@@ -606,6 +606,12 @@
   .news-sum { font-size: 14px; line-height: 1.65; margin: 0; }
   .news-why { font-size: 13px; color: var(--muted); margin: 6px 0 0; line-height: 1.6; }
   .news-why b { color: var(--accent); font-weight: 700; }
+  .persp { margin-top: 8px; font-size: 13px; }
+  .persp summary { cursor: pointer; color: var(--accent); font-weight: 600; }
+  .persp ul { list-style: none; margin: 6px 0 0; padding: 0; display: flex; flex-direction: column; gap: 6px; }
+  .persp a { color: var(--accent); font-weight: 600; }
+  .persp-angle { color: var(--text); margin-top: 2px; line-height: 1.6; }
+  .news-q { margin-left: auto; min-width: 0; width: 160px; font-size: 14px; padding: 5px 10px; border-radius: 999px; border: 1px solid var(--line); background: var(--card); color: var(--text); }
   /* 研究・締切 */
   .dl-seg { display: flex; flex-wrap: wrap; gap: 6px; margin-top: 4px; }
   .dl-seg button { border: 1px solid var(--line); background: var(--card); color: var(--text); border-radius: 999px; padding: 5px 12px; font-size: 13px; min-height: 0; }
@@ -794,7 +800,7 @@ const API = 'https://api.github.com';
 const KEY = {
   token: 'todo.token', repo: 'todo.repo', path: 'todo.path',
   cache: 'todo.cache', pending: 'todo.pending', timer: 'todo.timer', view: 'todo.view',
-  accent: 'todo.accent', sound: 'todo.sound', cal: 'todo.cal', tip: 'todo.tip', planPrev: 'todo.planPrev', portal: 'todo.portal', portalMode: 'todo.portalMode', calMode: 'todo.calMode', news: 'todo.news', newsCat: 'todo.newsCat',
+  accent: 'todo.accent', sound: 'todo.sound', cal: 'todo.cal', tip: 'todo.tip', planPrev: 'todo.planPrev', portal: 'todo.portal', portalMode: 'todo.portalMode', calMode: 'todo.calMode', news: 'todo.news', newsCat: 'todo.newsCat', newsMode: 'todo.newsMode',
 };
 const $ = (id) => document.getElementById(id);
 
@@ -2629,8 +2635,75 @@ function agoLabel(iso) {
   const m = Math.round((Date.now() - t) / 60000);
   return m < 60 ? `${Math.max(1, m)}分前` : m < 60 * 24 ? `${Math.round(m / 60)}時間前` : `${Math.round(m / 1440)}日前`;
 }
+// 同じ出来事の、媒体・地域ごとの見方の違い（ニュース集めの回が、複数の報道があるものだけ書く）
+function perspectivesBox(x) {
+  const ps = Array.isArray(x.perspectives) ? x.perspectives.filter((p) => p && typeof p.angle === 'string') : [];
+  if (ps.length < 2) return null;
+  return h('details', { class: 'persp' }, h('summary', null, `見方の違い ${ps.length}`),
+    h('ul', null, ps.map((p) => h('li', null,
+      h('span', { class: 'dl-tag' }, p.region || ''), ' ',
+      safeUrl(p.url) ? h('a', { href: safeUrl(p.url), target: '_blank', rel: 'noopener noreferrer' }, p.source || '記事', ' ↗') : h('b', null, p.source || ''),
+      h('div', { class: 'persp-angle' }, p.angle)))));
+}
+function newsCard(x) {
+  return h('article', { class: 'card news', 'data-id': x.id || '' },
+    h('div', { class: 'news-meta' }, x.category ? h('span', { class: 'dl-tag' }, x.category) : null,
+      h('span', null, [x.source, x.publishedAt ? agoLabel(x.publishedAt) : ''].filter(Boolean).join(' · '))),
+    h('h3', { class: 'news-t' }, h('a', { href: safeUrl(x.url), target: '_blank', rel: 'noopener noreferrer' }, x.title, ' ↗')),
+    x.summary ? h('p', { class: 'news-sum' }, x.summary) : null,
+    x.why ? h('p', { class: 'news-why' }, h('b', null, 'なぜ大事か '), x.why) : null,
+    perspectivesBox(x));
+}
+// 履歴：news_archive/YYYY-MM.json（ニュース集めの回が毎回追記する。消さない）
+const NEWS_ARCH = {}; // 'YYYY-MM' → { state: 'loading'|'ok'|'none'|'error', items }
+let newsMonth = null;
+let newsQuery = '';
+async function loadNewsMonth(m) {
+  if (!cfg || NEWS_ARCH[m]?.state === 'loading' || NEWS_ARCH[m]?.state === 'ok') return;
+  NEWS_ARCH[m] = { state: 'loading', items: [] };
+  try {
+    const data = await readSide(`news_archive/${m}.json`);
+    NEWS_ARCH[m] = { state: 'ok', items: Array.isArray(data?.items) ? data.items.filter((x) => x && typeof x.title === 'string' && safeUrl(x.url)) : [] };
+  } catch (e) {
+    NEWS_ARCH[m] = { state: e.status === 404 ? 'none' : 'error', items: [] };
+  }
+  if (view.type === 'news') render();
+}
+function newsHistory() {
+  const nodes = [];
+  if (!newsMonth) newsMonth = todayYmd().slice(0, 7);
+  const [y, mo] = newsMonth.split('-').map(Number);
+  const move = (d) => { const t = new Date(y, mo - 1 + d, 1); newsMonth = `${t.getFullYear()}-${pad(t.getMonth() + 1)}`; render(); };
+  nodes.push(h('div', { class: 'cal-nav' },
+    h('button', { class: 'icon-btn', type: 'button', 'aria-label': '前の月', onclick: () => move(-1) }, '‹'),
+    h('button', { class: 'icon-btn', type: 'button', 'aria-label': '次の月', onclick: () => move(1) }, '›'),
+    h('b', { class: 'cal-label' }, `${y}年${mo}月`),
+    h('input', { class: 'news-q', type: 'search', placeholder: '履歴を検索', value: newsQuery, 'aria-label': '履歴を検索',
+      oninput: (e) => { newsQuery = e.target.value; const pos = e.target.selectionStart; render(); const el = document.querySelector('.news-q'); if (el) { el.focus(); el.setSelectionRange(pos, pos); } } })));
+  const a = NEWS_ARCH[newsMonth];
+  if (!a) { loadNewsMonth(newsMonth); nodes.push(h('div', { class: 'hint' }, '読み込み中…')); return nodes; }
+  if (a.state === 'loading') { nodes.push(h('div', { class: 'hint' }, '読み込み中…')); return nodes; }
+  if (a.state !== 'ok' || !a.items.length) { nodes.push(h('div', { class: 'hint' }, a.state === 'error' ? '読み込めませんでした' : 'この月のニュースはありません')); return nodes; }
+  const q = newsQuery.trim().toLowerCase();
+  const list = a.items.filter((x) => !q || [x.title, x.summary, x.why, x.source, x.category].some((v) => String(v || '').toLowerCase().includes(q)))
+    .sort((p, r) => cmp(r.publishedAt || r.fetchedAt || '', p.publishedAt || p.fetchedAt || ''));
+  const days = new Map();
+  for (const x of list) {
+    const k = localYmd(x.publishedAt || x.fetchedAt || '') || '日付なし';
+    if (!days.has(k)) days.set(k, []);
+    days.get(k).push(x);
+  }
+  nodes.push(h('div', { class: 'hint' }, `${list.length}件${q ? '（検索）' : ''}`));
+  for (const [k, xs] of days) nodes.push(h('section', { class: 'group' }, h('div', { class: 'group-h' }, h('h3', null, YMD_ONLY.test(k) ? fmtShort(k) : k), h('span', { class: 'count' }, String(xs.length))), xs.map(newsCard)));
+  return nodes;
+}
 function newsView() {
   const nodes = [];
+  const mode = store.get(KEY.newsMode) === 'history' ? 'history' : 'latest';
+  nodes.push(h('div', { class: 'dl-seg', role: 'tablist', 'aria-label': '表示' }, [['latest', '最新'], ['history', '履歴']].map(([k, label]) =>
+    h('button', { type: 'button', role: 'tab', class: mode === k ? 'on' : '', 'aria-selected': String(mode === k),
+      onclick: () => { store.set(KEY.newsMode, k); render(); } }, label))));
+  if (mode === 'history') { nodes.push(...newsHistory()); return nodes; }
   if (NEWS.state !== 'ok' || !NEWS.items.length) {
     nodes.push(h('div', { class: 'card' }, 'まだニュースがありません。数時間ごとに自動でまとめられ、ここに出ます。'));
     return nodes;
@@ -2644,12 +2717,7 @@ function newsView() {
       onclick: () => { store.set(KEY.newsCat, c); render(); } }, c === 'all' ? `すべて ${items.length}` : c))));
   const latest = items[0].fetchedAt;
   const list = items.filter((x) => cat === 'all' || x.category === cat);
-  const card = (x) => h('article', { class: 'card news', 'data-id': x.id || '' },
-    h('div', { class: 'news-meta' }, x.category ? h('span', { class: 'dl-tag' }, x.category) : null,
-      h('span', null, [x.source, x.publishedAt ? agoLabel(x.publishedAt) : ''].filter(Boolean).join(' · '))),
-    h('h3', { class: 'news-t' }, h('a', { href: safeUrl(x.url), target: '_blank', rel: 'noopener noreferrer' }, x.title, ' ↗')),
-    x.summary ? h('p', { class: 'news-sum' }, x.summary) : null,
-    x.why ? h('p', { class: 'news-why' }, h('b', null, 'なぜ大事か '), x.why) : null);
+  const card = newsCard;
   const now = list.filter((x) => x.fetchedAt === latest);
   const old = list.filter((x) => x.fetchedAt !== latest);
   if (now.length) nodes.push(h('section', { class: 'group' }, h('div', { class: 'group-h' }, h('h3', null, '最新'), h('span', { class: 'count' }, String(now.length))), now.map(card)));
