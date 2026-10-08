@@ -556,6 +556,17 @@
   .dl-note { font-size: 13px; color: var(--muted); margin-top: 2px; overflow-wrap: anywhere; }
   .dl-note.mono { font-family: ui-monospace, SFMono-Regular, Menlo, monospace; font-size: 11.5px; color: var(--faint); }
   .dl-card .dl-list { margin-top: 2px; }
+  .dl-link { font-size: 12px; font-weight: 600; color: var(--accent); text-decoration: none; white-space: nowrap; border: 1px solid var(--accent); border-radius: 999px; padding: 0 8px; }
+  .dl-mode { margin-top: 8px; }
+  .dl-tablewrap { overflow-x: auto; margin-top: 10px; border: 1px solid var(--line); border-radius: 10px; background: var(--card); }
+  .dl-table { border-collapse: collapse; width: 100%; font-size: 13px; min-width: 640px; }
+  .dl-table th { text-align: left; font-weight: 700; color: var(--muted); background: var(--sunk); padding: 6px 8px; white-space: nowrap; position: sticky; top: 0; }
+  .dl-table td { padding: 6px 8px; border-top: 1px solid var(--line); vertical-align: top; }
+  .dl-table td.nowrap { white-space: nowrap; }
+  .dl-table td.dl-name { min-width: 170px; font-weight: 600; }
+  .dl-table a { color: var(--accent); }
+  .dl-table .dl-left { min-width: 0; display: inline-block; }
+  .dl-table .dl-note { margin: 0; }
   .paper { margin-top: 10px; }
   .paper-t { overflow-wrap: anywhere; }
   .paper-next { font-size: 14px; margin-top: 6px; }
@@ -699,7 +710,7 @@ const API = 'https://api.github.com';
 const KEY = {
   token: 'todo.token', repo: 'todo.repo', path: 'todo.path',
   cache: 'todo.cache', pending: 'todo.pending', timer: 'todo.timer', view: 'todo.view',
-  accent: 'todo.accent', sound: 'todo.sound', cal: 'todo.cal', tip: 'todo.tip', planPrev: 'todo.planPrev', portal: 'todo.portal',
+  accent: 'todo.accent', sound: 'todo.sound', cal: 'todo.cal', tip: 'todo.tip', planPrev: 'todo.planPrev', portal: 'todo.portal', portalMode: 'todo.portalMode',
 };
 const $ = (id) => document.getElementById(id);
 
@@ -2102,6 +2113,38 @@ function portalDeadlines(T) {
     .map((x) => ({ ...x, daysLeft: daysBetween(T, x.date) }))
     .sort((a, b) => cmp(a.date, b.date) || cmp(a.time || '99:99', b.time || '99:99'));
 }
+// 公式ページへのリンク（別のタブで開く）
+function linkChip(url, label = '公式ページ') {
+  return h('a', { class: 'dl-link', href: url, target: '_blank', rel: 'noopener noreferrer' }, label, h('span', { 'aria-hidden': 'true' }, ' ↗'));
+}
+const portalMode = () => (store.get(KEY.portalMode) === 'table' ? 'table' : 'list');
+function deadlineTable(list) {
+  return h('div', { class: 'dl-tablewrap' }, h('table', { class: 'dl-table' },
+    h('thead', null, h('tr', null, ['残り', '名称', '日付', '状態', '種類', 'メモ'].map((c) => h('th', { scope: 'col' }, c)))),
+    h('tbody', null, list.map((x) => {
+      const url = safeUrl(x.url);
+      return h('tr', { 'data-id': x.id || '' },
+        h('td', null, h('span', { class: 'dl-left ' + leftClass(x.daysLeft) }, leftLabel(x.daysLeft))),
+        h('td', { class: 'dl-name' }, url ? h('a', { href: url, target: '_blank', rel: 'noopener noreferrer' }, x.title, ' ↗') : x.title),
+        h('td', { class: 'nowrap' }, fmtShort(x.date) + (x.time ? ' ' + x.time : '') + (YMD_ONLY.test(x.endDate || '') ? '〜' + fmtShort(x.endDate) : '')),
+        h('td', { class: 'nowrap' }, x.status ? h('span', { class: 'dl-tag st-' + x.status }, x.status) : ''),
+        h('td', { class: 'nowrap' }, x.category || ''),
+        h('td', { class: 'dl-note' }, x.note || ''));
+    }))));
+}
+function paperTable(papers) {
+  return h('div', { class: 'dl-tablewrap' }, h('table', { class: 'dl-table' },
+    h('thead', null, h('tr', null, ['論文', '区分', '状態', '投稿先', '次の一手'].map((c) => h('th', { scope: 'col' }, c)))),
+    h('tbody', null, papers.map((p) => {
+      const url = safeUrl(p.url);
+      return h('tr', { 'data-id': p.id || '' },
+        h('td', null, h('b', null, p.title), p.role ? h('div', { class: 'dl-note' }, p.role) : null),
+        h('td', { class: 'nowrap' }, p.group || '進行中'),
+        h('td', { class: 'nowrap' }, p.status || ''),
+        h('td', null, url ? h('a', { href: url, target: '_blank', rel: 'noopener noreferrer' }, p.venue || '投稿先のページ', ' ↗') : p.venue || '未定'),
+        h('td', { class: 'dl-note' }, p.next || ''));
+    }))));
+}
 function leftLabel(n) { return n > 0 ? `あと${n}日` : n === 0 ? '今日' : '開催中'; }
 function leftClass(n) { return n <= 7 ? 'soon' : n <= 30 ? 'near' : 'far'; }
 const safeUrl = (u) => (typeof u === 'string' && /^https?:\/\//.test(u) ? u : null);
@@ -2114,7 +2157,8 @@ function deadlineRow(x) {
       h('div', { class: 'dl-title' }, url ? h('a', { href: url, target: '_blank', rel: 'noopener noreferrer' }, x.title) : x.title),
       h('div', { class: 'dl-meta' }, when,
         x.category ? h('span', { class: 'dl-tag' }, x.category) : null,
-        x.status ? h('span', { class: 'dl-tag st-' + x.status }, x.status) : null),
+        x.status ? h('span', { class: 'dl-tag st-' + x.status }, x.status) : null,
+        url ? linkChip(url) : null),
       x.note ? h('div', { class: 'dl-note' }, x.note) : null));
 }
 // 「今日」の画面に出す、2 週間以内の締切（候補・条件付きは出さない）
@@ -2137,7 +2181,17 @@ function portalView(T) {
   nodes.push(h('div', { class: 'dl-seg', role: 'tablist', 'aria-label': '締切の種類' }, cats.map((c) =>
     h('button', { type: 'button', role: 'tab', class: portalCat === c ? 'on' : '', 'aria-selected': String(portalCat === c),
       onclick: () => { portalCat = c; render(); } }, c === 'all' ? `すべて ${all.length}` : `${c} ${all.filter((x) => x.category === c).length}`))));
+  const mode = portalMode();
+  nodes.push(h('div', { class: 'dl-seg dl-mode', role: 'tablist', 'aria-label': '表示のしかた' }, [['list', 'リスト'], ['table', '表']].map(([k, label]) =>
+    h('button', { type: 'button', role: 'tab', class: mode === k ? 'on' : '', 'aria-selected': String(mode === k),
+      onclick: () => { store.set(KEY.portalMode, k); render(); } }, label))));
   const list = all.filter((x) => portalCat === 'all' || x.category === portalCat);
+  if (mode === 'table') {
+    nodes.push(list.length ? deadlineTable(list) : h('div', { class: 'hint' }, 'これからの締切はありません'));
+    nodes.push(h('div', { class: 'sec-h' }, '論文'), paperTable(PORTAL.papers));
+    nodes.push(h('div', { class: 'hint' }, PORTAL.updatedAt ? `更新：${fmtShort(localYmd(PORTAL.updatedAt))} ${new Date(PORTAL.updatedAt).toTimeString().slice(0, 5)}（手元の資料から作成）` : ''));
+    return nodes;
+  }
   const months = new Map();
   for (const x of list) {
     const m = x.date.slice(0, 7);
@@ -2163,7 +2217,7 @@ function portalView(T) {
         onclick: () => { portalOpen.has(g) ? portalOpen.delete(g) : portalOpen.add(g); render(); } }, `${open ? '▾' : '▸'} ${g} ${ps.length}`),
       open ? h('div', { class: 'paper-list' }, ps.map((p) => h('div', { class: 'card paper', 'data-id': p.id || '' },
         h('div', { class: 'row', style: 'align-items:baseline' }, h('b', { class: 'paper-t' }, p.title), h('span', { class: 'sp' }), h('span', { class: 'dl-tag' }, p.status || '')),
-        h('div', { class: 'dl-meta' }, [p.venue, p.role].filter(Boolean).join(' · ') || '投稿先未定'),
+        h('div', { class: 'dl-meta' }, [p.venue, p.role].filter(Boolean).join(' · ') || '投稿先未定', safeUrl(p.url) ? linkChip(safeUrl(p.url), '投稿先のページ') : null),
         p.next ? h('div', { class: 'paper-next' }, '次：' + p.next) : null,
         p.path ? h('div', { class: 'dl-note mono' }, p.path) : null))) : null));
   }
