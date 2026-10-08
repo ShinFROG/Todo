@@ -536,6 +536,16 @@
   .switch[aria-checked=true] { background: var(--ok); }
   .switch[aria-checked=true]::after { transform: translateX(20px); }
   .row { display: flex; gap: 8px; align-items: center; }
+  /* 空き時間をコピー */
+  .dl-seg .fs-btn { margin-left: auto; border: 1px solid var(--accent); color: var(--accent); background: var(--card); border-radius: 999px; padding: 5px 12px; font-size: 13px; min-height: 0; }
+  .fs-opts { display: flex; flex-wrap: wrap; gap: 8px 14px; margin: 6px 0 10px; }
+  .fs-opt { display: inline-flex; align-items: center; gap: 6px; font-size: 14px; }
+  .fs-opt select { font-size: 14px; }
+  .fs-list { display: flex; flex-direction: column; gap: 6px; max-height: 40vh; overflow: auto; border: 1px solid var(--line); border-radius: 10px; padding: 8px 10px; }
+  .fs-day { display: flex; flex-wrap: wrap; align-items: center; gap: 4px 12px; font-size: 14px; }
+  .fs-day b { min-width: 74px; }
+  .fs-slot { display: inline-flex; align-items: center; gap: 4px; font-variant-numeric: tabular-nums; }
+  .fs-text { width: 100%; box-sizing: border-box; margin-top: 10px; font: inherit; font-size: 14px; padding: 8px; border-radius: 10px; border: 1px solid var(--line); background: var(--card); color: var(--text); }
   /* カレンダー（週・月） */
   .cal-mode { margin-top: 4px; }
   .cal-nav { display: flex; align-items: center; gap: 6px; margin: 12px 0 8px; }
@@ -1748,7 +1758,8 @@ function renderMain(d, T, model) {
       const cmode = calMode();
       nodes.push(h('div', { class: 'dl-seg cal-mode', role: 'tablist', 'aria-label': '表示のしかた' }, [['list', 'リスト'], ['week', calNarrow() ? '3日' : '週'], ['month', '月']].map(([k, label]) =>
         h('button', { type: 'button', role: 'tab', class: cmode === k ? 'on' : '', 'aria-selected': String(cmode === k),
-          onclick: () => { store.set(KEY.calMode, k); calAnchor = T; render(); } }, label))));
+          onclick: () => { store.set(KEY.calMode, k); calAnchor = T; render(); } }, label)),
+        h('button', { class: 'fs-btn', type: 'button', onclick: openFreeSlots }, '空き時間をコピー')));
       if (cmode !== 'list') { nodes.push(...calendarView(d, T, cmode)); break; }
       const list = act.filter((t) => isUpcoming(t, T));
       const live = liveProposals(d, T);
@@ -2311,6 +2322,71 @@ function portalView(T) {
   return nodes;
 }
 let portalOpen = new Set();
+
+/* =========================================================================
+ * 空き時間を文章にしてコピー（日程調整の連絡に貼る）
+ * 予定（Google カレンダー）と時刻の決まったタスクを避け、決めた時間帯の中の空きを並べる
+ * ========================================================================= */
+const FS_KEY = 'todo.freeSlots';
+function freeSlotOpts() {
+  const def = { days: 14, from: 9 * 60, to: 18 * 60, min: 60, weekdays: true, lunch: true };
+  try { return { ...def, ...(JSON.parse(store.get(FS_KEY) || '{}') || {}) }; } catch { return def; }
+}
+// その日の空き [[開始分, 終了分], ...]
+function freeSlotsOn(k, o, now) {
+  const dd = parseYmd(k);
+  if (o.weekdays && (dd.getDay() === 0 || dd.getDay() === 6 || holidayName(k))) return [];
+  const evs = eventsOn(k);
+  if (evs.allDay.some((e) => PLAN_RULES.offWords.some((w) => e.title.includes(w)))) return [];
+  let lo = o.from;
+  if (k === ymd(now)) lo = Math.max(lo, Math.ceil((now.getHours() * 60 + now.getMinutes() + 30) / 30) * 30);
+  if (lo >= o.to) return [];
+  const busy = evs.timed.map((e) => [e.sm, e.em]);
+  for (const t of DATA.todos) if (!t.done && t.due === k && HM_RE.test(t.time || '')) busy.push([hmToMin(t.time), hmToMin(t.time) + (t.estimate || 30)]);
+  if (o.lunch) busy.push([12 * 60, 13 * 60]);
+  return subtractRanges([[lo, o.to]], busy).filter((f) => f[1] - f[0] >= o.min);
+}
+function freeSlotsText(list) {
+  return list.map(({ k, slots }) => `${fmtShort(k)} ${slots.map((f) => `${minToHm(f[0])}–${hmEnd(f[1])}`).join('、')}`).join('\n');
+}
+function openFreeSlots() {
+  const o = freeSlotOpts();
+  const now = new Date();
+  const T = todayYmd();
+  const all = [];
+  for (let i = 0; i < o.days; i++) {
+    const k = ymd(addDays(parseYmd(T), i));
+    const slots = freeSlotsOn(k, o, now);
+    if (slots.length) all.push({ k, slots });
+  }
+  const picked = new Set(all.flatMap(({ k, slots }) => slots.map((f) => `${k}|${f[0]}`)));
+  const area = h('textarea', { class: 'fs-text', rows: '8', 'aria-label': 'コピーする文章' });
+  const refresh = () => { area.value = freeSlotsText(all.map(({ k, slots }) => ({ k, slots: slots.filter((f) => picked.has(`${k}|${f[0]}`)) })).filter((x) => x.slots.length)); };
+  const save = (patch) => { store.set(FS_KEY, JSON.stringify({ ...o, ...patch })); openFreeSlots(); };
+  const sel = (label, key, values, fmt) => h('label', { class: 'fs-opt' }, label,
+    h('select', { 'data-k': 'fs-' + key, onchange: (e) => save({ [key]: +e.target.value }) }, values.map((v) => h('option', { value: String(v), selected: o[key] === v ? '' : null }, fmt(v)))));
+  const chk = (label, key) => h('label', { class: 'fs-opt' }, h('input', { type: 'checkbox', 'data-k': 'fs-' + key, checked: o[key] ? '' : null, onchange: (e) => save({ [key]: e.target.checked }) }), label);
+  const R = CAL.range;
+  const lastK = ymd(addDays(parseYmd(T), o.days - 1));
+  openSheet(h('div', { class: 'fs' },
+    sheetHead('空き時間をコピー'),
+    h('div', { class: 'fs-opts' },
+      sel('期間', 'days', [7, 14, 21, 28], (v) => `${v}日`),
+      sel('から', 'from', [7, 8, 9, 10, 13].map((x) => x * 60), minToHm),
+      sel('まで', 'to', [12, 17, 18, 19, 20, 21].map((x) => x * 60), minToHm),
+      sel('最短', 'min', [30, 60, 90, 120], (v) => fmtMin(v)),
+      chk('土日・祝日を除く', 'weekdays'), chk('昼休み（12–13時）を除く', 'lunch')),
+    R && lastK > R.to ? h('p', { class: 'hint' }, `Google カレンダーの予定は ${fmtShort(R.to)} までしか取り込んでいないので、その先は予定を避けられません`) : null,
+    all.length ? h('div', { class: 'fs-list' }, all.map(({ k, slots }) => h('div', { class: 'fs-day' }, h('b', null, fmtShort(k)),
+      slots.map((f) => h('label', { class: 'fs-slot' }, h('input', { type: 'checkbox', checked: '', 'data-slot': `${k}|${f[0]}`,
+        onchange: (e) => { e.target.checked ? picked.add(`${k}|${f[0]}`) : picked.delete(`${k}|${f[0]}`); refresh(); } }), `${minToHm(f[0])}–${hmEnd(f[1])}`)))))
+      : h('p', { class: 'hint' }, 'この条件では空き時間がありません'),
+    area,
+    h('div', { class: 'dlg-foot' }, h('button', { class: 'btn-primary', type: 'button', 'data-act-copy': '1', onclick: async () => {
+      try { await navigator.clipboard.writeText(area.value); toast('コピーしました'); } catch { area.select(); document.execCommand('copy'); toast('コピーしました'); }
+    } }, 'コピー'))), { label: '空き時間をコピー' });
+  refresh();
+}
 
 /* =========================================================================
  * カレンダー（Google カレンダーの「週」「月」のように見る）
