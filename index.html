@@ -2878,7 +2878,7 @@ function mailCard(d, T) {
       return h('li', { class: 'mail-row' + (open ? ' open' : ''), 'data-mail': x.id },
         h('span', { class: 'dl-tag' }, x.account || 'Gmail'),
         h('div', { class: 'dl-body' },
-          h('div', { class: 'dl-title' }, safeUrl(x.url) ? h('a', { href: safeUrl(x.url), target: '_blank', rel: 'noopener noreferrer' }, x.subject) : x.subject),
+          h('div', { class: 'dl-title' }, mailOpenUrl(x.url) ? h('a', { href: mailOpenUrl(x.url), target: /^https?:/.test(x.url) ? '_blank' : null, rel: 'noopener noreferrer' }, x.subject) : x.subject),
           h('div', { class: 'dl-meta' }, [x.from, n == null ? '' : n === 0 ? '今日' : `${n}日前`, x.cc ? 'CC' : ''].filter(Boolean).join(' · '),
             hasDraft || x.body ? h('button', { class: 'link-btn mail-toggle', type: 'button', onclick: () => { mailExpanded = open ? null : x.id; render(); } }, open ? '閉じる' : hasDraft ? '返信案' : '本文') : null),
           open ? h('div', { class: 'mail-detail' },
@@ -2887,7 +2887,7 @@ function mailCard(d, T) {
                 h('button', { class: 'btn-primary mail-copy', type: 'button', onclick: () => copyText(x.draft) }, 'コピー')),
               h('pre', null, x.draft)) : null,
             x.body ? h('details', { class: 'mail-body' }, h('summary', null, '受け取ったメール'), h('pre', null, x.body)) : null,
-            safeUrl(x.url) ? h('a', { class: 'dl-link', href: safeUrl(x.url), target: '_blank', rel: 'noopener noreferrer' }, `${x.account || 'メール'}で開く`, h('span', { 'aria-hidden': 'true' }, ' ↗')) : null) : null),
+            mailOpenUrl(x.url) ? h('a', { class: 'dl-link', href: mailOpenUrl(x.url), target: /^https?:/.test(x.url) ? '_blank' : null, rel: 'noopener noreferrer' }, `${x.openLabel || x.account || 'メール'}で開く`, h('span', { 'aria-hidden': 'true' }, ' ↗')) : null) : null),
         h('button', { class: 'mail-done', type: 'button', title: '返信した・返信不要', onclick: () => mutate({ t: 'mailDone', id: x.id, date: T }) }, '済み'));
     })));
 }
@@ -2941,6 +2941,8 @@ function mailItems(d) {
   return [...rich, ...plain].filter((x) => !done[x.id]).sort((a, b) => cmp(a.received || '', b.received || ''));
 }
 let mailExpanded = null;
+// メールを開くリンク：Web のほか、Outlook のアプリ（ms-outlook:）も許す
+const mailOpenUrl = (u) => (typeof u === 'string' && /^(https?:\/\/|ms-outlook:)/.test(u) ? u : null);
 async function copyText(t) {
   try { await navigator.clipboard.writeText(t); } catch { const a = h('textarea', null, t); document.body.append(a); a.select(); document.execCommand('copy'); a.remove(); }
   toast('コピーしました');
