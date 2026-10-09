@@ -662,6 +662,14 @@
   .mail-row { display: flex; gap: 10px; align-items: flex-start; padding: 8px 2px; border-top: 1px solid var(--line); }
   .mail-row:first-child { border-top: 0; }
   .mail-row .dl-title a { color: var(--text); text-decoration: none; }
+  .mail-toggle { font-size: 13px; margin-left: 4px; }
+  .mail-detail { margin-top: 8px; display: flex; flex-direction: column; gap: 8px; }
+  .mail-draft { border: 1px solid var(--accent); border-radius: 10px; padding: 8px 10px; background: var(--card); }
+  .mail-draft pre, .mail-body pre { white-space: pre-wrap; word-break: break-word; font: inherit; font-size: 14px; line-height: 1.7; margin: 6px 0 0; }
+  .mail-detail .dl-link { align-self: flex-start; }
+  .mail-copy { padding: 4px 14px; min-height: 0; font-size: 13px; }
+  .mail-body summary { cursor: pointer; color: var(--muted); font-size: 13px; }
+  .mail-body pre { color: var(--muted); max-height: 280px; overflow: auto; }
   .mail-done { flex: none; border: 1px solid var(--line); background: var(--card); color: var(--muted); border-radius: 999px; padding: 2px 10px; font-size: 13px; min-height: 0; }
   .dl-link { font-size: 13px; font-weight: 600; color: var(--accent); text-decoration: none; white-space: nowrap; border: 1px solid var(--accent); border-radius: 999px; padding: 0 8px; }
   .dl-mode { margin-top: 8px; }
@@ -826,7 +834,7 @@ const API = 'https://api.github.com';
 const KEY = {
   token: 'todo.token', repo: 'todo.repo', path: 'todo.path',
   cache: 'todo.cache', pending: 'todo.pending', timer: 'todo.timer', view: 'todo.view',
-  accent: 'todo.accent', sound: 'todo.sound', cal: 'todo.cal', tip: 'todo.tip', planPrev: 'todo.planPrev', portal: 'todo.portal', portalMode: 'todo.portalMode', calMode: 'todo.calMode', matrixMode: 'todo.matrixMode', news: 'todo.news', mail: 'todo.mail', newsCat: 'todo.newsCat', newsMode: 'todo.newsMode',
+  accent: 'todo.accent', sound: 'todo.sound', cal: 'todo.cal', tip: 'todo.tip', planPrev: 'todo.planPrev', portal: 'todo.portal', portalMode: 'todo.portalMode', calMode: 'todo.calMode', matrixMode: 'todo.matrixMode', news: 'todo.news', mail: 'todo.mail', mailKey: 'todo.mailKey', newsCat: 'todo.newsCat', newsMode: 'todo.newsMode',
 };
 const $ = (id) => document.getElementById(id);
 
@@ -2854,22 +2862,88 @@ async function fetchMail() {
   render();
 }
 function mailCard(d, T) {
-  const done = d.meta.mailDone && typeof d.meta.mailDone === 'object' ? d.meta.mailDone : {};
-  const list = MAIL.items.filter((x) => !done[x.id]);
-  if (MAIL.state !== 'ok' || !list.length) return null;
+  const list = mailItems(d);
+  const lockedNote = MAILBOX.state === 'locked' ? '返信案があります。設定で「メールの合言葉」を入れると見られます'
+    : MAILBOX.state === 'badkey' ? '合言葉が違うため返信案を開けません（設定で入れ直してください）' : '';
+  if (!list.length && !lockedNote) return null;
   const shown = mailOpen ? list : list.slice(0, 4);
   return h('section', { class: 'card mail-card' },
     h('div', { class: 'row' }, h('b', null, `返信 ${list.length}`), h('span', { class: 'sp' }),
       list.length > 4 ? h('button', { class: 'link-btn', type: 'button', onclick: () => { mailOpen = !mailOpen; render(); } }, mailOpen ? '閉じる' : 'すべて見る') : null),
+    lockedNote ? h('div', { class: 'hint' }, lockedNote, ' ', h('button', { class: 'link-btn', type: 'button', onclick: openSettings }, '設定を開く')) : null,
     h('ul', { class: 'dl-list' }, shown.map((x) => {
       const n = YMD_ONLY.test(localYmd(x.received || '')) ? daysBetween(localYmd(x.received), T) : null;
-      return h('li', { class: 'mail-row', 'data-mail': x.id },
+      const open = mailExpanded === x.id;
+      const hasDraft = typeof x.draft === 'string' && x.draft.trim();
+      return h('li', { class: 'mail-row' + (open ? ' open' : ''), 'data-mail': x.id },
         h('span', { class: 'dl-tag' }, x.account || 'Gmail'),
         h('div', { class: 'dl-body' },
           h('div', { class: 'dl-title' }, safeUrl(x.url) ? h('a', { href: safeUrl(x.url), target: '_blank', rel: 'noopener noreferrer' }, x.subject) : x.subject),
-          h('div', { class: 'dl-meta' }, [x.from, n == null ? '' : n === 0 ? '今日' : `${n}日前`, x.cc ? 'CC' : ''].filter(Boolean).join(' · '))),
+          h('div', { class: 'dl-meta' }, [x.from, n == null ? '' : n === 0 ? '今日' : `${n}日前`, x.cc ? 'CC' : ''].filter(Boolean).join(' · '),
+            hasDraft || x.body ? h('button', { class: 'link-btn mail-toggle', type: 'button', onclick: () => { mailExpanded = open ? null : x.id; render(); } }, open ? '閉じる' : hasDraft ? '返信案' : '本文') : null),
+          open ? h('div', { class: 'mail-detail' },
+            hasDraft ? h('div', { class: 'mail-draft' },
+              h('div', { class: 'row' }, h('b', null, '返信案'), h('span', { class: 'sp' }),
+                h('button', { class: 'btn-primary mail-copy', type: 'button', onclick: () => copyText(x.draft) }, 'コピー')),
+              h('pre', null, x.draft)) : null,
+            x.body ? h('details', { class: 'mail-body' }, h('summary', null, '受け取ったメール'), h('pre', null, x.body)) : null,
+            safeUrl(x.url) ? h('a', { class: 'dl-link', href: safeUrl(x.url), target: '_blank', rel: 'noopener noreferrer' }, `${x.account || 'メール'}で開く`, h('span', { 'aria-hidden': 'true' }, ' ↗')) : null) : null),
         h('button', { class: 'mail-done', type: 'button', title: '返信した・返信不要', onclick: () => mutate({ t: 'mailDone', id: x.id, date: T }) }, '済み'));
     })));
+}
+
+/* =========================================================================
+ * 返信案つきのメール（mailbox.enc.json。この Mac のプログラムが作り、暗号化して置く）
+ * 合言葉は端末ごとに一度だけ設定画面で入れる（この端末の中だけに置く）。復号はブラウザの WebCrypto
+ * ========================================================================= */
+let MAILBOX = { state: 'none', items: [], accounts: {}, updatedAt: null, enc: null };
+const b64bytes = (s) => Uint8Array.from(atob(s), (c) => c.charCodeAt(0));
+async function decryptMailbox(enc, pass) {
+  const base = await crypto.subtle.importKey('raw', new TextEncoder().encode(pass), 'PBKDF2', false, ['deriveKey']);
+  const key = await crypto.subtle.deriveKey({ name: 'PBKDF2', salt: b64bytes(enc.salt), iterations: enc.iter, hash: 'SHA-256' }, base, { name: 'AES-GCM', length: 256 }, false, ['decrypt']);
+  const pt = await crypto.subtle.decrypt({ name: 'AES-GCM', iv: b64bytes(enc.iv) }, key, b64bytes(enc.data));
+  return JSON.parse(new TextDecoder().decode(pt));
+}
+async function openMailbox() {
+  const enc = MAILBOX.enc;
+  if (!enc) return;
+  const pass = store.get(KEY.mailKey);
+  if (!pass) { MAILBOX = { ...MAILBOX, state: 'locked' }; return; }
+  try {
+    const d = await decryptMailbox(enc, pass);
+    const ok = (x) => x && typeof x.subject === 'string' && typeof x.id === 'string';
+    MAILBOX = { ...MAILBOX, state: 'ok', items: Array.isArray(d.items) ? d.items.filter(ok) : [], accounts: d.accounts || {}, updatedAt: d.updatedAt || null };
+  } catch {
+    MAILBOX = { ...MAILBOX, state: 'badkey', items: [] };
+  }
+}
+async function fetchMailbox() {
+  if (!cfg) return;
+  const key = cfgKey();
+  try {
+    const data = await readSide('mailbox.enc.json');
+    if (!cfg || cfgKey() !== key) return;
+    MAILBOX = { ...MAILBOX, enc: data && data.data ? data : null };
+    await openMailbox();
+  } catch (e) {
+    if (e.status !== 404) { console.warn('mailbox:', explain(e)); return; }
+    MAILBOX = { state: 'none', items: [], accounts: {}, updatedAt: null, enc: null };
+  }
+  if (!cfg || cfgKey() !== key) return;
+  render();
+}
+// 返信の欄に出すもの：返信案つき（この Mac のプログラム）を優先し、そこで読めているアカウント以外は Apps Script の一覧から
+function mailItems(d) {
+  const done = d.meta.mailDone && typeof d.meta.mailDone === 'object' ? d.meta.mailDone : {};
+  const covered = new Set(MAILBOX.state === 'ok' ? Object.values(MAILBOX.accounts).filter((a) => a && a.ok).map((a) => a.label) : []);
+  const rich = MAILBOX.state === 'ok' ? MAILBOX.items : [];
+  const plain = MAIL.state === 'ok' ? MAIL.items.filter((x) => !covered.has(x.account || 'Gmail')) : [];
+  return [...rich, ...plain].filter((x) => !done[x.id]).sort((a, b) => cmp(a.received || '', b.received || ''));
+}
+let mailExpanded = null;
+async function copyText(t) {
+  try { await navigator.clipboard.writeText(t); } catch { const a = h('textarea', null, t); document.body.append(a); a.select(); document.execCommand('copy'); a.remove(); }
+  toast('コピーしました');
 }
 
 /* =========================================================================
@@ -2914,6 +2988,7 @@ async function fetchCalendar() {
   fetchPortal();
   fetchNews();
   fetchMail();
+  fetchMailbox();
   const key = cfgKey();
   try {
     const data = await readSide('calendar.json');
@@ -4281,6 +4356,10 @@ function openSettings() {
         : perm === 'denied' ? h('span', { class: 'muted' }, 'ブラウザで拒否')
           : perm === 'unsupported' ? h('span', { class: 'muted' }, '非対応')
             : h('button', { type: 'button', onclick: () => { askNotify(); closeSheet(); } }, '許可する')),
+    h('div', { class: 'gsec' }, 'メール'),
+    h('div', { class: 'set-row' }, h('label', { for: 'mailKeyInput' }, 'メールの合言葉（この端末だけ）'),
+      h('input', { id: 'mailKeyInput', type: 'password', autocomplete: 'off', value: store.get(KEY.mailKey) || '', 'data-k': 'mailKey', 'aria-label': 'メールの合言葉',
+        onchange: async (e) => { const v = e.target.value.trim(); v ? store.set(KEY.mailKey, v) : store.del(KEY.mailKey); await openMailbox(); render(); toast(MAILBOX.state === 'ok' ? '返信案を開けました' : MAILBOX.state === 'badkey' ? '合言葉が違います' : '保存しました'); } })),
     h('div', { class: 'gsec' }, '空き時間への提案'),
     h('div', { class: 'set-row' }, h('span', { class: 'lbl' }, '日時の決まっていないタスクを空き時間に提案'),
       h('button', { class: 'switch', type: 'button', role: 'switch', 'aria-checked': String(suggestOn()), 'aria-label': '空き時間に提案',
@@ -4416,12 +4495,13 @@ async function showApp() {
   }
 }
 function logout(bad, detail) {
-  for (const k of [KEY.token, KEY.cache, KEY.pending, KEY.timer, KEY.cal, KEY.planPrev, KEY.portal, KEY.news, KEY.mail]) store.del(k);
+  for (const k of [KEY.token, KEY.cache, KEY.pending, KEY.timer, KEY.cal, KEY.planPrev, KEY.portal, KEY.news, KEY.mail, KEY.mailKey]) store.del(k);
   vault.del('login');
   setCal(null, 'none');
   setPortal(null, 'none');
   setNews(null, 'none');
   setMail(null, 'none');
+  MAILBOX = { state: 'none', items: [], accounts: {}, updatedAt: null, enc: null };
   planPrev = undefined;
   cfg = null;
   Object.assign(st, { base: null, sha: null, loaded: false, pending: [], syncing: false });
