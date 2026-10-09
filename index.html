@@ -659,6 +659,10 @@
   .dl-when { flex: none; font-size: 13px; color: var(--muted); font-variant-numeric: tabular-nums; }
   #fab.away { transform: translateY(160px); }
   .dl-card .dl-list { margin-top: 2px; }
+  .mail-row { display: flex; gap: 10px; align-items: flex-start; padding: 8px 2px; border-top: 1px solid var(--line); }
+  .mail-row:first-child { border-top: 0; }
+  .mail-row .dl-title a { color: var(--text); text-decoration: none; }
+  .mail-done { flex: none; border: 1px solid var(--line); background: var(--card); color: var(--muted); border-radius: 999px; padding: 2px 10px; font-size: 13px; min-height: 0; }
   .dl-link { font-size: 13px; font-weight: 600; color: var(--accent); text-decoration: none; white-space: nowrap; border: 1px solid var(--accent); border-radius: 999px; padding: 0 8px; }
   .dl-mode { margin-top: 8px; }
   .dl-tablewrap { overflow-x: auto; margin-top: 10px; border: 1px solid var(--line); border-radius: 10px; background: var(--card); }
@@ -822,7 +826,7 @@ const API = 'https://api.github.com';
 const KEY = {
   token: 'todo.token', repo: 'todo.repo', path: 'todo.path',
   cache: 'todo.cache', pending: 'todo.pending', timer: 'todo.timer', view: 'todo.view',
-  accent: 'todo.accent', sound: 'todo.sound', cal: 'todo.cal', tip: 'todo.tip', planPrev: 'todo.planPrev', portal: 'todo.portal', portalMode: 'todo.portalMode', calMode: 'todo.calMode', matrixMode: 'todo.matrixMode', news: 'todo.news', newsCat: 'todo.newsCat', newsMode: 'todo.newsMode',
+  accent: 'todo.accent', sound: 'todo.sound', cal: 'todo.cal', tip: 'todo.tip', planPrev: 'todo.planPrev', portal: 'todo.portal', portalMode: 'todo.portalMode', calMode: 'todo.calMode', matrixMode: 'todo.matrixMode', news: 'todo.news', mail: 'todo.mail', newsCat: 'todo.newsCat', newsMode: 'todo.newsMode',
 };
 const $ = (id) => document.getElementById(id);
 
@@ -1287,6 +1291,12 @@ function applyOp(d, op) {
     case 'meta':
       d.meta = { ...d.meta, ...op.set };
       break;
+    case 'mailDone': { // 返信の欄で「済み」にしたメール（30 日で忘れる）
+      const cur = d.meta.mailDone && typeof d.meta.mailDone === 'object' ? d.meta.mailDone : {};
+      const keep = Object.fromEntries(Object.entries(cur).filter(([, v]) => typeof v === 'string' && daysBetween(v, op.date) <= 30));
+      d.meta = { ...d.meta, mailDone: { ...keep, [op.id]: op.date } };
+      break;
+    }
     case 'routineSeed': // 2 台で同時に用意しても同じ結果になるよう、まだ無いときだけ入れる
       if (!Array.isArray(d.routines)) d.routines = op.list.map(normRoutine);
       break;
@@ -1810,7 +1820,7 @@ function renderMain(d, T, model) {
       const doneN = doneToday.length + rDone;
       if (total) extra = h('div', { class: 'ring-sm', title: `今日 ${doneN}/${total} 完了（ルーティンを含む）` }, `${doneN}/${total}`, ringSvg(doneN / total, 44, 5));
       const evs = eventsOn(T);
-      nodes.push(tipCard(), deadlineCard(T), routineSection(d, T), planBar(list, d, T, evs));
+      nodes.push(tipCard(), deadlineCard(T), mailCard(d, T), routineSection(d, T), planBar(list, d, T, evs));
       if (evs.allDay.length) {
         nodes.push(h('div', { class: 'allday', 'aria-label': '終日の予定' }, evs.allDay.map((ev) =>
           h('a', { class: 'ad-chip', href: gcalDayUrl(T), target: '_blank', rel: 'noopener noreferrer', style: `--col:${calColor(ev.cal)}`, title: 'Google カレンダーで開く' }, ev.title))));
@@ -2819,6 +2829,50 @@ function newsView() {
 }
 
 /* =========================================================================
+ * 返信が要りそうなメール（データ用リポジトリの mail.json を読むだけ。Apps Script が Gmail から 15 分ごとに作る）
+ * ========================================================================= */
+let MAIL = { items: [], updatedAt: null, state: 'none' };
+let mailOpen = false;
+function setMail(data, state) {
+  const ok = (x) => x && typeof x.subject === 'string' && typeof x.id === 'string';
+  MAIL = { items: Array.isArray(data?.items) ? data.items.filter(ok) : [], updatedAt: data?.updatedAt || null, state };
+}
+async function fetchMail() {
+  if (!cfg) return;
+  const key = cfgKey();
+  try {
+    const data = await readSide('mail.json');
+    if (!cfg || cfgKey() !== key) return;
+    setMail(data, 'ok');
+    saveJSON(KEY.mail, { key, data });
+  } catch (e) {
+    if (e.status !== 404) { console.warn('mail:', explain(e)); return; }
+    setMail(null, 'none');
+    store.del(KEY.mail);
+  }
+  if (!cfg || cfgKey() !== key) return;
+  render();
+}
+function mailCard(d, T) {
+  const done = d.meta.mailDone && typeof d.meta.mailDone === 'object' ? d.meta.mailDone : {};
+  const list = MAIL.items.filter((x) => !done[x.id]);
+  if (MAIL.state !== 'ok' || !list.length) return null;
+  const shown = mailOpen ? list : list.slice(0, 4);
+  return h('section', { class: 'card mail-card' },
+    h('div', { class: 'row' }, h('b', null, `返信 ${list.length}`), h('span', { class: 'sp' }),
+      list.length > 4 ? h('button', { class: 'link-btn', type: 'button', onclick: () => { mailOpen = !mailOpen; render(); } }, mailOpen ? '閉じる' : 'すべて見る') : null),
+    h('ul', { class: 'dl-list' }, shown.map((x) => {
+      const n = YMD_ONLY.test(localYmd(x.received || '')) ? daysBetween(localYmd(x.received), T) : null;
+      return h('li', { class: 'mail-row', 'data-mail': x.id },
+        h('span', { class: 'dl-tag' }, x.account || 'Gmail'),
+        h('div', { class: 'dl-body' },
+          h('div', { class: 'dl-title' }, safeUrl(x.url) ? h('a', { href: safeUrl(x.url), target: '_blank', rel: 'noopener noreferrer' }, x.subject) : x.subject),
+          h('div', { class: 'dl-meta' }, [x.from, n == null ? '' : n === 0 ? '今日' : `${n}日前`, x.cc ? 'CC' : ''].filter(Boolean).join(' · '))),
+        h('button', { class: 'mail-done', type: 'button', title: '返信した・返信不要', onclick: () => mutate({ t: 'mailDone', id: x.id, date: T }) }, '済み'));
+    })));
+}
+
+/* =========================================================================
  * 祝日。Google カレンダーの「日本の祝日」を取り込んでいればそれを使い、無い分は内閣府の祝日表（2026〜2027 年）で補う
  * ========================================================================= */
 const HOLIDAYS_JP = { '2026-01-01': '元日', '2026-01-12': '成人の日', '2026-02-11': '建国記念の日', '2026-02-23': '天皇誕生日', '2026-03-20': '春分の日', '2026-04-29': '昭和の日', '2026-05-03': '憲法記念日', '2026-05-04': 'みどりの日', '2026-05-05': 'こどもの日', '2026-05-06': '休日', '2026-07-20': '海の日', '2026-08-11': '山の日', '2026-09-21': '敬老の日', '2026-09-22': '休日', '2026-09-23': '秋分の日', '2026-10-12': 'スポーツの日', '2026-11-03': '文化の日', '2026-11-23': '勤労感謝の日', '2027-01-01': '元日', '2027-01-11': '成人の日', '2027-02-11': '建国記念の日', '2027-02-23': '天皇誕生日', '2027-03-21': '春分の日', '2027-03-22': '休日', '2027-04-29': '昭和の日', '2027-05-03': '憲法記念日', '2027-05-04': 'みどりの日', '2027-05-05': 'こどもの日', '2027-07-19': '海の日', '2027-08-11': '山の日', '2027-09-20': '敬老の日', '2027-09-23': '秋分の日', '2027-10-11': 'スポーツの日', '2027-11-03': '文化の日', '2027-11-23': '勤労感謝の日' };
@@ -2859,6 +2913,7 @@ async function fetchCalendar() {
   CAL.fetchedAt = Date.now();
   fetchPortal();
   fetchNews();
+  fetchMail();
   const key = cfgKey();
   try {
     const data = await readSide('calendar.json');
@@ -4342,6 +4397,8 @@ async function showApp() {
   if (calCache && calCache.key === cfgKey()) setCal(calCache.data, 'ok');
   const portalCache = loadJSON(KEY.portal, null);
   if (portalCache && portalCache.key === cfgKey()) setPortal(portalCache.data, 'ok');
+  const mailCache = loadJSON(KEY.mail, null);
+  if (mailCache && mailCache.key === cfgKey()) setMail(mailCache.data, 'ok');
   const newsCache = loadJSON(KEY.news, null);
   if (newsCache && newsCache.key === cfgKey()) setNews(newsCache.data, 'ok');
   render();
@@ -4359,11 +4416,12 @@ async function showApp() {
   }
 }
 function logout(bad, detail) {
-  for (const k of [KEY.token, KEY.cache, KEY.pending, KEY.timer, KEY.cal, KEY.planPrev, KEY.portal, KEY.news]) store.del(k);
+  for (const k of [KEY.token, KEY.cache, KEY.pending, KEY.timer, KEY.cal, KEY.planPrev, KEY.portal, KEY.news, KEY.mail]) store.del(k);
   vault.del('login');
   setCal(null, 'none');
   setPortal(null, 'none');
   setNews(null, 'none');
+  setMail(null, 'none');
   planPrev = undefined;
   cfg = null;
   Object.assign(st, { base: null, sha: null, loaded: false, pending: [], syncing: false });
