@@ -546,6 +546,19 @@
   .fs-day b { min-width: 74px; }
   .fs-slot { display: inline-flex; align-items: center; gap: 4px; font-variant-numeric: tabular-nums; }
   .fs-text { width: 100%; box-sizing: border-box; margin-top: 10px; font: inherit; font-size: 14px; padding: 8px; border-radius: 10px; border: 1px solid var(--line); background: var(--card); color: var(--text); }
+  .dl-seg .ev-add-btn { margin-left: auto; background: var(--accent); color: var(--accent-ink); }
+  .dl-seg .ev-add-btn + .fs-btn { margin-left: 0; }
+  .cal-block.queued { background: transparent; color: var(--text); border: 1.5px dashed var(--col); }
+  .ev-queue { display: flex; flex-direction: column; gap: 4px; margin: 0 2px 8px; font-size: 13px; }
+  .ev-q { display: flex; gap: 8px; align-items: center; color: var(--muted); }
+  .ev-q.error { color: var(--danger); }
+  .ev-sheet .ev-field { display: flex; flex-direction: column; gap: 4px; font-size: 13px; color: var(--muted); margin-top: 10px; }
+  .ev-sheet input[type=text], .ev-sheet textarea, .ev-sheet select { font: inherit; font-size: 16px; padding: 8px 10px; border-radius: 10px; border: 1px solid var(--line); background: var(--card); color: var(--text); }
+  .ev-sheet .ev-row { display: flex; gap: 14px; align-items: flex-end; }
+  .ev-sheet .ev-check { display: inline-flex; gap: 6px; align-items: center; font-size: 14px; padding-bottom: 8px; }
+  .ev-sheet .ev-times { display: flex; gap: 8px; align-items: center; margin-top: 10px; }
+  .ev-sheet input[type=date], .ev-sheet input[type=time] { font: inherit; font-size: 16px; padding: 6px 8px; border-radius: 10px; border: 1px solid var(--line); background: var(--card); color: var(--text); }
+  .ev-err { color: var(--danger); }
   /* カレンダー（週・月） */
   .cal-mode { margin-top: 4px; }
   .cal-nav { display: flex; align-items: center; gap: 6px; margin: 12px 0 8px; }
@@ -1303,6 +1316,12 @@ function applyOp(d, op) {
     case 'meta':
       d.meta = { ...d.meta, ...op.set };
       break;
+    case 'eventAdd': // Google カレンダーへ送る予定（Apps Script が作って結果を書き戻す）
+      d.eventQueue = [...(Array.isArray(d.eventQueue) ? d.eventQueue : []).filter((x) => x && x.id !== op.ev.id), op.ev];
+      break;
+    case 'eventCancel': // 送信待ちの予定を取り消す
+      if (Array.isArray(d.eventQueue)) d.eventQueue = d.eventQueue.filter((x) => !(x && x.id === op.id && x.status !== 'created'));
+      break;
     case 'mailDone': { // 返信の欄で「済み」にしたメール（30 日で忘れる）
       const cur = d.meta.mailDone && typeof d.meta.mailDone === 'object' ? d.meta.mailDone : {};
       const keep = Object.fromEntries(Object.entries(cur).filter(([, v]) => typeof v === 'string' && daysBetween(v, op.date) <= 30));
@@ -2018,7 +2037,12 @@ function renderMain(d, T, model) {
       nodes.push(h('div', { class: 'dl-seg cal-mode', role: 'tablist', 'aria-label': '表示のしかた' }, [['week', calNarrow() ? '3日' : '週'], ['month', '月']].map(([k, label]) =>
         h('button', { type: 'button', role: 'tab', class: cmode === k ? 'on' : '', 'aria-selected': String(cmode === k),
           onclick: () => { store.set(KEY.calMode, k); calAnchor = T; render(); } }, label)),
+        h('button', { class: 'fs-btn ev-add-btn', type: 'button', onclick: () => openEventSheet(calAnchor && calAnchor >= T ? calAnchor : T) }, '＋ 予定'),
         h('button', { class: 'fs-btn', type: 'button', onclick: openFreeSlots }, '空き時間をコピー')));
+      const q = queuedEvents();
+      if (q.length) nodes.push(h('div', { class: 'ev-queue' }, q.map((x) => h('div', { class: 'ev-q ' + x.queued, 'data-q': x.qid },
+        h('span', null, x.queued === 'error' ? `作れませんでした：${x.title}（${x.error || '理由不明'}）` : `Google カレンダーへ送信待ち：${x.title}`),
+        h('button', { class: 'link-btn', type: 'button', onclick: () => mutate({ t: 'eventCancel', id: x.qid }) }, '取り消す')))));
       nodes.push(...calendarView(d, T, cmode));
       break;
     }
@@ -2510,6 +2534,50 @@ function portalView(T) {
 let portalOpen = new Set();
 
 /* =========================================================================
+ * 予定を追加（Google カレンダーへ。Apps Script が 15 分以内に作る）
+ * ========================================================================= */
+function openEventSheet(day) {
+  const T = todayYmd();
+  const cals = CAL.calendars.length ? CAL.calendars : [{ id: 'c1', name: '仕事' }];
+  const f = { title: '', date: day || T, allDay: false, start: '10:00', end: '11:00', cal: cals[0].id, location: '', notes: '' };
+  const inp = (k, attrs) => h('input', { ...attrs, 'data-k': 'ev-' + k, value: f[k], oninput: (e) => { f[k] = e.target.value; } });
+  const timeRow = h('div', { class: 'ev-times' }, inp('start', { type: 'time', step: '900', 'aria-label': '開始' }), h('span', null, '〜'), inp('end', { type: 'time', step: '900', 'aria-label': '終了' }));
+  const err = h('p', { class: 'hint ev-err', hidden: true });
+  const submit = () => {
+    const title = f.title.trim();
+    const fail = (m) => { err.textContent = m; err.hidden = false; };
+    if (!title) return fail('件名を入れてください');
+    if (!YMD_ONLY.test(f.date)) return fail('日付を入れてください');
+    let ev;
+    if (f.allDay) {
+      ev = { start: f.date, end: ymd(addDays(parseYmd(f.date), 1)), allDay: true };
+    } else {
+      if (!HM_RE.test(f.start) || !HM_RE.test(f.end)) return fail('時刻を入れてください');
+      if (hmToMin(f.end) <= hmToMin(f.start)) return fail('終わりは始まりより後にしてください');
+      const iso = (hm) => new Date(`${f.date}T${hm}:00`).toISOString();
+      ev = { start: iso(f.start), end: iso(f.end), allDay: false };
+    }
+    mutate({ t: 'eventAdd', ev: { id: uid(), status: 'pending', title, cal: f.cal, location: f.location.trim() || undefined, notes: f.notes.trim() || undefined, createdAt: nowIso(), ...ev } });
+    closeSheet();
+    toast(`「${title}」を Google カレンダーへ送ります（15 分以内に反映）`);
+  };
+  openSheet(h('div', { class: 'ev-sheet' },
+    sheetHead('予定を追加'),
+    h('label', { class: 'ev-field' }, '件名', inp('title', { type: 'text', placeholder: '例：研究室ミーティング', 'aria-label': '件名' })),
+    h('div', { class: 'ev-row' },
+      h('label', { class: 'ev-field' }, '日付', inp('date', { type: 'date', 'aria-label': '日付' })),
+      h('label', { class: 'ev-check' }, h('input', { type: 'checkbox', 'data-k': 'ev-allDay', onchange: (e) => { f.allDay = e.target.checked; timeRow.hidden = f.allDay; } }), '終日')),
+    timeRow,
+    h('label', { class: 'ev-field' }, 'カレンダー', h('select', { 'data-k': 'ev-cal', 'aria-label': 'カレンダー', onchange: (e) => { f.cal = e.target.value; } },
+      cals.map((c) => h('option', { value: c.id }, c.name)))),
+    h('label', { class: 'ev-field' }, '場所（任意）', inp('location', { type: 'text', 'aria-label': '場所' })),
+    h('label', { class: 'ev-field' }, 'メモ（任意）', h('textarea', { 'data-k': 'ev-notes', rows: '2', 'aria-label': 'メモ', oninput: (e) => { f.notes = e.target.value; } })),
+    err,
+    h('div', { class: 'dlg-foot' }, h('button', { class: 'btn-primary', type: 'button', 'data-act-ev': 'add', onclick: submit }, '追加'))), { label: '予定を追加' });
+  setTimeout(() => document.querySelector('#sheet [data-k="ev-title"]')?.focus(), 50);
+}
+
+/* =========================================================================
  * 空き時間を文章にしてコピー（日程調整の連絡に貼る）
  * 予定（Google カレンダー）と時刻の決まったタスクを避け、決めた時間帯の中の空きを並べる
  * ========================================================================= */
@@ -2691,6 +2759,7 @@ function weekGrid(d, T, days) {
     const blocks = entries.map((e) => {
       const style = `top:${y(e.start)}px;height:${(e.end - e.start) * CAL_PX - 2}px;--lane:${e.lane};--lanes:${e.lanes};--col:${e.ev ? calColor(e.ev.cal) : taskColor(e.t)}`;
       const time = minToHm(e.start);
+      if (e.ev && e.ev.queued) return h('div', { class: 'cal-block ev queued', style, title: `${time} ${e.ev.title}（送信待ち）` }, h('b', null, e.ev.title), h('small', null, time + ' 送信待ち'));
       if (e.ev) return h('a', { class: 'cal-block ev', style, href: gcalDayUrl(k), target: '_blank', rel: 'noopener noreferrer', title: `${time} ${e.ev.title}` }, h('b', null, e.ev.title), h('small', null, time));
       return h('button', { class: 'cal-block task', type: 'button', style, title: `${time} ${e.t.title}`, onclick: () => openDetail(e.t.id) }, h('b', null, splitEmoji(e.t.title)[1]), h('small', null, time));
     });
@@ -3306,7 +3375,7 @@ function computePlan() {
     planPrev = c && c.key === cfgKey() && Array.isArray(c.items) ? { items: c.items } : null;
   }
   const valid = (e) => !isNaN(e.start) && !isNaN(e.end);
-  const events = CAL.events.map((ev) => (ev.allDay
+  const events = [...CAL.events, ...queuedEvents()].map((ev) => (ev.allDay
     ? { title: ev.title, start: parseYmd(ev.start), end: parseYmd(ev.end), allDay: true }
     : { title: ev.title, start: new Date(ev.start), end: new Date(ev.end), allDay: false })).filter(valid);
   const sleep = CAL.sleep.map((x) => ({ start: new Date(x.start), end: new Date(x.end) })).filter(valid);
@@ -3372,9 +3441,15 @@ function calColor(cid) {
 function calName(cid) { return CAL.calendars.find((c) => c.id === cid)?.name || 'カレンダー'; }
 function gcalDayUrl(day) { const [y, m, d] = day.split('-').map(Number); return `https://calendar.google.com/calendar/r/day/${y}/${m}/${d}`; }
 // その日の予定（終日 / 時刻あり）。日をまたぐ予定はその日の分だけに切る
+// アプリから追加して、まだ Google カレンダーに作られていない予定（送信待ち・作れなかったもの）
+function queuedEvents() {
+  const q = DATA && Array.isArray(DATA.eventQueue) ? DATA.eventQueue : [];
+  return q.filter((x) => x && x.status !== 'created' && typeof x.title === 'string' && typeof x.start === 'string' && typeof x.end === 'string')
+    .map((x) => ({ id: 'q-' + x.id, qid: x.id, title: x.title, start: x.start, end: x.end, allDay: !!x.allDay, cal: x.cal, location: x.location, queued: x.status === 'error' ? 'error' : 'pending', error: x.error }));
+}
 function eventsOn(day) {
   const out = { allDay: [], timed: [] };
-  for (const ev of CAL.events) {
+  for (const ev of [...CAL.events, ...queuedEvents()]) {
     if (ev.allDay) { if (ev.start <= day && day < ev.end) out.allDay.push(ev); continue; }
     const s = new Date(ev.start);
     const e = new Date(ev.end);
