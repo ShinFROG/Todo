@@ -133,7 +133,7 @@
   /* 下のタブ（スマホ） */
   #tabbar {
     position: fixed; z-index: 30; left: 0; right: 0; bottom: 0;
-    display: grid; grid-template-columns: repeat(5, minmax(0, 1fr));
+    display: grid; grid-template-columns: repeat(6, minmax(0, 1fr));
     padding: 4px 8px env(safe-area-inset-bottom);
     background: color-mix(in srgb, var(--bg) 82%, transparent);
     -webkit-backdrop-filter: saturate(1.6) blur(18px); backdrop-filter: saturate(1.6) blur(18px);
@@ -1544,7 +1544,7 @@ let showTodayDone = false;
 let syncState = 'loading';
 let syncErrStatus = 0;
 let syncText = '';
-const MAIN_TABS = ['today', 'upcoming', 'portal', 'news'];
+const MAIN_TABS = ['today', 'upcoming', 'calendar', 'portal', 'news'];
 
 // タイトル先頭の絵文字は、そのタスクのアイコンとして使う（Structured / Tiimo 風）
 const EMOJI_RE = /^(\p{Extended_Pictographic}(?:\uFE0F|\u200D\p{Extended_Pictographic}|\p{Emoji_Modifier})*)[\s\u3000]*/u;
@@ -1668,7 +1668,8 @@ function navModel(d, T) {
   const last = d.meta.lastReview;
   const items = [
     { v: { type: 'today' }, label: '今日', ic: 'sun', count: act.filter((t) => isToday(t, T)).length, alert: false },
-    { v: { type: 'upcoming' }, label: '予定', ic: 'calendar', count: act.filter((t) => isUpcoming(t, T)).length },
+    { v: { type: 'upcoming' }, label: '予定', ic: 'checklist', count: act.filter((t) => isUpcoming(t, T)).length },
+    { v: { type: 'calendar' }, label: 'カレンダー', ic: 'calendar' },
     { v: { type: 'inbox' }, label: '受信箱', ic: 'inbox', count: act.filter((t) => isInbox(t, T)).length },
     { v: { type: 'anytime' }, label: 'すべて', ic: 'list', count: act.filter(isAnytime).length },
     { v: { type: 'someday' }, label: 'いつか', ic: 'box', count: act.filter((t) => t.someday).length },
@@ -1722,7 +1723,8 @@ function renderTabbar(model) {
   const portal = get('portal');
   $('tabbar').replaceChildren(
     tab('today', '今日', 'sun', today.count, today.alert),
-    tab('upcoming', '予定', 'calendar'),
+    tab('upcoming', '予定', 'checklist'),
+    tab('calendar', 'カレンダー', 'calendar'),
     tab('portal', '締切', 'flag', portal.count, portal.alert),
     tab('news', 'ニュース', 'note'),
     tab('browse', 'メニュー', 'list'));
@@ -1878,12 +1880,7 @@ function renderMain(d, T, model) {
     }
     case 'upcoming': {
       title = '予定';
-      const cmode = calMode();
-      nodes.push(h('div', { class: 'dl-seg cal-mode', role: 'tablist', 'aria-label': '表示のしかた' }, [['list', 'リスト'], ['week', calNarrow() ? '3日' : '週'], ['month', '月']].map(([k, label]) =>
-        h('button', { type: 'button', role: 'tab', class: cmode === k ? 'on' : '', 'aria-selected': String(cmode === k),
-          onclick: () => { store.set(KEY.calMode, k); calAnchor = T; render(); } }, label)),
-        h('button', { class: 'fs-btn', type: 'button', onclick: openFreeSlots }, '空き時間をコピー')));
-      if (cmode !== 'list') { nodes.push(...calendarView(d, T, cmode)); break; }
+      nodes.push(h('div', { class: 'dl-seg cal-mode' }, h('button', { class: 'fs-btn', type: 'button', onclick: openFreeSlots }, '空き時間をコピー')));
       const list = act.filter((t) => isUpcoming(t, T));
       const live = liveProposals(d, T);
       const propsOn = (k) => live.filter((p) => p.date === k);
@@ -2013,6 +2010,16 @@ function renderMain(d, T, model) {
             h('p', null, `今週の完了 ${doneWeek} 件・集中 ${fmtMin(focusMinutes(d, (k) => k >= mon && k <= T))}`)))));
       nodes.push(h('div', { class: 'dlg-foot', style: 'justify-content:flex-start' },
         h('button', { class: 'btn-primary', type: 'button', onclick: () => { mutate({ t: 'meta', set: { lastReview: T } }); toast('週次レビューを記録しました'); celebrate(); } }, 'レビューを完了する')));
+      break;
+    }
+    case 'calendar': {
+      title = 'カレンダー';
+      const cmode = calMode();
+      nodes.push(h('div', { class: 'dl-seg cal-mode', role: 'tablist', 'aria-label': '表示のしかた' }, [['week', calNarrow() ? '3日' : '週'], ['month', '月']].map(([k, label]) =>
+        h('button', { type: 'button', role: 'tab', class: cmode === k ? 'on' : '', 'aria-selected': String(cmode === k),
+          onclick: () => { store.set(KEY.calMode, k); calAnchor = T; render(); } }, label)),
+        h('button', { class: 'fs-btn', type: 'button', onclick: openFreeSlots }, '空き時間をコピー')));
+      nodes.push(...calendarView(d, T, cmode));
       break;
     }
     case 'news': {
@@ -2573,7 +2580,7 @@ function openFreeSlots() {
  * ========================================================================= */
 let calAnchor = null; // 表示の基準日（YYYY-MM-DD）
 const CAL_PX = 1;     // 週の表示で 1 分 = 1px
-const calMode = () => { const m = store.get(KEY.calMode); return m === 'week' || m === 'month' ? m : 'list'; };
+const calMode = () => (store.get(KEY.calMode) === 'month' ? 'month' : 'week');
 const calNarrow = () => !matchMedia('(min-width: 640px)').matches;
 function calItemsOn(d, k) {
   const evs = eventsOn(k);
@@ -2669,7 +2676,7 @@ function weekGrid(d, T, days) {
   const nowMin = now.getHours() * 60 + now.getMinutes();
   const head = h('div', { class: 'cal-whead', style: `--n:${days.length}` }, h('span'),
     days.map((k) => { const dd = parseYmd(k); return h('button', { type: 'button', class: 'cal-wday' + (k === T ? ' today' : '') + (dd.getDay() === 0 || holidayName(k) ? ' sun' : dd.getDay() === 6 ? ' sat' : ''),
-      onclick: () => { calAnchor = k; store.set(KEY.calMode, 'list'); render(); requestAnimationFrame(() => document.getElementById('day-' + k)?.scrollIntoView({ block: 'start' })); } },
+      onclick: () => { setView({ type: 'upcoming' }); requestAnimationFrame(() => document.getElementById('day-' + k)?.scrollIntoView({ block: 'start' })); } },
       h('small', null, WD[dd.getDay()]), h('b', null, String(dd.getDate()))); }));
   const allday = h('div', { class: 'cal-allday', style: `--n:${days.length}` }, h('span', { class: 'cal-axis' }, '終日'),
     days.map((k, i) => h('div', { class: 'cal-adcell' }, dayChips(d, k, items[i], 3))));
