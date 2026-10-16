@@ -234,6 +234,12 @@
   .mchip { display: inline-flex; align-items: center; gap: 4px; border: 0; background: none; padding: 0; min-height: 0; color: inherit; font-size: inherit; border-radius: 0; }
   .mchip .ic { width: 14px; height: 14px; }
   button.mchip:hover { color: var(--text); }
+  .drop-btn { display: inline-flex; align-items: center; gap: 4px; border: 1px solid var(--line); background: var(--card); color: var(--muted); border-radius: 999px; padding: 4px 12px; font-size: 13px; min-height: 0; margin-right: 4px; }
+  .drop-btn .ic { width: 16px; height: 16px; }
+  .sheet-item.drop-item { color: var(--muted); }
+  .task.dropped .title { text-decoration: line-through; color: var(--faint); }
+  .task.dropped .ring { background: transparent !important; border-style: dashed; }
+  .dropped-chip { color: var(--faint); font-weight: 600; }
   .mchip.late { color: var(--muted); }
   .mchip.today { color: var(--ok); font-weight: 600; }
   .mchip.sun { color: var(--warn); }
@@ -1296,6 +1302,17 @@ function applyOp(d, op) {
       }
       break;
     }
+    case 'drop': { // やらない（完了とは分けて残す）。繰り返しは今回だけ飛ばす
+      const t = findT(d, op.id);
+      if (!t || t.done) break;
+      if (op.next) {
+        if (t.due !== op.from) break;
+        Object.assign(t, { due: op.next, myDay: null, updatedAt: op.at, checklist: t.checklist.map((c) => ({ ...c, done: false })) });
+      } else {
+        Object.assign(t, { done: true, dropped: true, doneAt: op.at, updatedAt: op.at });
+      }
+      break;
+    }
     case 'focus': {
       const t = findT(d, op.id);
       if (t && !t.focus.some((f) => f.id === op.session.id)) t.focus.push(op.session);
@@ -1779,7 +1796,8 @@ function taskRow(t, T, opts = {}) {
     meta.push(h('button', { class: 'mchip', type: 'button', 'data-act': 'view', 'data-view': JSON.stringify({ type: 'tag', name: g }) }, '@' + g));
   }
   const prioName = ['', '優先度 高', '優先度 中', '優先度 低'][t.priority];
-  return h('li', { class: 'task' + (t.done ? ' done' : '') + (t.id === selId ? ' sel' : ''), 'data-id': t.id },
+  if (t.dropped) meta.unshift(h('span', { class: 'mchip dropped-chip' }, 'やらない'));
+  return h('li', { class: 'task' + (t.done ? ' done' : '') + (t.dropped ? ' dropped' : '') + (t.id === selId ? ' sel' : ''), 'data-id': t.id },
     h('div', { class: 'swipe-bg done-bg', 'aria-hidden': 'true' }, icon('check'), t.done ? '戻す' : '完了'),
     h('div', { class: 'swipe-bg sched-bg', 'aria-hidden': 'true' }, '日付', icon('calendar')),
     h('div', { class: 'task-inner' },
@@ -1793,7 +1811,8 @@ function taskRow(t, T, opts = {}) {
         meta.length ? h('div', { class: 'meta' }, meta) : null),
       t.done ? null : h('div', { class: 'acts' },
         h('button', { class: 'icon-btn' + (t.myDay === T ? ' on' : ''), type: 'button', 'data-act': 'myday', title: '今日やる（t）', 'aria-label': '今日やる', 'aria-pressed': String(t.myDay === T) }, icon('sun')),
-        h('button', { class: 'icon-btn', type: 'button', 'data-act': 'focus', title: '集中する（f）', 'aria-label': '集中タイマーを開始' }, icon('play')))));
+        h('button', { class: 'icon-btn', type: 'button', 'data-act': 'focus', title: '集中する（f）', 'aria-label': '集中タイマーを開始' }, icon('play')),
+        h('button', { class: 'icon-btn', type: 'button', 'data-act': 'drop', title: 'やらない', 'aria-label': 'やらない' }, icon('ban')))));
 }
 function taskList(list, T, opts) { return h('ul', { class: 'tasks' }, list.map((t) => taskRow(t, T, opts))); }
 function group(title, list, T, opts = {}) {
@@ -1844,7 +1863,7 @@ function renderMain(d, T, model) {
     case 'today': {
       title = '今日'; sub = fmtFull(T) + (holidayName(T) ? `　${holidayName(T)}` : '');
       const list = act.filter((t) => isToday(t, T));
-      const doneToday = d.todos.filter((t) => t.done && t.doneAt && localYmd(t.doneAt) === T).sort((a, b) => cmp(b.doneAt, a.doneAt));
+      const doneToday = d.todos.filter((t) => t.done && !t.dropped && t.doneAt && localYmd(t.doneAt) === T).sort((a, b) => cmp(b.doneAt, a.doneAt));
       // 進み具合はタスクとルーティンを合わせて数える
       const rDay = routineDay();
       const rList = routinesFor(d, rDay);
@@ -3590,7 +3609,7 @@ function timeline(items, events, T, props = []) {
 function statsCard(d, T) {
   const Td = parseYmd(T);
   const count = new Map();
-  for (const t of d.todos) if (t.done && t.doneAt) { const k = localYmd(t.doneAt); count.set(k, (count.get(k) || 0) + 1); }
+  for (const t of d.todos) if (t.done && !t.dropped && t.doneAt) { const k = localYmd(t.doneAt); count.set(k, (count.get(k) || 0) + 1); }
   const mon = ymd(mondayOf(Td));
   let week = 0;
   for (const [k, v] of count) if (k >= mon && k <= T) week += v;
@@ -3868,7 +3887,8 @@ function openSchedule(id) {
     opt('box', 'いつか', null, { someday: true, myDay: null }),
     h('label', { class: 'sheet-item' }, icon('calendar'), h('span', { class: 'lbl' }, '日付を選ぶ'),
       h('input', { type: 'date', value: t.due || '', 'aria-label': '日付を選ぶ', onchange: (e) => { if (e.target.value) pick(fmtDate(e.target.value, T), { due: e.target.value, someday: false }); } })),
-    t.due || t.someday ? opt('ban', '日付なし', null, { due: null, time: null, repeat: null, someday: false }) : null),
+    t.due || t.someday ? opt('ban', '日付なし', null, { due: null, time: null, repeat: null, someday: false }) : null,
+    h('button', { class: 'sheet-item drop-item', type: 'button', onclick: () => { closeSheet(); dropTask(t.id); } }, icon('x'), h('span', { class: 'lbl' }, t.repeat ? '今回はやらない' : 'やらない'))),
   { kind: 'schedule', label: '日付を変更' });
 }
 function applySchedule(t, fields, label) {
@@ -3886,7 +3906,7 @@ function toggleDone(id) {
   const snap = clone(t);
   const T = todayYmd();
   if (t.done) {
-    mutate({ t: 'patch', id, set: { done: false, doneAt: null } });
+    mutate({ t: 'patch', id, set: { done: false, doneAt: null, dropped: false } });
     toast('未完了に戻しました', { t: 'restore', tasks: [snap] });
     return;
   }
@@ -3919,6 +3939,22 @@ function completeTask(id, el) {
     el.classList.add('leaving');
     setTimeout(() => { completing.delete(id); toggleDone(id); }, 240);
   }, 360);
+}
+// やらない：完了の数には入れず、完了ログに「やらない」として残す（元に戻せる）
+function dropTask(id) {
+  const t = findTask(id);
+  if (!t || t.done) return;
+  const snap = clone(t);
+  const T = todayYmd();
+  if (detailId === id) closeDetail();
+  if (t.repeat && t.due) {
+    const next = nextDue(t.due, t.repeat, T);
+    mutate({ t: 'drop', id, from: t.due, next });
+    toast(`今回はやらない · 次回は ${fmtDate(next, T)}`, { t: 'restore', tasks: [snap] });
+  } else {
+    mutate({ t: 'drop', id });
+    toast(`「${t.title}」はやらないことにしました`, { t: 'restore', tasks: [snap] });
+  }
 }
 function deleteTask(id) {
   const t = findTask(id);
@@ -4205,6 +4241,7 @@ function renderDetail(force) {
       h('span', { class: 'sp' }),
       h('button', { class: 'icon-btn', type: 'button', title: '日付を変更', 'aria-label': '日付を変更', onclick: () => openSchedule(t.id) }, icon('calendar')),
       h('button', { class: 'icon-btn', type: 'button', title: '複製', 'aria-label': '複製', onclick: () => duplicateTask(t.id) }, icon('copy')),
+      t.done ? null : h('button', { class: 'drop-btn', type: 'button', title: 'やらない（完了の数には入れず、完了ログに残す）', onclick: () => dropTask(t.id) }, icon('ban'), 'やらない'),
       h('button', { class: 'icon-btn', type: 'button', title: '削除', 'aria-label': '削除', onclick: () => deleteTask(t.id) }, icon('trash'))),
     h('div', { class: 'd-titlebox' + (t.done ? ' task done' : '') },
       h('button', {
@@ -4726,6 +4763,7 @@ $('content').addEventListener('click', (e) => {
   const id = li && li.dataset.id;
   switch (a.dataset.act) {
     case 'toggle': completeTask(id, li); break;
+    case 'drop': dropTask(id); break;
     case 'open': openDetail(id); break;
     case 'myday': toggleMyDay(id); break;
     case 'focus': startFocus(id); break;
