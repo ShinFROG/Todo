@@ -473,7 +473,8 @@
   .qa-bar { display: flex; flex-wrap: wrap; align-items: center; gap: 2px; margin-top: 8px; padding-top: 8px; border-top: 1px solid var(--line); }
   .qa-bar .icon-btn { flex: none; font-size: 14px; padding: 6px 9px; }
   .qa-bar .btn-primary { flex: none; border-radius: 999px; padding: 8px 18px; }
-  @media (max-width: 520px) { .qa-bar .t { display: none; } .qa-bar .icon-btn { min-width: 36px; padding: 6px; } }
+  /* スマホは道具 8 つを 4 つずつ 2 段に（1 つだけ次の段に落ちないように） */
+  @media (max-width: 520px) { .qa-bar .t { display: none; } .qa-bar .icon-btn { min-width: 36px; padding: 6px; } .qa .qa-bar { display: grid; grid-template-columns: repeat(4, 1fr); } }
   .qa-proj { display: flex; flex-wrap: wrap; gap: 6px; margin-top: 8px; }
   .qa-proj button { border-radius: 999px; padding: 4px 12px; font-size: 14px; display: inline-flex; align-items: center; gap: 6px; }
   /* 計画（提案） */
@@ -562,7 +563,22 @@
   .ev-sheet input[type=text], .ev-sheet textarea, .ev-sheet select { font: inherit; font-size: 16px; padding: 8px 10px; border-radius: 10px; border: 1px solid var(--line); background: var(--card); color: var(--text); }
   .ev-sheet .ev-row { display: flex; gap: 14px; align-items: flex-end; }
   .ev-sheet .ev-check { display: inline-flex; gap: 6px; align-items: center; font-size: 14px; padding-bottom: 8px; }
-  .ev-sheet .ev-times { display: flex; gap: 8px; align-items: center; margin-top: 10px; }
+  .ev-sheet .ev-times { display: flex; gap: 10px; align-items: flex-end; margin-top: 4px; }
+  .ev-sheet .ev-times .ev-field { flex: 1; min-width: 0; }
+  .ev-sheet .ev-dash { padding-bottom: 10px; color: var(--muted); }
+  .ev-sheet input[type=time], .ev-sheet input[type=date] { min-width: 0; width: 100%; box-sizing: border-box; min-height: 44px; }
+  .add-kind { margin: 2px 0 6px; }
+  /* 予定の画面の「追加」：スマホは見出しごと上に貼りつける。パソコンは下に貼りつける（画面が低くても隠れない） */
+  .ev-sheet .sheet-title { position: sticky; top: -8px; z-index: 2; background: var(--card); margin: -8px 0 4px; padding: 8px 0 6px; }
+  .ev-sheet .ev-head-add { padding: 8px 18px; }
+  .ev-sheet .ev-foot { display: none; }
+  @media (min-width: 900px) {
+    .ev-sheet .sheet-title { position: static; margin: 2px 0 10px; padding: 0; }
+    .ev-sheet .ev-head-add { display: none; }
+    .ev-sheet .ev-foot { display: flex; position: sticky; bottom: -20px; z-index: 2; background: var(--card); margin: 8px 0 -20px; padding: 12px 0 20px; }
+  }
+  .cal-col { cursor: copy; }
+  .cal-mcell { cursor: copy; }
   .ev-sheet input[type=date], .ev-sheet input[type=time] { font: inherit; font-size: 16px; padding: 6px 8px; border-radius: 10px; border: 1px solid var(--line); background: var(--card); color: var(--text); }
   .ev-err { color: var(--danger); }
   /* カレンダー（週・月） */
@@ -1627,6 +1643,9 @@ function render() {
   const model = navModel(DATA, T);
   renderNav(model);
   renderTabbar(model);
+  const fabLabel = view.type === 'calendar' ? '予定を追加' : 'タスクを追加（n）';
+  $('fab').setAttribute('aria-label', fabLabel);
+  $('fab').title = fabLabel;
   renderMain(DATA, T, model);
   renderDetail(false);
   updateQuickChips();
@@ -2555,45 +2574,99 @@ let portalOpen = new Set();
 /* =========================================================================
  * 予定を追加（Google カレンダーへ。Apps Script が 15 分以内に作る）
  * ========================================================================= */
-function openEventSheet(day) {
+function openEventSheet(o = {}) {
+  if (typeof o === 'string') o = { date: o };
   const T = todayYmd();
   const cals = CAL.calendars.length ? CAL.calendars : [{ id: 'c1', name: '仕事' }];
-  const f = { title: '', date: day || T, allDay: false, start: '10:00', end: '11:00', cal: cals[0].id, location: '', notes: '' };
-  const inp = (k, attrs) => h('input', { ...attrs, 'data-k': 'ev-' + k, value: f[k], oninput: (e) => { f[k] = e.target.value; } });
-  const timeRow = h('div', { class: 'ev-times' }, inp('start', { type: 'time', step: '900', 'aria-label': '開始' }), h('span', null, '〜'), inp('end', { type: 'time', step: '900', 'aria-label': '終了' }));
+  const date0 = YMD_ONLY.test(o.date || '') ? o.date : T;
+  // 開始の既定：枠を押したならその時刻、今日なら次の正時、ほかの日は 10:00
+  const now = new Date();
+  const start0 = HM_RE.test(o.start || '') ? o.start
+    : date0 === T ? minToHm(Math.min(23 * 60, Math.ceil((now.getHours() * 60 + now.getMinutes() + 1) / 60) * 60)) : '10:00';
+  const plus = (hm, m) => minToHm(Math.min(24 * 60 - 1, hmToMin(hm) + m));
+  const mk = (k, attrs) => h('input', { ...attrs, 'data-k': 'ev-' + k });
+  const el = {
+    title: mk('title', { type: 'text', value: o.title || '', placeholder: '例：研究室ミーティング', 'aria-label': '件名', autocomplete: 'off' }),
+    date: mk('date', { type: 'date', value: date0, 'aria-label': '日付' }),
+    start: mk('start', { type: 'time', value: start0, 'aria-label': '開始時刻' }),
+    end: mk('end', { type: 'time', value: plus(start0, 60), 'aria-label': '終了時刻' }),
+    allDay: mk('allDay', { type: 'checkbox' }),
+    endDate: mk('endDate', { type: 'date', value: date0, 'aria-label': '最終日' }),
+    location: mk('location', { type: 'text', 'aria-label': '場所' }),
+    notes: h('textarea', { 'data-k': 'ev-notes', rows: '2', 'aria-label': 'メモ' }),
+    cal: h('select', { 'data-k': 'ev-cal', 'aria-label': 'カレンダー' }, cals.map((c) => h('option', { value: c.id }, c.name))),
+  };
+  // 開始を変えたら、長さを保ったまま終了も動かす（iPhone は change、パソコンは input が来るので両方見る）
+  let lastStart = start0;
+  const syncEnd = () => {
+    const v = el.start.value;
+    if (!HM_RE.test(v)) return;
+    const dur = HM_RE.test(el.end.value) && HM_RE.test(lastStart) && hmToMin(el.end.value) > hmToMin(lastStart) ? hmToMin(el.end.value) - hmToMin(lastStart) : 60;
+    el.end.value = plus(v, dur);
+    lastStart = v;
+  };
+  el.start.addEventListener('input', syncEnd);
+  el.start.addEventListener('change', syncEnd);
+  const syncDate = () => { if (YMD_ONLY.test(el.date.value) && (!YMD_ONLY.test(el.endDate.value) || el.endDate.value < el.date.value)) el.endDate.value = el.date.value; };
+  el.date.addEventListener('input', syncDate);
+  el.date.addEventListener('change', syncDate);
+  const timeRow = h('div', { class: 'ev-times' }, h('label', { class: 'ev-field' }, '開始', el.start), h('span', { class: 'ev-dash' }, '〜'), h('label', { class: 'ev-field' }, '終了', el.end));
+  const dayRow = h('div', { class: 'ev-times', style: 'display:none' }, h('label', { class: 'ev-field' }, '最終日（何日も続く予定）', el.endDate));
+  const showMode = () => { timeRow.style.display = el.allDay.checked ? 'none' : ''; dayRow.style.display = el.allDay.checked ? '' : 'none'; };
+  el.allDay.addEventListener('change', showMode);
   const err = h('p', { class: 'hint ev-err', hidden: true });
   const submit = () => {
-    const title = f.title.trim();
+    // 送る時点の画面の値を読む（入力の途中のイベントに頼らない）
+    const title = el.title.value.trim();
+    const date = el.date.value;
     const fail = (m) => { err.textContent = m; err.hidden = false; };
     if (!title) return fail('件名を入れてください');
-    if (!YMD_ONLY.test(f.date)) return fail('日付を入れてください');
+    if (!YMD_ONLY.test(date)) return fail('日付を入れてください');
     let ev;
-    if (f.allDay) {
-      ev = { start: f.date, end: ymd(addDays(parseYmd(f.date), 1)), allDay: true };
+    if (el.allDay.checked) {
+      const last = YMD_ONLY.test(el.endDate.value) ? el.endDate.value : date;
+      if (last < date) return fail('最終日は開始の日より後にしてください');
+      ev = { start: date, end: ymd(addDays(parseYmd(last), 1)), allDay: true };
     } else {
-      if (!HM_RE.test(f.start) || !HM_RE.test(f.end)) return fail('時刻を入れてください');
-      if (hmToMin(f.end) <= hmToMin(f.start)) return fail('終わりは始まりより後にしてください');
-      const iso = (hm) => new Date(`${f.date}T${hm}:00`).toISOString();
-      ev = { start: iso(f.start), end: iso(f.end), allDay: false };
+      const a = el.start.value, b = el.end.value;
+      if (!HM_RE.test(a)) return fail('開始時刻を入れてください');
+      if (!HM_RE.test(b)) return fail('終了時刻を入れてください');
+      if (hmToMin(b) <= hmToMin(a)) return fail('終了は開始より後にしてください');
+      const iso = (hm) => new Date(`${date}T${hm}:00`).toISOString();
+      ev = { start: iso(a), end: iso(b), allDay: false };
     }
-    mutate({ t: 'eventAdd', ev: { id: uid(), status: 'pending', title, cal: f.cal, location: f.location.trim() || undefined, notes: f.notes.trim() || undefined, createdAt: nowIso(), ...ev } });
+    mutate({ t: 'eventAdd', ev: { id: uid(), status: 'pending', title, cal: el.cal.value, location: el.location.value.trim() || undefined, notes: el.notes.value.trim() || undefined, createdAt: nowIso(), ...ev } });
     closeSheet();
-    toast(`「${title}」を Google カレンダーへ送ります（15 分以内に反映）`);
+    const when = ev.allDay ? fmtShort(date) + '（終日）' : `${fmtShort(date)} ${el.start.value}〜${el.end.value}`;
+    toast(`「${title}」${when} を Google カレンダーへ送ります（15 分以内に反映）`);
   };
-  openSheet(h('div', { class: 'ev-sheet' },
-    sheetHead('予定を追加'),
-    h('label', { class: 'ev-field' }, '件名', inp('title', { type: 'text', placeholder: '例：研究室ミーティング', 'aria-label': '件名' })),
-    h('div', { class: 'ev-row' },
-      h('label', { class: 'ev-field' }, '日付', inp('date', { type: 'date', 'aria-label': '日付' })),
-      h('label', { class: 'ev-check' }, h('input', { type: 'checkbox', 'data-k': 'ev-allDay', onchange: (e) => { f.allDay = e.target.checked; timeRow.hidden = f.allDay; } }), '終日')),
-    timeRow,
-    h('label', { class: 'ev-field' }, 'カレンダー', h('select', { 'data-k': 'ev-cal', 'aria-label': 'カレンダー', onchange: (e) => { f.cal = e.target.value; } },
-      cals.map((c) => h('option', { value: c.id }, c.name)))),
-    h('label', { class: 'ev-field' }, '場所（任意）', inp('location', { type: 'text', 'aria-label': '場所' })),
-    h('label', { class: 'ev-field' }, 'メモ（任意）', h('textarea', { 'data-k': 'ev-notes', rows: '2', 'aria-label': 'メモ', oninput: (e) => { f.notes = e.target.value; } })),
+  openSheet(h('form', { class: 'ev-sheet', onsubmit: (e) => { e.preventDefault(); submit(); } },
+    // 「追加」はいつも見える所に：スマホは上の右（iPhone・Android のカレンダーと同じ）、パソコンは下の右
+    sheetHead('予定を追加', h('button', { class: 'btn-primary ev-head-add', type: 'submit' }, '追加')),
+    addKindSwitch('event', () => el.title.value),
+    h('label', { class: 'ev-field' }, '件名', el.title),
+    h('div', { class: 'ev-row' }, h('label', { class: 'ev-field' }, '日付', el.date), h('label', { class: 'ev-check' }, el.allDay, '終日')),
+    timeRow, dayRow,
+    h('label', { class: 'ev-field' }, 'カレンダー', el.cal),
+    h('label', { class: 'ev-field' }, '場所（任意）', el.location),
+    h('label', { class: 'ev-field' }, 'メモ（任意）', el.notes),
     err,
-    h('div', { class: 'dlg-foot' }, h('button', { class: 'btn-primary', type: 'button', 'data-act-ev': 'add', onclick: submit }, '追加'))), { label: '予定を追加' });
-  setTimeout(() => document.querySelector('#sheet [data-k="ev-title"]')?.focus(), 50);
+    h('div', { class: 'dlg-foot ev-foot' }, h('button', { class: 'btn-primary', type: 'submit' }, '追加'))), { label: '予定を追加', kind: 'event' });
+  el.title.focus(); // 開いたらすぐ件名を打てるように（タスクの画面と同じ）
+  if (el.title.value) el.title.setSelectionRange(el.title.value.length, el.title.value.length);
+  trackKeyboard();
+}
+// 追加の画面の上に「タスク／予定」の切り替え。入力中の件名は引き継ぐ
+function addKindSwitch(kind, getTitle) {
+  return h('div', { class: 'dl-seg add-kind', role: 'tablist', 'aria-label': '追加するもの' }, [['task', 'タスク'], ['event', '予定（カレンダー）']].map(([k, label]) =>
+    h('button', { type: 'button', role: 'tab', class: kind === k ? 'on' : '', 'aria-selected': String(kind === k), 'data-kind': k,
+      onclick: () => {
+        if (k === kind) return;
+        const title = (getTitle() || '').trim();
+        closeSheet();
+        if (k === 'event') openEventSheet({ title, date: calAnchor && view.type === 'calendar' ? calAnchor : undefined });
+        else { openQuickAdd(); if (title) { $('qaInput').value = title + ' '; updateQuickChips(); } }
+      } }, label)));
 }
 
 /* =========================================================================
@@ -2782,7 +2855,9 @@ function weekGrid(d, T, days) {
       if (e.ev) return h('a', { class: 'cal-block ev', style, href: gcalDayUrl(k), target: '_blank', rel: 'noopener noreferrer', title: `${time} ${e.ev.title}` }, h('b', null, e.ev.title), h('small', null, time));
       return h('button', { class: 'cal-block task', type: 'button', style, title: `${time} ${e.t.title}`, onclick: () => openDetail(e.t.id) }, h('b', null, splitEmoji(e.t.title)[1]), h('small', null, time));
     });
-    return h('div', { class: 'cal-col' + (k === T ? ' today' : '') }, blocks,
+    // 空いているところを押すと、その時刻（30 分単位）で予定を追加
+    return h('div', { class: 'cal-col' + (k === T ? ' today' : ''), 'data-day': k, title: '押すとこの時刻に予定を追加',
+      onclick: (ev) => { if (ev.target !== ev.currentTarget) return; const m = lo + Math.floor(ev.offsetY / CAL_PX / 30) * 30; openEventSheet({ date: k, start: minToHm(Math.max(0, Math.min(23 * 60 + 30, m))) }); } }, blocks,
       k === T && nowMin >= lo && nowMin <= hi ? h('div', { class: 'cal-now', style: `top:${y(nowMin)}px` }) : null);
   });
   const grid = h('div', { class: 'cal-grid', style: `--n:${days.length};height:${(hi - lo) * CAL_PX}px` }, h('div', { class: 'cal-hours' }, hours), cols);
@@ -2803,7 +2878,8 @@ function monthGrid(d, T, A) {
       ...it.evs.timed.map((ev) => calChip('ev timed', calNarrow() ? ev.title : `${minToHm(ev.sm)} ${ev.title}`, { col: calColor(ev.cal), href: gcalDayUrl(k) })),
       ...it.timedTasks.map((t) => calChip('task timed', calNarrow() ? splitEmoji(t.title)[1] : `${t.time} ${splitEmoji(t.title)[1]}`, { col: taskColor(t), task: t.id })),
     ];
-    cells.push(h('div', { class: 'cal-mcell' + (dd.getMonth() !== A.getMonth() ? ' other' : '') + (k === T ? ' today' : ''), 'data-day': k },
+    cells.push(h('div', { class: 'cal-mcell' + (dd.getMonth() !== A.getMonth() ? ' other' : '') + (k === T ? ' today' : ''), 'data-day': k, title: '空いているところを押すとこの日に予定を追加',
+      onclick: (ev) => { if (ev.target === ev.currentTarget) openEventSheet({ date: k }); } },
       h('button', { type: 'button', class: 'cal-mnum' + (dd.getDay() === 0 || holidayName(k) ? ' sun' : dd.getDay() === 6 ? ' sat' : ''), 'aria-label': `${fmtShort(k)}を週で見る`,
         onclick: () => { calAnchor = k; store.set(KEY.calMode, 'week'); render(); } }, String(dd.getDate())),
       chips.length > max ? [...chips.slice(0, max), h('span', { class: 'cal-more' }, `+${chips.length - max}`)] : chips));
@@ -3652,7 +3728,7 @@ function closeSheet() {
   $('sheet').replaceChildren();
   sheetKind = null;
 }
-const sheetHead = (title) => h('div', { class: 'sheet-title' }, title, h('span', { class: 'sp' }),
+const sheetHead = (title, action) => h('div', { class: 'sheet-title' }, title, h('span', { class: 'sp' }), action,
   h('button', { class: 'icon-btn', type: 'button', 'aria-label': '閉じる', onclick: closeSheet }, icon('x')));
 // スマホのキーボードが出ている間は、シートをその上に出す
 function trackKeyboard() {
@@ -3678,18 +3754,25 @@ function openQuickAdd() {
   const notes = h('textarea', { id: 'qaNotes', rows: '1', placeholder: 'メモ', 'aria-label': 'メモ', oninput: (e) => autoGrow(e.target) });
   const dateIn = h('input', { type: 'date', 'aria-label': '日付', onchange: (e) => { if (e.target.value) setToken(isDateTok, e.target.value); dateRow.hidden = true; } });
   const dateRow = h('div', { class: 'row', hidden: true, style: 'margin-top:8px' }, dateIn);
+  // 時刻：選ぶと「15:30」のような語を入れる（文字で「15時」と書いても同じ）
+  const timeIn = h('input', { type: 'time', 'aria-label': '時刻', 'data-k': 'qa-time' });
+  const setTime = () => { if (HM_RE.test(timeIn.value)) setToken(isTimeTok, timeIn.value); };
+  timeIn.addEventListener('change', () => { setTime(); timeRow.hidden = true; });
+  const timeRow = h('div', { class: 'row', hidden: true, style: 'margin-top:8px' }, timeIn, h('button', { type: 'button', class: 'link-btn', onclick: () => { setTime(); timeRow.hidden = true; } }, '決定'));
   const projBox = h('div', { class: 'qa-proj', hidden: true });
   const tool = (ic, label, fn) => h('button', { class: 'icon-btn', type: 'button', title: label, 'aria-label': label, onclick: fn }, icon(ic), h('span', { class: 't' }, label));
   openSheet(h('form', { class: 'qa', onsubmit: (e) => { e.preventDefault(); addFromQuick(); } },
+    addKindSwitch('task', () => input.value),
     h('div', { class: 'qa-ctx' }, contextLabel()),
     input, notes,
     h('div', { id: 'quickChips', class: 'chips', 'aria-live': 'polite' }),
-    dateRow, projBox,
+    dateRow, timeRow, projBox,
     h('div', { class: 'row', style: 'margin-top:8px;border-top:1px solid var(--line);padding-top:8px' },
       h('div', { class: 'qa-bar', style: 'margin:0;padding:0;border:0;flex:1' },
         tool('sun', '今日', () => setToken(isDateTok, '今日')),
         tool('arrow', '明日', () => setToken(isDateTok, '明日')),
         tool('calendar', '日付', () => { dateRow.hidden = !dateRow.hidden; if (!dateRow.hidden) { try { dateIn.showPicker(); } catch { dateIn.focus(); } } }),
+        tool('clock', '時刻', () => { timeRow.hidden = !timeRow.hidden; if (!timeRow.hidden) { if (!timeIn.value) timeIn.value = '09:00'; try { timeIn.showPicker(); } catch { timeIn.focus(); } } }),
         tool('flag', '優先度', cyclePriority),
         tool('folder', 'プロジェクト', () => {
           projBox.hidden = !projBox.hidden;
@@ -3708,6 +3791,7 @@ function openQuickAdd() {
 function autoGrow(el) { el.style.height = 'auto'; el.style.height = el.scrollHeight + 'px'; }
 const qaTokens = () => $('qaInput').value.split(/[\s\u3000]+/).filter(Boolean);
 const isDateTok = (s, T) => !!parseDateWord(s, T) || !!parseDateTime(s, T)?.date;
+const isTimeTok = (s, T) => !!parseTimeWord(s) && !parseDateTime(s, T)?.date;
 // 入力欄の語を置き換える（ボタンで入れても、文字で書いても同じ結果になる）
 function setToken(match, tok) {
   const T = parseYmd(todayYmd());
@@ -4684,7 +4768,11 @@ for (const id of FIELDS) {
 
 $('fab').append(icon('plus'));
 $('search').before(icon('search'));
-$('fab').addEventListener('click', () => { unlockAudio(); openQuickAdd(); });
+$('fab').addEventListener('click', () => {
+  unlockAudio();
+  if (view.type === 'calendar') openEventSheet({ date: calAnchor && calAnchor >= todayYmd() ? calAnchor : todayYmd() }); // カレンダーでは予定を追加
+  else openQuickAdd();
+});
 $('backdrop').addEventListener('click', closeSheet);
 $('search').addEventListener('input', (e) => onSearch(e.target.value));
 $('helpBtn').append(icon('help'));
