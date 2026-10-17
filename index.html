@@ -546,8 +546,16 @@
   /* 空き時間をコピー */
   .dl-seg .fs-btn { margin-left: auto; border: 1px solid var(--accent); color: var(--accent); background: var(--card); border-radius: 999px; padding: 5px 12px; font-size: 13px; min-height: 0; }
   .fs-opts { display: flex; flex-wrap: wrap; gap: 8px 14px; margin: 6px 0 10px; }
-  .fs-opt { display: inline-flex; align-items: center; gap: 6px; font-size: 14px; }
-  .fs-opt select { font-size: 14px; }
+  .fs-opt { display: inline-flex; align-items: center; gap: 6px; font-size: 14px; white-space: nowrap; }
+  .fs-opt select { font-size: 14px; width: auto; }
+  .fs-after { flex-basis: 100%; min-width: 0; display: flex; align-items: center; gap: 8px; }
+  .fs-after .fs-opt { flex: 1; min-width: 0; }
+  .fs-after input { flex: 1; min-width: 0; width: 0; min-height: 40px; padding: 6px 10px; }
+  .fs-after select { flex: none; width: auto; min-height: 40px; padding: 6px 8px; }
+  /* 「コピー」はいつも見える所に（シートの下に貼りつける。下の余白ごと覆う） */
+  .fs .dlg-foot { position: sticky; z-index: 2; background: var(--card); bottom: calc(-16px - env(safe-area-inset-bottom));
+    margin: 8px 0 calc(-16px - env(safe-area-inset-bottom)); padding: 10px 0 calc(16px + env(safe-area-inset-bottom)); }
+  @media (min-width: 900px) { .fs .dlg-foot { bottom: -20px; margin: 8px 0 -20px; padding: 12px 0 20px; } }
   .fs-list { display: flex; flex-direction: column; gap: 6px; max-height: 40vh; overflow: auto; border: 1px solid var(--line); border-radius: 10px; padding: 8px 10px; }
   .fs-day { display: flex; flex-wrap: wrap; align-items: center; gap: 4px 12px; font-size: 14px; }
   .fs-day b { min-width: 74px; }
@@ -2678,6 +2686,15 @@ function freeSlotOpts() {
   const def = { days: 14, from: 9 * 60, to: 18 * 60, min: 60, weekdays: true, lunch: true };
   try { return { ...def, ...(JSON.parse(store.get(FS_KEY) || '{}') || {}) }; } catch { return def; }
 }
+// 終わってすぐは動けない予定（授業など）：件名にこの言葉が入った予定のあと afterMin 分は空きにしない。
+// どの端末でも同じになるよう todos.json の meta.freeSlots に置く（期間などの表示の設定は端末ごとの FS_KEY）
+function freeSlotAfter() {
+  const m = DATA.meta.freeSlots && typeof DATA.meta.freeSlots === 'object' ? DATA.meta.freeSlots : {};
+  const afterWords = Array.isArray(m.afterWords) ? m.afterWords.filter((w) => typeof w === 'string' && w.trim()).map((w) => w.trim()) : [];
+  const afterMin = Number.isFinite(m.afterMin) && m.afterMin >= 0 && m.afterMin <= 180 ? m.afterMin : 15;
+  return { afterWords, afterMin };
+}
+const normWord = (s) => String(s || '').normalize('NFKC').toLowerCase(); // 全角・半角、大文字・小文字を区別しない
 // その日の空き [[開始分, 終了分], ...]
 function freeSlotsOn(k, o, now) {
   const dd = parseYmd(k);
@@ -2687,7 +2704,9 @@ function freeSlotsOn(k, o, now) {
   let lo = o.from;
   if (k === ymd(now)) lo = Math.max(lo, Math.ceil((now.getHours() * 60 + now.getMinutes() + 30) / 30) * 30);
   if (lo >= o.to) return [];
-  const busy = evs.timed.map((e) => [e.sm, e.em]);
+  const after = (o.afterWords || []).map(normWord);
+  const isAfter = (title) => after.some((w) => normWord(title).includes(w));
+  const busy = evs.timed.map((e) => [e.sm, isAfter(e.title) ? Math.min(1440, e.em + (o.afterMin || 0)) : e.em]);
   for (const t of DATA.todos) if (!t.done && t.due === k && HM_RE.test(t.time || '')) busy.push([hmToMin(t.time), hmToMin(t.time) + (t.estimate || 30)]);
   if (o.lunch) busy.push([12 * 60, 13 * 60]);
   return subtractRanges([[lo, o.to]], busy).filter((f) => f[1] - f[0] >= o.min);
@@ -2696,7 +2715,7 @@ function freeSlotsText(list) {
   return list.map(({ k, slots }) => `${fmtShort(k)} ${slots.map((f) => `${minToHm(f[0])}–${hmEnd(f[1])}`).join('、')}`).join('\n');
 }
 function openFreeSlots() {
-  const o = freeSlotOpts();
+  const o = { ...freeSlotOpts(), ...freeSlotAfter() };
   const now = new Date();
   const T = todayYmd();
   const all = [];
@@ -2708,7 +2727,19 @@ function openFreeSlots() {
   const picked = new Set(all.flatMap(({ k, slots }) => slots.map((f) => `${k}|${f[0]}`)));
   const area = h('textarea', { class: 'fs-text', rows: '8', 'aria-label': 'コピーする文章' });
   const refresh = () => { area.value = freeSlotsText(all.map(({ k, slots }) => ({ k, slots: slots.filter((f) => picked.has(`${k}|${f[0]}`)) })).filter((x) => x.slots.length)); };
-  const save = (patch) => { store.set(FS_KEY, JSON.stringify({ ...o, ...patch })); openFreeSlots(); };
+  const save = (patch) => { store.set(FS_KEY, JSON.stringify({ ...freeSlotOpts(), ...patch })); openFreeSlots(); };
+  const saveAfter = (patch) => {
+    const cur = DATA.meta.freeSlots && typeof DATA.meta.freeSlots === 'object' ? DATA.meta.freeSlots : {};
+    mutate({ t: 'meta', set: { freeSlots: { ...cur, ...freeSlotAfter(), ...patch } } });
+    if (sheetKind === 'fs' && !$('sheet').hidden) openFreeSlots(); // 閉じる途中に確定したときは開き直さない
+  };
+  // Enter で決める（日本語の変換を確定する Enter では決めない）
+  const enterCommits = (e) => { if (e.key === 'Enter' && !e.isComposing && e.keyCode !== 229) { e.preventDefault(); e.target.blur(); } };
+  const afterIn = h('input', { type: 'text', 'data-k': 'fs-afterWords', value: o.afterWords.join('、'), placeholder: '例：数学B、統計学', autocomplete: 'off', enterkeyhint: 'done',
+    'aria-label': 'あとを空ける予定（件名の一部。「、」で区切る）', title: '件名にこの言葉が入った予定は、終わってからこの時間がたつまで空きにしません',
+    onkeydown: enterCommits, onchange: (e) => saveAfter({ afterWords: e.target.value.split(/[、,，;；\s]+/).map((w) => w.trim()).filter(Boolean) }) });
+  const afterSel = h('select', { 'data-k': 'fs-afterMin', 'aria-label': '予定のあとに空ける時間', onchange: (e) => saveAfter({ afterMin: +e.target.value }) },
+    [...new Set([5, 10, 15, 20, 30, 45, 60, o.afterMin])].sort((a, b) => a - b).map((v) => h('option', { value: String(v), selected: o.afterMin === v ? '' : null }, `${v}分`)));
   const sel = (label, key, values, fmt) => h('label', { class: 'fs-opt' }, label,
     h('select', { 'data-k': 'fs-' + key, onchange: (e) => save({ [key]: +e.target.value }) }, values.map((v) => h('option', { value: String(v), selected: o[key] === v ? '' : null }, fmt(v)))));
   const chk = (label, key) => h('label', { class: 'fs-opt' }, h('input', { type: 'checkbox', 'data-k': 'fs-' + key, checked: o[key] ? '' : null, onchange: (e) => save({ [key]: e.target.checked }) }), label);
@@ -2721,7 +2752,8 @@ function openFreeSlots() {
       sel('から', 'from', [7, 8, 9, 10, 13].map((x) => x * 60), minToHm),
       sel('まで', 'to', [12, 17, 18, 19, 20, 21].map((x) => x * 60), minToHm),
       sel('最短', 'min', [30, 60, 90, 120], (v) => fmtMin(v)),
-      chk('土日・祝日を除く', 'weekdays'), chk('昼休み（12–13時）を除く', 'lunch')),
+      chk('土日・祝日を除く', 'weekdays'), chk('昼休み（12–13時）を除く', 'lunch'),
+      h('div', { class: 'fs-after' }, h('label', { class: 'fs-opt' }, h('span', null, 'あとを空ける予定'), afterIn), afterSel)),
     R && lastK > R.to ? h('p', { class: 'hint' }, `Google カレンダーの予定は ${fmtShort(R.to)} までしか取り込んでいないので、その先は予定を避けられません`) : null,
     all.length ? h('div', { class: 'fs-list' }, all.map(({ k, slots }) => h('div', { class: 'fs-day' }, h('b', null, fmtShort(k)),
       slots.map((f) => h('label', { class: 'fs-slot' }, h('input', { type: 'checkbox', checked: '', 'data-slot': `${k}|${f[0]}`,
@@ -2730,7 +2762,7 @@ function openFreeSlots() {
     area,
     h('div', { class: 'dlg-foot' }, h('button', { class: 'btn-primary', type: 'button', 'data-act-copy': '1', onclick: async () => {
       try { await navigator.clipboard.writeText(area.value); toast('コピーしました'); } catch { area.select(); document.execCommand('copy'); toast('コピーしました'); }
-    } }, 'コピー'))), { label: '空き時間をコピー' });
+    } }, 'コピー'))), { label: '空き時間をコピー', kind: 'fs' });
   refresh();
 }
 
