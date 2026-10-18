@@ -426,6 +426,22 @@
   .rt.pop { animation: pop .35s ease; }
   .rt-link { position: absolute; top: 2px; left: 2px; width: 30px; height: 30px; display: grid; place-items: center; color: var(--muted); border-radius: 10px; }
   .rt-link .ic { width: 14px; height: 14px; }
+  .rt-timer { position: absolute; top: 2px; left: 2px; width: 36px; height: 36px; padding: 0; border: 0; background: transparent; display: grid; place-items: center; color: var(--accent); border-radius: 10px; }
+  .rt-timer .ic { width: 18px; height: 18px; }
+  .rt.on + .rt-timer { color: var(--accent-ink); }
+  .rt-timer + .rt-link { left: 38px; }
+  /* ゼロ秒思考のタイマー */
+  .zt { display: flex; flex-direction: column; align-items: center; text-align: center; }
+  .zt .sheet-title { align-self: stretch; text-align: left; }
+  .zt-sub { margin: 0 0 8px; color: var(--muted); font-size: 14px; }
+  .zt .zt-ring { width: min(62vw, 240px); }
+  .zt-page { font-size: 18px; font-weight: 700; margin-top: 10px; font-variant-numeric: tabular-nums; }
+  .zt-msg { margin: 4px 0 0; min-height: 1.4em; color: var(--muted); font-size: 14px; }
+  .zt-btns { display: flex; flex-direction: column; align-items: center; gap: 12px; margin: 12px 0 4px; }
+  .zt-btns .btn-primary { min-width: 240px; min-height: 52px; font-size: 17px; border-radius: 999px; }
+  .zt-btns .link-btn { min-height: 36px; }
+  .zt.alert .fm-ring .val { stroke: var(--ok); }
+  .zt.alert .zt-page { animation: pop .35s ease 2; }
   .rt-done { display: flex; align-items: center; gap: 10px; padding: 12px 14px; border-radius: 14px; background: var(--accent-soft); color: var(--accent); font-weight: 700; margin-top: 8px; }
   .hg { display: grid; grid-template-columns: minmax(0, 1fr) repeat(14, 12px) 40px; gap: 5px 3px; align-items: center; font-size: 13px; }
   .hg .nm { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
@@ -2183,7 +2199,7 @@ const PARTS = [['morning', '朝'], ['day', '日中'], ['night', '夜']];
 const DEFAULT_ROUTINES = [
   { id: 'r-cold', emoji: '🚿', title: 'コールドシャワー', part: 'morning', note: '最後の 30 秒を冷水で' },
   { id: 'r-meditate', emoji: '🧘', title: '瞑想', part: 'morning', note: '10 分。呼吸に注意を戻す' },
-  { id: 'r-zero', emoji: '📝', title: 'ゼロ秒思考', part: 'morning', note: 'A4 メモを 1 件 1 分で 10 枚' },
+  { id: 'r-zero', emoji: '📝', title: 'ゼロ秒思考', part: 'morning', note: 'A4 メモを 1 件 1 分で 10 枚', timer: { sec: 60, count: 10 } },
   { id: 'r-top3', emoji: '🎯', title: '今日の 3 つを決める', part: 'morning', note: '最重要のタスクを 3 つだけ選ぶ' },
   { id: 'r-papers', emoji: '📚', title: '論文チェック', part: 'day', note: '新着論文に目を通す' },
   { id: 'r-workout', emoji: '💪', title: '筋トレ', part: 'day', note: '1 日 1 回まで' },
@@ -2263,6 +2279,7 @@ function routineSection(d, T) {
         'aria-label': r.title + (r.note ? `（${r.note}）` : ''), onclick: () => toggleRoutine(r.id),
       }, h('span', { class: 'rt-emo', 'aria-hidden': 'true' }, r.emoji || '✓'), h('span', { class: 'rt-t' }, r.title),
         h('span', { class: 'rt-s' }, streak >= 2 ? `🔥 ${streak}日` : '')),
+      routineTimer(r) ? h('button', { class: 'rt-timer', type: 'button', 'aria-label': `${r.title}のタイマー`, title: 'タイマー（1 枚ずつ時間を計る）', onclick: () => openRoutineTimer(r.id) }, icon('play')) : null,
       r.link ? h('a', { class: 'rt-link', href: r.link, target: '_blank', rel: 'noopener noreferrer', 'aria-label': `${r.title} を開く`, title: '開く' }, icon('arrow')) : null);
   })));
 }
@@ -2294,6 +2311,134 @@ function routineCard(d) {
   return h('div', { class: 'card' },
     h('div', { class: 'chart-h' }, `ルーティン（直近 14 日・達成率 ${allApp ? Math.round(allOn / allApp * 100) : 0}%）`),
     h('div', { class: 'hg', role: 'img', 'aria-label': '直近14日のルーティン達成率: ' + summary.join('、') }, cells));
+}
+/* ---------- ゼロ秒思考のタイマー（紙に書くあいだ時間を計るだけ。お題も答えもアプリには入れない） ----------
+ * ルーティンに timer: { sec, count } があれば、マスの左上に ▶ が出る。1 枚 sec 秒 × count 枚。
+ * 1 枚の時間が来たら音と振動で知らせ、次の 1 枚はボタンで始める（紙を替える間をとる）。
+ * 早く書けたら「次の 1 枚へ」。書き終えたらルーティンを済みにする。計っている間は画面を消さない */
+let zt = null;
+function routineTimer(r) {
+  const t = r && r.timer && typeof r.timer === 'object' ? r.timer : null;
+  if (!t) return null;
+  const sec = Number.isFinite(t.sec) && t.sec >= 5 && t.sec <= 3600 ? Math.round(t.sec) : 60;
+  const count = Number.isFinite(t.count) && t.count >= 1 && t.count <= 50 ? Math.round(t.count) : 10;
+  return { sec, count };
+}
+function openRoutineTimer(id) {
+  const r = (DATA.routines || []).find((x) => x.id === id);
+  const t = routineTimer(r);
+  if (!t) return;
+  stopRoutineTimer();
+  zt = { rid: r.id, title: r.title, ...t, page: 1, written: 0, phase: 'ready', endsAt: 0, left: t.sec * 1000, lock: null, key: '' };
+  openSheet(h('div', { class: 'zt', id: 'ztBox' }), { kind: 'zt', label: `${r.title}のタイマー` });
+  zt.iv = setInterval(ztTick, 250);
+  ztRender();
+}
+function stopRoutineTimer() {
+  if (!zt) return;
+  clearInterval(zt.iv);
+  ztWake(false);
+  zt = null;
+}
+// 計っている間は画面を消さない（できない端末では何もしない）
+async function ztWake(on) {
+  const z = zt;
+  if (!z) return;
+  try {
+    if (on) {
+      if (z.lock || !navigator.wakeLock || document.visibilityState !== 'visible') return;
+      const l = await navigator.wakeLock.request('screen');
+      if (zt !== z || z.phase === 'done') { l.release(); return; }
+      z.lock = l;
+      l.addEventListener?.('release', () => { if (z.lock === l) z.lock = null; });
+    } else if (z.lock) {
+      const l = z.lock;
+      z.lock = null;
+      await l.release();
+    }
+  } catch {}
+}
+const ztActive = () => !!zt && zt.phase !== 'ready' && zt.phase !== 'done';
+document.addEventListener('visibilitychange', () => { if (document.visibilityState === 'visible' && ztActive()) ztWake(true); });
+function ztStart() {
+  unlockAudio();
+  haptic();
+  zt.phase = 'run';
+  zt.endsAt = Date.now() + zt.left;
+  ztWake(true);
+  ztRender();
+}
+function ztPause() {
+  zt.left = Math.max(0, zt.endsAt - Date.now());
+  zt.phase = 'paused';
+  ztRender();
+}
+function ztNext() { // 時間より早く書けたら、すぐ次の 1 枚へ
+  zt.written = zt.page;
+  if (zt.page >= zt.count) return ztFinish();
+  zt.page++;
+  zt.left = zt.sec * 1000;
+  zt.endsAt = Date.now() + zt.left;
+  haptic();
+  ztRender();
+}
+function ztPageEnd() {
+  beep();
+  try { navigator.vibrate?.([200, 100, 200]); } catch {}
+  zt.written = zt.page;
+  if (zt.page >= zt.count) return ztFinish();
+  zt.page++;
+  zt.phase = 'between';
+  zt.left = zt.sec * 1000;
+  ztRender();
+}
+function ztFinish() {
+  zt.phase = 'done';
+  zt.left = 0;
+  ztWake(false);
+  if (zt.written > 0 && !routineDone(DATA, routineDay()).has(zt.rid)) toggleRoutine(zt.rid);
+  ztRender();
+}
+function ztTick() {
+  if (!zt) return;
+  if (sheetKind !== 'zt' || $('sheet').hidden) return stopRoutineTimer(); // 閉じたら止める
+  if (zt.phase === 'run' && Date.now() >= zt.endsAt) ztPageEnd();
+  ztRender();
+}
+function ztRender() {
+  const box = $('ztBox');
+  if (!box || !zt) return;
+  const z = zt;
+  const left = z.phase === 'run' ? Math.max(0, z.endsAt - Date.now()) : z.left;
+  const sec = Math.ceil(left / 1000);
+  const key = `${z.phase}|${z.page}`;
+  if (z.key !== key) {
+    z.key = key;
+    const btn = (label, fn, cls = 'btn-primary') => h('button', { class: `${cls} zt-btn`, type: 'button', onclick: fn }, label);
+    const finish = () => btn('ここで終えて済みにする', ztFinish, 'link-btn');
+    const last = z.page >= z.count;
+    const acts = {
+      ready: [btn('始める', ztStart)],
+      run: [btn(last ? '書けた（終える）' : '書けた → 次の 1 枚へ', ztNext), btn('一時停止', ztPause, 'link-btn')],
+      paused: [btn('再開', ztStart), z.written ? finish() : null],
+      between: [btn('次の 1 枚を始める', ztStart), finish()],
+      done: [btn('閉じる', closeSheet)],
+    }[z.phase];
+    const msg = { paused: '止めています', between: `${z.written} 枚 書きました`, done: z.written ? `${z.written} 枚 書きました。おつかれさまでした` : '終わりました' }[z.phase] || '';
+    const per = z.sec % 60 === 0 ? `${z.sec / 60} 分` : `${z.sec} 秒`;
+    box.classList.toggle('alert', z.phase === 'between');
+    box.replaceChildren(
+      sheetHead(z.title),
+      h('p', { class: 'zt-sub' }, `1 枚 ${per} × ${z.count} 枚`),
+      h('div', { class: 'fm-ring zt-ring' }, ringSvg(1, 220, 10), h('div', { class: 'fm-time zt-time' })),
+      h('div', { class: 'zt-page' }, z.phase === 'done' ? `${z.written} / ${z.count} 枚` : `${z.page} / ${z.count} 枚目`),
+      h('p', { class: 'zt-msg', 'aria-live': 'polite' }, msg),
+      h('div', { class: 'zt-btns' }, acts));
+    box.querySelector('.zt-btn')?.focus(); // パソコンは Enter・スペースで押せる
+  }
+  box.querySelector('.zt-time').textContent = `${Math.floor(sec / 60)}:${pad(sec % 60)}`;
+  const v = box.querySelector('.val');
+  v.style.strokeDashoffset = String(+v.dataset.c * (1 - left / (z.sec * 1000)));
 }
 function openRoutines() { openSheet(h('div', { id: 'rtEditor' }, routineEditorBody()), { kind: 'routines', label: 'ルーティンの編集' }); }
 function refreshRoutines(focusKey) {
@@ -4805,7 +4950,7 @@ $('fab').addEventListener('click', () => {
   if (view.type === 'calendar') openEventSheet({ date: calAnchor && calAnchor >= todayYmd() ? calAnchor : todayYmd() }); // カレンダーでは予定を追加
   else openQuickAdd();
 });
-$('backdrop').addEventListener('click', closeSheet);
+$('backdrop').addEventListener('click', () => { if (sheetKind === 'zt' && ztActive()) return; closeSheet(); }); // タイマーの途中は × で閉じる
 $('search').addEventListener('input', (e) => onSearch(e.target.value));
 $('helpBtn').append(icon('help'));
 $('settingsBtn').append(icon('gear'));
