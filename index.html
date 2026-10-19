@@ -5650,7 +5650,9 @@ function flexWhyText(C, g) {
 function flexMoveRow(e, C, sec) {
   const { id } = bmEntry(e), m = bmMove(id);
   const r = bmLimitSide(e, C.caps, 'R');
-  const stop = m.kind === 'nerve' ? null : r.bone ? r.bone.name : r.top && r.top.idx >= 0.995 ? (BM_GROUPS[r.top.g] || r.top.name) : null;
+  // 伸びる場所：狙いの部位が止まる位置で 90% 以上なら狙いの部位、そうでなければ実際に止める組織（ほぼ同時に止まる組織どうしの 1 割未満の差は、モデルの誤差の範囲）
+  const aimHit = (m.aim || []).find((g) => r.list.some((x) => x.g === g && x.idx >= 0.9 && (x.side === 'R' || x.side === 'C' || !m.sides)));
+  const stop = m.kind === 'nerve' ? null : r.bone ? r.bone.name : aimHit ? BM_GROUPS[aimHit] : r.top && r.top.idx >= 0.995 ? (BM_GROUPS[r.top.g] || r.top.name) : null;
   const t = m.kind === 'pnf' ? `約 70 秒${m.sides ? '（左右）' : ''}` : m.sides ? (sec?.R || sec?.L ? `右 ${sec.R || m.sec} 秒・左 ${sec.L || m.sec} 秒` : `${m.reps ? m.reps + '・' : ''}${m.sec} 秒（左右）`) : m.reps || `${m.sec} 秒`;
   return h('li', null, h('b', null, flexEntryName(e)), h('small', { class: 'hint' }, ` ${t}${m.kind === 'nerve' ? '・神経を伸ばさずに動かす' : stop ? `・伸びる：${stop}` : ''}`));
 }
