@@ -604,7 +604,48 @@
   .gt-done { display: flex; flex-direction: column; align-items: center; gap: 6px; margin: 20px 0 8px; font-size: 18px; }
   .goal40 .gym-title { margin-top: 4px; }
   /* 柔軟性 */
-  .flex-list { margin: 8px 0 0; }
+  .flex-tabs { margin: 2px 0 4px; }
+  .flex-list { margin: 8px 0 0; padding-left: 22px; font-size: 14px; }
+  .flex-list li { padding: 2px 0; }
+  .flex-why { margin-top: 8px; font-size: 14px; }
+  .flex-why summary, .bm-table summary, .ft-sec summary { cursor: pointer; font-weight: 600; }
+  .flex-why summary { color: var(--accent); font-size: 13px; }
+  .flex-why ul { margin: 6px 0 0; padding-left: 20px; }
+  .flex-why li { padding: 2px 0; }
+  .flex-key { margin: 8px 0 0; font-size: 14px; }
+  .bm-depth { display: flex; flex-direction: column; gap: 4px; margin-top: 12px; }
+  .bm-range { width: 100%; min-height: 32px; padding: 0; border: 0; box-shadow: none; accent-color: var(--accent); }
+  .bm-out { margin-top: 10px; }
+  .bm-stop { font-size: 14px; }
+  .bm-sub { font-size: 13px; color: var(--muted); margin-top: 6px; }
+  .bm-warn { color: var(--warn); }
+  .bm-cmp { font-size: 14px; margin: 10px 0 0; font-weight: 600; }
+  .bm-bars { display: flex; flex-direction: column; gap: 6px; margin-top: 10px; }
+  .bm-row { display: grid; grid-template-columns: minmax(0, 1.3fr) minmax(56px, 1fr) 42px; gap: 8px; align-items: center; font-size: 13px; }
+  .bm-name { min-width: 0; overflow-wrap: anywhere; }
+  .bm-name small { color: var(--muted); }
+  .bm-kind { margin-left: 4px; padding: 0 6px; border-radius: 999px; border: 1px solid var(--line); font-size: 11px; white-space: nowrap; }
+  .bm-track { position: relative; height: 8px; background: var(--line); border-radius: 4px; }
+  .bm-fill { position: absolute; left: 0; top: 0; bottom: 0; background: var(--accent); border-radius: 4px; }
+  .bm-100 { position: absolute; left: 83.33%; top: -3px; bottom: -3px; width: 2px; background: var(--text); opacity: .5; border-radius: 1px; }
+  .bm-row.k-nerve .bm-fill { background: #8a5cd6; }
+  .bm-row.k-lig .bm-fill { background: var(--faint); }
+  .bm-row.over .bm-fill { background: var(--warn); }
+  .bm-pct { text-align: right; font-variant-numeric: tabular-nums; color: var(--muted); }
+  .bm-row.over .bm-pct { color: var(--warn); font-weight: 700; }
+  .bm-tis { padding: 8px 0; border-top: 1px solid var(--line); font-size: 14px; }
+  .fx-dose { display: grid; grid-template-columns: minmax(0, 1.4fr) minmax(48px, 1fr) auto; gap: 6px 10px; align-items: center; font-size: 13px; margin-top: 6px; }
+  .fx-dose .meter { display: block; height: 8px; }
+  .fx-dose .meter .fill { display: block; }
+  .meter.ok .fill { background: var(--ok); }
+  .fx-dv { font-variant-numeric: tabular-nums; color: var(--muted); white-space: nowrap; }
+  .fx-causes { display: flex; flex-direction: column; gap: 12px; margin-top: 6px; }
+  .fx-cause { font-size: 14px; }
+  .fx-goal { padding: 8px 0; border-top: 1px solid var(--line); font-size: 14px; }
+  .fx-goal:first-of-type { border-top: 0; }
+  .ft-sec { margin-top: 12px; }
+  .ft-sec summary { padding: 6px 0; }
+  .fx-why .fx-p { margin: 6px 0 0; font-size: 14px; line-height: 1.6; }
   .flex-move { padding: 0; overflow: hidden; }
   .flex-move .flex-body { margin: 0 14px 12px; }
   .flex-steps { margin: 0; padding-left: 22px; font-size: 15px; }
@@ -1732,10 +1773,20 @@ function applyOp(d, op) {
       if (op.date) g.date = op.date;
       break;
     }
-    case 'flexLog': { // 柔軟性：その日に行ったもの（daily・split・warm1〜4）
+    case 'flexLog': { // 柔軟性：その日に行ったもの（daily・split・warm1〜4）と、種目ごと・左右ごとの秒数（足していく）
       const f = d.flex = ckObj(d.flex);
       f.logs = ckObj(f.logs);
-      f.logs[op.day] = { ...ckObj(f.logs[op.day]), ...op.set };
+      const cur = ckObj(f.logs[op.day]), next = { ...cur, ...ckObj(op.set) };
+      if (op.add && typeof op.add === 'object') {
+        const sec = { ...ckObj(cur.sec) };
+        for (const [e, bySide] of Object.entries(op.add)) {
+          const o = { ...ckObj(sec[e]) };
+          for (const [sd, v] of Object.entries(ckObj(bySide))) if (['R', 'L', 'C'].includes(sd) && Number.isFinite(v) && v > 0) o[sd] = Math.round(((o[sd] || 0) + v) * 10) / 10;
+          sec[e] = o;
+        }
+        next.sec = sec;
+      }
+      f.logs[op.day] = next;
       break;
     }
     case 'flexTest': { // 柔軟性のテスト（日ごと）。null で消す
@@ -4203,7 +4254,7 @@ function openGymSession(id) {
 let gt = null;
 function openGuidedTimer(o) {
   stopGuidedTimer();
-  gt = { ...o, i: 0, phase: 'ready', endsAt: 0, left: (o.steps[0]?.sec || 0) * 1000, key: '', lock: null };
+  gt = { ...o, i: 0, phase: 'ready', endsAt: 0, left: (o.steps[0]?.sec || 0) * 1000, key: '', lock: null, spent: [] };
   openSheet(h('div', { class: 'gt', id: 'gtBox' }), { kind: 'gt', label: o.title });
   gt.iv = setInterval(gtTick, 200);
   gtRender();
@@ -4233,15 +4284,24 @@ function gtCue(kind) {
 }
 function gtGo(i) {
   const z = gt;
-  if (i >= z.steps.length) return gtFinish();
+  gtSpend(z);
+  if (i >= z.steps.length) { z.i = z.steps.length; return gtFinish(); }
   z.i = Math.max(0, i);
   z.left = z.steps[z.i].sec * 1000;
   if (z.phase === 'run') z.endsAt = Date.now() + z.left;
   gtCue(z.steps[z.i].kind);
   gtRender();
 }
+// 手順ごとに実際に経った秒数を残す（「次へ」で飛ばした手順は短く数える）
+function gtSpend(z) {
+  const st = z.steps[z.i];
+  if (!st) return;
+  const el = z.phase === 'run' ? st.sec * 1000 - Math.max(0, z.endsAt - Date.now()) : z.phase === 'paused' ? st.sec * 1000 - z.left : 0;
+  z.spent[z.i] = Math.max(z.spent[z.i] || 0, Math.round(Math.min(st.sec * 1000, Math.max(0, el)) / 100) / 10);
+}
 function gtFinish() {
   const z = gt;
+  if (z.i < z.steps.length) gtSpend(z);
   z.phase = 'done';
   try { z.lock?.release(); } catch {}
   z.lock = null;
@@ -4270,7 +4330,7 @@ function gtRender() {
     box.replaceChildren(h('div', { class: 'gt-in' },
       sheetHead(z.title),
       z.phase === 'done' ? h('div', { class: 'gt-done' }, h('b', null, 'おつかれさまでした'), z.doneText ? h('p', { class: 'hint' }, z.doneText) : null,
-        h('div', { class: 'gt-btns' }, z.onDone ? btn(z.doneLabel || '記録する', () => { const f = z.onDone; stopGuidedTimer(); closeSheet(); f(); }) : null, btn('閉じる', closeSheet, z.onDone ? 'link-btn' : 'btn-primary')))
+        h('div', { class: 'gt-btns' }, z.onDone ? btn(z.doneLabel || '記録する', () => { const f = z.onDone, spent = z.spent.slice(); stopGuidedTimer(); closeSheet(); f(spent); }) : null, btn('閉じる', closeSheet, z.onDone ? 'link-btn' : 'btn-primary')))
         : [
           h('p', { class: 'gt-sub' }, `${z.i + 1} / ${z.steps.length}${z.sub ? `・${z.sub}` : ''}${z.phase === 'ready' ? `・全体 約 ${Math.ceil(total / 60)} 分` : ''}`),
           h('div', { class: 'gt-title' }, st.title),
@@ -4680,181 +4740,1257 @@ function openGoal40(T) {
 }
 
 /* =========================================================================
- * 柔軟性（作り直し）：目的は ①開脚 ②全身の柔らかさ ③筋トレの動きやすさ
- *  - 毎日の柔軟（約 10 分・入浴後）：静的ストレッチ。1 種目 30〜60 秒（左右はそれぞれ）。週 5 日以上で、1 つの筋肉に週 5 分以上
- *  - 筋トレ前の準備（部位別・約 2〜4 分）：反動の小さい動的な動き。長い静的ストレッチは筋トレの前に行わない
- *  - 開脚の強化（週 2 回・約 10 分）：コサック・横の脚上げ・開脚グッドモーニングと、縮めてから伸ばす（PNF）
- *  - テスト（2 週に 1 回）：前屈・開脚の幅・前後開脚の高さ・足首・肩を測って記録し、最初からの変化を見る
- * やり方は、短い手順と「伸びる場所」「よくある間違い」、信頼できる見本（理学療法士などの動画・解説）へのリンクで示す。
- * 記録は todos.json の flex（logs・tests）
+ * 柔軟性（体のモデルから組み立てる）
+ * 目的：①開脚（前後・左右） ②全身の柔らかさ ③筋トレの動きやすさ
+ *
+ * 体のモデル（第一近似）
+ *  - 関節の角度（股関節の曲げ伸ばし・開閉・ひねり、膝、足首、背骨、首、肩、肘、手首）から、
+ *    筋と腱・神経の通り道・靱帯の長さの変化を計算する。ΔL = −∫ r(θ) dθ（r はモーメントアーム、cm）
+ *    r > 0 はその向きに関節を動かす筋（その向きに動くと縮む）。r は角度で変わってよい（例：梨状筋の回旋は屈曲で逆向き）
+ *  - 各組織の 100% は、標準的な可動域の限界（BM_NORM）でその組織が伸びる長さ。テストの結果があれば、その人の限界に置き直す（flexCaps）
+ *  - 姿勢を深くしていくと、最初に 100% に届いた組織か、骨・体の厚みの当たりで止まる（bmLimit）。そこが「伸びる場所」
+ *  - 数値は文献の近似（OpenSim の下肢モデル・解剖の研究など）。肩は下肢より粗い。骨の形の個人差は入っていない
+ * 記録は todos.json の flex（logs：日ごとに行ったメニューと種目ごとの秒数、tests：テストの値）
  * ========================================================================= */
+const bmRad = (d) => d * Math.PI / 180;
+function bmLerp(k, x) {
+  if (typeof k === 'number') return k;
+  if (x <= k[0][0]) return k[0][1];
+  for (let i = 1; i < k.length; i++) if (x <= k[i][0]) { const [a, ra] = k[i - 1], [b, rb] = k[i]; return ra + (rb - ra) * (x - a) / (b - a); }
+  return k[k.length - 1][1];
+}
+function bmInteg(k, x) { // ∫0^x r(s) ds（cm）。区分線形の台形公式
+  if (typeof k === 'number') return k * bmRad(x);
+  const lo = Math.min(0, x), hi = Math.max(0, x);
+  const pts = [lo, ...k.map((p) => p[0]).filter((a) => a > lo && a < hi), hi];
+  let s = 0;
+  for (let i = 1; i < pts.length; i++) s += (bmLerp(k, pts[i - 1]) + bmLerp(k, pts[i])) / 2 * bmRad(pts[i] - pts[i - 1]);
+  return x < 0 ? -s : s;
+}
+// arms の値：数（一定）・[[角度, r], …]（その関節の角度で変わる）・{ by, k }（別の関節の角度で変わる）・
+// { k, by, f }（その関節の角度で変わる r に、別の関節の角度で決まる倍率 f をかける。肩：腕を上げる角度 × 上げる向き）
+function bmTerm(spec, q, dof) {
+  const v = q[dof] || 0;
+  if (spec && typeof spec === 'object' && !Array.isArray(spec)) {
+    if (spec.f) return bmInteg(spec.k, v) * bmLerp(spec.f, q[spec.by] || 0);
+    return bmLerp(spec.k, q[spec.by] || 0) * bmRad(v);
+  }
+  return bmInteg(spec, v);
+}
+const BM_TRUNK = ['lumbar', 'lumbarSide', 'thoracic', 'thoracicRot', 'neck', 'neckSide'];
+const BM_SIDED = new Set(['lumbarSide', 'thoracicRot', 'neckSide']); // + は右へ。左側の組織では向きが逆
+function bmCoords(pose, side) {
+  const t = pose.t || {}, q = { ...(pose.both || {}), ...(pose[side] || {}) };
+  for (const k of BM_TRUNK) q[k] = (BM_SIDED.has(k) && side === 'L' ? -1 : 1) * (t[k] || 0);
+  return q;
+}
+function bmDL(tis, pose, side) {
+  const q = bmCoords(pose, side);
+  let s = 0;
+  for (const [dof, spec] of Object.entries(tis.arms)) s -= bmTerm(spec, q, dof);
+  return s;
+}
+// 関節の名前（角度の説明に使う）：[部位, +の向き, −の向き]
+const BM_DOF = {
+  hipFlex: ['股関節', '曲げ', '伸ばし'], hipAbd: ['股関節', '開き', '閉じ'], hipRot: ['股関節', '外ひねり', '内ひねり'],
+  knee: ['膝', '曲げ', '反り'], ankle: ['足首', '上げ', '伸ばし'],
+  lumbar: ['腰', '丸め', '反り'], lumbarSide: ['腰', '右へ倒す', '左へ倒す'], thoracic: ['背中', '丸め', '反り'], thoracicRot: ['背中', '右へひねる', '左へひねる'],
+  neck: ['首', '前へ曲げ', '後ろへ反り'], neckSide: ['首', '右へ倒す', '左へ倒す'],
+  shElev: ['肩', '腕を上げる', ''], shPlane: ['腕を上げる向き', '', ''], shRot: ['肩', '外ひねり', '内ひねり'],
+  elbow: ['肘', '曲げ', ''], forearm: ['前腕', '手のひらを上', '手のひらを下'], wrist: ['手首', '反らし', '曲げ'],
+};
+const BM_GROUPS = {
+  ham: 'もも裏', add: '内もも（長内転筋・短内転筋・恥骨筋）', amag: '内もも奥（大内転筋）', grac: '内もも（薄筋）',
+  iliop: '股関節の前（腸腰筋）', rf: 'もも前（大腿直筋）', quad: 'もも前（広筋）', sart: 'もも前（縫工筋）', tfl: '脚の付け根の外',
+  gmax: 'お尻（大殿筋）', gmed: 'お尻の横（中殿筋）', rot: 'お尻の奥（梨状筋・外旋筋）', bfsh: '膝の裏の外',
+  gastroc: 'ふくらはぎ（腓腹筋）', soleus: 'ふくらはぎの奥（ヒラメ筋）', shin: 'すねの前',
+  back: '背中・腰', ql: '腰の横', abs: 'おなか',
+  lat: '背中の横（広背筋・大円筋）', tri: '二の腕の裏', pec: '胸（大胸筋）', pmin: '胸の奥（小胸筋）',
+  ash: '肩の前', psh: '肩の後ろ', subsc: '肩の奥（肩甲下筋）',
+  nerve: '神経', lig: '靱帯・関節包',
+};
+const byHF = (k) => ({ by: 'hipFlex', k });
+const byPL = (k) => ({ by: 'shPlane', k }); // 腕を上げる面（0=前・90=横・135=横より後ろ・180=真後ろ・マイナス=体の前を横切る）
+// 組織：g（まとまり）・name・where（どこからどこへ）・how（何で伸びるか）・arms（関節ごとの r）・kind（mtu・nerve・lig）
+const BM_T = [
+  { id: 'psoas', g: 'iliop', name: '大腰筋', where: '腰の骨の横から、骨盤の内側を通って太ももの付け根の内側へ', how: '股関節を伸ばす。体を反対へ倒すと少し増える',
+    arms: { hipFlex: [[-30, 1.6], [0, 2.0], [45, 3.0], [90, 3.5], [130, 3.0]], hipAbd: 0.3, lumbarSide: 2.0 } },
+  { id: 'iliacus', g: 'iliop', name: '腸骨筋', where: '骨盤の内側から、股関節の前を通って太ももの付け根へ', how: '股関節を伸ばす',
+    arms: { hipFlex: [[-30, 1.6], [0, 2.0], [45, 3.0], [90, 3.5], [130, 3.0]], hipAbd: 0.3 } },
+  { id: 'rf', g: 'rf', name: '大腿直筋', where: '骨盤の前から、膝のお皿を通ってすねへ（股関節と膝をまたぐ）', how: '股関節を伸ばし、膝を曲げる',
+    arms: { hipFlex: [[-30, 4.0], [0, 3.8], [60, 3.2], [100, 2.5], [130, 2.0]], hipAbd: 1.5, knee: [[-10, -4.0], [0, -4.0], [45, -4.8], [90, -4.3], [155, -3.8]] } },
+  { id: 'vasti', g: 'quad', name: '広筋群', where: '太ももの骨から、膝のお皿へ（膝だけをまたぐ）', how: '膝を深く曲げる',
+    arms: { knee: [[-10, -4.0], [0, -4.0], [45, -4.8], [90, -4.3], [155, -3.8]] } },
+  { id: 'sart', g: 'sart', name: '縫工筋', where: '骨盤の前の出っ張りから、太ももを斜めに横切ってすねの内側へ', how: '股関節を伸ばし・閉じ・内へひねり、膝を伸ばす',
+    arms: { hipFlex: [[-30, 4.0], [0, 4.0], [60, 3.8], [100, 3.0], [130, 2.5]], hipAbd: 3.5, hipRot: 0.3, knee: [[-10, 1.3], [0, 1.5], [60, 3.0], [100, 3.5], [155, 3.0]] } },
+  { id: 'tfl', g: 'tfl', name: '大腿筋膜張筋', where: '骨盤の前の外側から、太ももの外の帯（腸脛靱帯）へ', how: '股関節を伸ばし・閉じ・外へひねる',
+    arms: { hipFlex: [[-30, 5.0], [0, 5.0], [60, 3.8], [100, 2.5], [130, 1.8]], hipAbd: byHF([[0, 4.5], [90, 3.0]]), hipRot: -0.8 } },
+  { id: 'gmaxU', g: 'gmax', name: '大殿筋（上部）', where: '骨盤の後ろと仙骨から、太ももの外の帯へ', how: '股関節を深く曲げ・閉じる',
+    arms: { hipFlex: [[-30, -5.5], [0, -5.5], [45, -5.0], [90, -4.0], [130, -3.0]], hipAbd: byHF([[0, 1.5], [90, 2.5]]), hipRot: byHF([[0, 2.0], [90, 0.5]]) } },
+  { id: 'gmaxL', g: 'gmax', name: '大殿筋（下部）', where: '仙骨と尾骨から、太ももの骨の後ろへ', how: '股関節を深く曲げる。内へひねると増える',
+    arms: { hipFlex: [[-30, -7.5], [0, -7.5], [45, -6.5], [90, -5.0], [130, -4.0]], hipAbd: byHF([[0, -3.0], [90, -1.0]]), hipRot: byHF([[0, 2.9], [90, 2.0]]) } },
+  { id: 'gmedA', g: 'gmed', name: '中殿筋（前部）', where: '骨盤の横から、太ももの外の出っ張り（大転子）へ', how: '股関節を閉じ、外へひねる（曲げるほど強く）',
+    arms: { hipFlex: [[-30, 1.6], [0, 1.6], [90, 0.8], [130, 0.3]], hipAbd: byHF([[0, 5.6], [90, 3.5]]), hipRot: byHF([[0, -0.7], [45, -3.0], [90, -5.8]]) } },
+  { id: 'gmedP', g: 'gmed', name: '中殿筋（後部）', where: '骨盤の横（後ろ寄り）から、大転子へ', how: '股関節を閉じ・曲げる。浅い位置では内へ、深く曲げると外へひねる',
+    arms: { hipFlex: [[-30, -2.5], [0, -2.5], [90, -1.5], [130, -1.0]], hipAbd: byHF([[0, 5.6], [90, 3.0]]), hipRot: byHF([[0, 4.1], [45, 1.0], [70, 0], [90, -1.5]]) } },
+  { id: 'piri', g: 'rot', name: '梨状筋', where: '仙骨の前から、股関節の後ろを通って大転子へ', how: '股関節を曲げると伸びる。浅い位置では内へ、60° より深く曲げると外へひねると伸びる（4 の字）。閉じる',
+    arms: { hipFlex: [[0, -1.0], [45, -1.8], [90, -2.2], [130, -2.0]], hipAbd: byHF([[0, 1.0], [45, 1.5], [90, 2.0]]), hipRot: byHF([[0, 2.9], [30, 1.6], [62, 0], [90, -1.4], [120, -1.8]]) } },
+  { id: 'deepER', g: 'rot', name: '内閉鎖筋・双子筋・大腿方形筋', where: '骨盤の下の穴のまわりから、大転子の後ろへ', how: '股関節を内へひねる（曲げても伸ばしても）',
+    arms: { hipFlex: -0.5, hipAbd: byHF([[0, 0], [90, 1.0]]), hipRot: byHF([[0, 2.5], [90, 1.5]]) } },
+  { id: 'bflh', g: 'ham', name: '大腿二頭筋（長頭）', where: '坐骨（お尻の下の骨）から、膝の外側（腓骨）へ', how: '股関節を曲げ、膝を伸ばす',
+    arms: { hipFlex: [[-30, -5.5], [0, -6.0], [35, -6.3], [90, -5.8], [130, -5.0]], hipRot: 0.5, knee: [[-10, 1.6], [0, 1.8], [55, 3.0], [100, 2.8], [155, 2.5]] } },
+  { id: 'st', g: 'ham', name: '半腱様筋', where: '坐骨から、膝の内側（すねの内側）へ', how: '股関節を曲げ、膝を伸ばす。脚を外へ開くと増える',
+    arms: { hipFlex: [[-30, -4.8], [0, -5.0], [35, -5.3], [90, -4.8], [130, -4.2]], hipAbd: byHF([[0, -1.5], [90, -2.0]]), hipRot: -0.8, knee: [[-10, 3.0], [0, 3.2], [60, 4.5], [90, 4.6], [155, 4.0]] } },
+  { id: 'sm', g: 'ham', name: '半膜様筋', where: '坐骨から、膝の内側の後ろへ', how: '股関節を曲げ、膝を伸ばす。脚を外へ開くと増える',
+    arms: { hipFlex: [[-30, -3.8], [0, -4.0], [35, -4.3], [90, -3.8], [130, -3.3]], hipAbd: byHF([[0, -1.0], [90, -1.5]]), hipRot: -0.5, knee: [[-10, 2.2], [0, 2.3], [60, 3.7], [100, 3.6], [155, 3.0]] } },
+  { id: 'bfsh', g: 'bfsh', name: '大腿二頭筋（短頭）', where: '太ももの骨の後ろから、膝の外側へ（膝だけ）', how: '膝を伸ばし切る',
+    arms: { knee: [[-10, 1.6], [0, 1.8], [55, 3.0], [100, 2.8], [155, 2.5]] } },
+  { id: 'al', g: 'add', name: '長内転筋', where: '恥骨から、太ももの骨の内側（中ほど）へ', how: '股関節を開く。股関節を伸ばした（体を起こした）開脚で強く伸びる',
+    arms: { hipFlex: [[-30, 4.0], [0, 4.0], [30, 2.5], [60, 0.5], [90, -1.0], [130, -1.5]], hipAbd: byHF([[0, -7.0], [90, -5.5]]), hipRot: -0.5 } },
+  { id: 'ab', g: 'add', name: '短内転筋', where: '恥骨から、太ももの骨の内側（上の方）へ', how: '股関節を開く。股関節を伸ばした開脚で強く伸びる',
+    arms: { hipFlex: [[-30, 2.2], [0, 2.1], [40, 0.5], [55, 0], [90, -1.2], [130, -1.5]], hipAbd: byHF([[0, -7.5], [90, -6.0]]), hipRot: -0.5 } },
+  { id: 'pect', g: 'add', name: '恥骨筋', where: '恥骨から、太ももの骨の付け根の内側へ', how: '股関節を開き、伸ばす',
+    arms: { hipFlex: [[-30, 3.6], [0, 3.6], [60, 3.0], [100, 2.0], [130, 1.0]], hipAbd: byHF([[0, -3.2], [90, -2.5]]), hipRot: -1.0 } },
+  { id: 'amAnt', g: 'amag', name: '大内転筋（前部）', where: '恥骨の下から、太ももの骨の内側全体へ', how: '股関節を開く（曲げても伸ばしても）',
+    arms: { hipFlex: [[-30, -0.5], [0, -0.8], [90, -2.0], [130, -2.0]], hipAbd: byHF([[0, -5.5], [90, -5.0]]) } },
+  { id: 'amPost', g: 'amag', name: '大内転筋（後部）', where: '坐骨から、膝の上の内側へ', how: '股関節を深く曲げ、開く（フロッグ・開脚前屈）',
+    arms: { hipFlex: [[-30, -1.0], [0, -1.5], [45, -4.0], [75, -5.5], [100, -5.0], [130, -4.0]], hipAbd: byHF([[0, -2.5], [90, -3.0]]), hipRot: -0.5 } },
+  { id: 'grac', g: 'grac', name: '薄筋', where: '恥骨から、膝の内側（すね）へ（股関節と膝をまたぐ）', how: '股関節を開き、膝を伸ばす',
+    arms: { hipFlex: [[-30, 1.5], [0, 1.3], [40, 0], [90, -1.0], [130, -1.5]], hipAbd: byHF([[0, -7.0], [90, -5.5]]), hipRot: 0.3, knee: [[-10, 1.8], [0, 2.0], [60, 3.0], [100, 3.8], [155, 3.5]] } },
+  { id: 'gastroc', g: 'gastroc', name: '腓腹筋', where: '太ももの骨の下端から、アキレス腱でかかとへ（膝と足首をまたぐ）', how: '膝を伸ばし、足首を上げる',
+    arms: { knee: [[-10, 2.0], [0, 2.2], [45, 2.6], [90, 2.2], [155, 1.6]], ankle: [[-55, -4.5], [0, -5.0], [45, -4.5]] } },
+  { id: 'soleus', g: 'soleus', name: 'ヒラメ筋', where: 'すねの骨の後ろから、アキレス腱でかかとへ（足首だけ）', how: '膝を曲げたまま、足首を上げる',
+    arms: { ankle: [[-55, -4.5], [0, -5.0], [45, -4.5]] } },
+  { id: 'ta', g: 'shin', name: '前脛骨筋', where: 'すねの前から、足の甲の内側へ', how: 'つま先を伸ばす（正座）', arms: { ankle: [[-55, 3.5], [0, 3.5], [45, 3.0]] } },
+  { id: 'es', g: 'back', name: '脊柱起立筋', where: '骨盤と背骨から、背骨と肋骨へ（背骨の両わき）', how: '背中と腰を丸める', arms: { lumbar: -5.0, thoracic: -3.5, lumbarSide: 3.0 } },
+  { id: 'ql', g: 'ql', name: '腰方形筋', where: '骨盤の上から、いちばん下の肋骨と腰の骨へ', how: '体を反対へ倒す', arms: { lumbarSide: 4.0, lumbar: -1.0 } },
+  { id: 'ra', g: 'abs', name: '腹直筋', where: '恥骨から、みぞおちの肋骨へ', how: '背中と腰を反る', arms: { lumbar: 7.0, thoracic: 5.0 }, mid: true },
+  { id: 'lat', g: 'lat', name: '広背筋', where: '背中の下半分・腰の筋膜・骨盤から、腕の付け根の前へ', how: '腕を上げ、外へひねる。体を反対へ倒すと増える',
+    arms: { shElev: { k: [[0, -2.0], [90, -2.2], [130, -1.2], [180, -0.6]], by: 'shPlane', f: [[-60, 0.8], [0, 1.0], [90, 1.3], [135, 1.0], [180, -0.6]] }, shRot: -1.0, lumbarSide: 3.0, lumbar: -1.0 }, arm: true },
+  { id: 'tmaj', g: 'lat', name: '大円筋', where: '肩甲骨の下の角から、腕の付け根の前へ', how: '腕を上げ、外へひねる',
+    arms: { shElev: { k: [[0, -2.0], [90, -3.5], [150, -4.5], [180, -4.5]], by: 'shPlane', f: [[-60, 0.8], [0, 1.0], [90, 1.0], [135, 0.9], [180, -0.6]] }, shRot: -0.8 }, arm: true },
+  { id: 'tlh', g: 'tri', name: '上腕三頭筋（長頭）', where: '肩関節の下（肩甲骨）から、肘の後ろへ（肩と肘をまたぐ）', how: '腕を上げ、肘を曲げる',
+    arms: { shElev: { k: [[0, -1.5], [180, -1.5]], by: 'shPlane', f: [[-60, 1.0], [0, 1.0], [90, 0.7], [135, 0.6], [180, -0.6]] }, elbow: -2.3 }, arm: true },
+  { id: 'pecC', g: 'pec', name: '大胸筋（鎖骨部）', where: '鎖骨の内側から、腕の付け根の前へ', how: '腕を低め〜肩の高さで後ろへ開き、外へひねる',
+    arms: { shElev: byPL([[-60, 3.0], [0, 2.5], [45, 1.0], [90, -0.8], [135, -3.5], [180, -3.0]]), shRot: -1.5 }, arm: true },
+  { id: 'pecS', g: 'pec', name: '大胸筋（胸肋部）', where: '胸の骨と肋骨から、腕の付け根の前へ', how: '腕を肩より上で後ろへ開き、外へひねる',
+    arms: { shElev: byPL([[-60, 1.5], [0, -0.3], [45, -1.0], [90, -2.2], [135, -4.5], [180, -2.0]]), shRot: -1.5 }, arm: true },
+  { id: 'pmin', g: 'pmin', name: '小胸筋', where: '肋骨（3〜5 番）から、肩甲骨の前の突起へ', how: '肩甲骨を後ろへ寄せ、腕を高く開く',
+    arms: { shElev: byPL([[-60, 0.3], [0, -0.3], [45, -0.5], [90, -0.8], [135, -1.2], [180, -0.3]]), shRot: -0.2 }, arm: true },
+  { id: 'adelt', g: 'ash', name: '三角筋（前部）', where: '鎖骨の外側から、腕の外側へ', how: '腕を後ろへ引き、外へひねる',
+    arms: { shElev: byPL([[-60, 2.0], [0, 1.8], [45, 0.8], [90, -0.3], [135, -1.3], [180, -2.0]]), shRot: -0.8 }, arm: true },
+  { id: 'blh', g: 'ash', name: '上腕二頭筋（長頭）', where: '肩関節の上から、肘の前へ（肩と肘をまたぐ）', how: '腕を後ろへ引き、肘を伸ばし、手のひらを下へ',
+    arms: { shElev: byPL([[-60, 1.0], [0, 1.0], [45, 0.5], [90, 0], [135, -0.6], [180, -1.6]]), elbow: [[0, 3.0], [90, 3.5], [150, 2.5]], forearm: 1.0 }, arm: true },
+  { id: 'pcuff', g: 'psh', name: '棘下筋・小円筋・三角筋（後部）', where: '肩甲骨の後ろから、腕の付け根の後ろへ', how: '腕を体の前で横切らせ、内へひねる',
+    arms: { shElev: byPL([[-60, -2.0], [0, -0.8], [45, 0], [90, 0.5], [135, 1.2], [180, 1.2]]), shRot: 1.5 }, arm: true },
+  { id: 'subsc', g: 'subsc', name: '肩甲下筋', where: '肩甲骨の前（肋骨側）から、腕の付け根の前へ', how: '腕を外へひねる', arms: { shRot: -2.0 }, arm: true },
+  // 神経（通り道の長さ。r は「その向きに動くと通り道が短くなる」）
+  { id: 'sciatic', g: 'nerve', kind: 'nerve', name: '坐骨神経', where: '腰の骨の間から、お尻・もも裏・膝の裏を通って、すねの奥と足の裏へ', how: '股関節を曲げ、膝を伸ばし、足首を上げる。首や背中を丸めると、背骨の中から神経が引かれて張りを感じやすくなる',
+    arms: { hipFlex: -3.5, hipRot: byHF([[0, 0.5], [90, 0.8]]), knee: 2.5, ankle: -2.5, lumbar: -1.0, thoracic: -0.6, neck: -0.6, lumbarSide: 0.5 } },
+  { id: 'femoral', g: 'nerve', kind: 'nerve', name: '大腿神経', where: '腰の骨の間から、股関節の前を通って太ももの前へ', how: '股関節を伸ばす（膝を曲げると少し増える）。首や背中を丸めても張る',
+    arms: { hipFlex: 2.5, knee: -0.4, lumbar: -0.8, thoracic: -0.5, neck: -0.5, lumbarSide: 0.8 } },
+  { id: 'median', g: 'nerve', kind: 'nerve', name: '正中神経', where: '首の骨の間から、脇の下・肘の前・手首の中央を通って、親指〜薬指へ', how: '腕を横に上げ、肘を伸ばし、手首を反らす',
+    arms: { shElev: byPL([[0, -1.0], [90, -1.5], [135, -1.8], [180, -1.0]]), shRot: -0.5, elbow: 2.0, forearm: -0.5, wrist: -2.0, neckSide: 0.5 }, arm: true },
+  { id: 'ulnar', g: 'nerve', kind: 'nerve', name: '尺骨神経', where: '首の骨の間から、肘の内側の後ろを通って、小指側へ', how: '腕を横に上げ、肘を深く曲げ、手首を反らす',
+    arms: { shElev: byPL([[0, -1.0], [90, -1.5], [180, -1.0]]), shRot: -0.5, elbow: -2.0, forearm: 0.5, wrist: -1.5, neckSide: 0.5 }, arm: true },
+  // 靱帯・関節包
+  { id: 'ilioF', g: 'lig', kind: 'lig', name: '腸骨大腿靱帯', where: '骨盤の前から太ももの骨の前へ（股関節の前）', how: '股関節を伸ばし、外へひねる。曲げると緩む', arms: { hipFlex: 2.0, hipRot: -1.0 } },
+  { id: 'puboF', g: 'lig', kind: 'lig', name: '恥骨大腿靱帯', where: '恥骨から太ももの骨の前の下へ（股関節の前下）', how: '股関節を開き・伸ばし・外へひねる。曲げると緩む', arms: { hipFlex: 1.0, hipAbd: -2.0, hipRot: -0.8 } },
+  { id: 'ischioF', g: 'lig', kind: 'lig', name: '坐骨大腿靱帯', where: '坐骨から太ももの骨の後ろへ（股関節の後ろ）', how: '股関節を内へひねる（開くと増える）。深く曲げると下の線維も張る', arms: { hipRot: 1.5, hipAbd: -0.5, hipFlex: [[0, 0], [90, -0.5], [130, -0.5]] } },
+  { id: 'anklePost', g: 'lig', kind: 'lig', name: '足首の後ろの関節包', where: '足首の関節の後ろ', how: '足首を上げる', arms: { ankle: -1.0 } },
+  { id: 'shAnt', g: 'lig', kind: 'lig', name: '肩の前と下の関節包', where: '肩の関節の前と下', how: '腕を横に上げて外へひねる', arms: { shRot: -1.5, shElev: byPL([[0, 0], [90, -1.0], [135, -1.2], [180, -1.0]]) }, arm: true },
+  { id: 'shPost', g: 'lig', kind: 'lig', name: '肩の後ろの関節包', where: '肩の関節の後ろ', how: '腕を内へひねり、体の前で横切らせる', arms: { shRot: 1.2, shElev: byPL([[-60, -1.2], [0, -0.3], [90, 0], [180, 0]]) }, arm: true },
+  { id: 'spinePost', g: 'lig', kind: 'lig', name: '背骨の後ろの靱帯', where: '背骨の後ろ側', how: '背中を丸める', arms: { lumbar: -1.5, thoracic: -1.0 }, mid: true },
+];
+const BM_BY_ID = new Map(BM_T.map((t) => [t.id, t]));
+// 標準の可動域の限界（各組織の 100% をここで決める）。文献の正常値の近似
+const BM_NORM = [
+  ['仰向けの脚上げ 80°', { R: { hipFlex: 80 } }],
+  ['股関節の伸展 17°', { R: { hipFlex: -17 } }],
+  ['トーマス（太もも 水平より 10° 下・膝 90°）', { R: { hipFlex: -17, knee: 90 } }],
+  ['うつ伏せで膝曲げ 135°', { R: { knee: 135 } }],
+  ['正座（膝 150°）', { R: { hipFlex: 60, knee: 150, ankle: -45 } }],
+  ['膝を胸へ（股関節 125°）', { R: { hipFlex: 125, knee: 130 } }],
+  ['股関節の外転 45°', { R: { hipAbd: 45 } }], ['股関節の内転 25°', { R: { hipAbd: -25 } }],
+  ['仰向けで内ひねり 30°', { R: { hipRot: -30 } }], ['仰向けで外ひねり 39°', { R: { hipRot: 39 } }],
+  ['座って内ひねり 35°', { R: { hipFlex: 90, knee: 90, hipRot: -35 } }], ['座って外ひねり 45°', { R: { hipFlex: 90, knee: 90, hipRot: 45 } }],
+  ['膝を反対の肩へ', { R: { hipFlex: 100, knee: 100, hipAbd: -20 } }],
+  ['あぐらで膝を開く（股関節 90°・開き 50°）', { R: { hipFlex: 90, knee: 90, hipAbd: 50, hipRot: 30 } }],
+  ['膝・壁 10 cm（足首 44°）', { R: { knee: 40, ankle: 44 } }], ['膝を伸ばして足首 20°', { R: { knee: 0, ankle: 20 } }],
+  ['足首を伸ばす 50°', { R: { ankle: -50 } }],
+  ['背中を丸める', { t: { lumbar: 50, thoracic: 30 } }], ['背中を反る', { t: { lumbar: -25, thoracic: -20 } }], ['体を横へ倒す 30°', { t: { lumbarSide: -30 } }],
+  ['腕を頭上へ 170°', { R: { shElev: 170, shPlane: 20, shRot: 20 } }],
+  ['腕を上げて肘を曲げる', { R: { shElev: 165, shPlane: 20, elbow: 140 } }],
+  ['腕を横に上げて外ひねり 90°', { R: { shElev: 90, shPlane: 90, shRot: 90 } }],
+  ['腕を横から真上へ（外ひねり 60°）', { R: { shElev: 170, shPlane: 90, shRot: 60 } }],
+  ['腕を横から後ろへ開く', { R: { shElev: 90, shPlane: 125, shRot: 45 } }],
+  ['腕を後ろへ 55°', { R: { shElev: 55, shPlane: 180, elbow: 0, forearm: -80 } }],
+  ['腕を体の前へ横切らせる', { R: { shElev: 90, shPlane: -40 } }], ['腕を横に上げて内ひねり 70°', { R: { shElev: 90, shPlane: 90, shRot: -70 } }],
+  // 神経がふつうに耐えられる限界の目安（神経の検査の終わりの位置）
+  ['座って背中を丸め、膝を伸ばす（スランプ）', { t: { lumbar: 40, thoracic: 30, neck: 40 }, R: { hipFlex: 75, knee: 30, ankle: 10 } }],
+  ['横向きで股関節を伸ばし、膝を曲げる', { t: { lumbar: 30, neck: 40 }, R: { hipFlex: -15, knee: 110 } }],
+  ['腕を横へ上げ、肘を伸ばし、手首を反らす', { t: { neckSide: -20 }, R: { shElev: 100, shPlane: 100, shRot: 80, elbow: 20, forearm: 80, wrist: 60 } }],
+  ['腕を横へ上げ、肘を曲げ、手首を反らす', { t: { neckSide: -20 }, R: { shElev: 95, shPlane: 95, shRot: 60, elbow: 130, forearm: -60, wrist: 60 } }],
+];
+const BM_REF = Object.fromEntries(BM_T.map((t) => {
+  let best = 0, at = '';
+  for (const [name, p] of BM_NORM) { const v = bmDL(t, p, 'R'); if (v > best) { best = v; at = name; } }
+  return [t.id, { cm: best, at }];
+}));
+// 骨や体の厚みで止まるところ。v が 1 以上で「当たる」。flags は本人のテスト（詰まりがある）
+function bmBones(q, flag = {}) {
+  const out = [];
+  const hf = q.hipFlex || 0, ha = q.hipAbd || 0, hr = q.hipRot || 0;
+  if (hf > 100) out.push({ id: 'hipAnt', name: '股関節の前の当たり（骨・関節唇）', v: (hf - 105) / 25 + Math.max(0, -hr) / 40 + Math.max(0, -ha) / 40 + (flag.hipAnt ? 0.4 : 0) });
+  if (ha > 50) out.push({ id: 'hipLat', name: '股関節の上外側の当たり（骨盤と太ももの骨）', v: (ha - 50) / 20 - Math.max(0, hf - 30) / 60 - Math.max(0, hr) / 60 });
+  if ((q.ankle || 0) > 30) out.push({ id: 'ankleAnt', name: '足首の前の詰まり', v: ((q.ankle || 0) - (flag.ankleAnt ?? 45)) / 5 + 1 });
+  if (hf > 120) out.push({ id: 'hipSoft', name: 'お腹と太ももが当たる', v: (hf - 130) / 10 + 1 });
+  if ((q.knee || 0) > 140) out.push({ id: 'kneeSoft', name: 'ふくらはぎと太ももが当たる', v: ((q.knee || 0) - 150) / 5 + 1 });
+  if ((q.lumbar || 0) < -20) out.push({ id: 'lumbarExt', name: '腰の骨の後ろ（椎間関節）が詰まる', v: -(q.lumbar || 0) / 30 });
+  if ((q.thoracic || 0) < -20) out.push({ id: 'thoracicExt', name: '胸の背骨の後ろが詰まる', v: -(q.thoracic || 0) / 30 });
+  return out;
+}
+// 種目。pose は右（伸ばす側）を R とした形、depth は「深くする」ときに動く関節の範囲（0→1）
+// vars は形の違い（見比べ）。fault: true は「よくある間違い」。change は形を変え、depth は深くする動きそのものを置き換える
+// kind：static（保つ）・dynamic（動かす）・pnf（縮めてから伸ばす）・strength（伸びた位置の筋力）・nerve（神経を滑らせる）・goal（目標の姿勢。モデルで見るだけ）
+const PH = 'https://theprehabguys.com/vimeo-video/';
+const FLEX_MOVES = {
+  slr_strap: { name: '仰向けで脚上げ', kind: 'static', sides: true, sec: 60, aim: ['ham'],
+    pose: { R: { knee: 0, ankle: -10 } }, depth: { R: { hipFlex: [20, 130] } },
+    steps: ['仰向けに寝て、右足の土踏まずにタオル（ベルト）をかける。左脚は床に伸ばす', '左の太ももの裏を床に軽く押しつける（骨盤が後ろへ倒れないように）', '右膝を伸ばしたまま、タオルを引いて脚を上げ、もも裏が張ったところで止める', '頭と肩は床に置いたまま、足首の力は抜く'],
+    key: '左脚は床に。右膝は伸ばす。頭は床、足首の力は抜く',
+    feel: '右のもも裏（坐骨から膝の裏まで）。膝の裏やふくらはぎがピリピリするのは神経なので、少し下ろす',
+    why: 'もも裏の 3 つの筋は股関節と膝をまたぐので、股関節を曲げて膝を伸ばすと最も伸びる。仰向けなら骨盤が床で支えられ、腰が丸まって角度をごまかすことがない。頭を床に置き、足首の力を抜くのは、坐骨神経の通り道を長くしないため',
+    vars: [
+      { id: 'toes', label: 'つま先を手前に引く', change: { R: { ankle: 15 } }, say: '足首を上げても、もも裏の長さは変わらない。張りが強くなるなら神経が関わっている' },
+      { id: 'head', label: '頭を起こす', change: { t: { neck: 40 } }, say: '首を曲げると、背骨の中から神経が引かれる。もも裏の長さは変わらない' },
+      { id: 'in', label: '脚を少し内側へ', change: { R: { hipAbd: -10, hipRot: -15 } }, say: '外側のもも裏（大腿二頭筋）と神経が張りやすくなる' },
+      { id: 'out', label: '脚を少し外へ', change: { R: { hipAbd: 15, hipRot: 15 } }, say: '内側のもも裏と内ももが伸びる' },
+    ] },
+  half_split: { name: 'ハーフスプリット', kind: 'static', sides: true, sec: 60, aim: ['ham'],
+    pose: { R: { knee: 0, ankle: -10 }, L: { hipFlex: 0, knee: 90, ankle: -40 } }, depth: { R: { hipFlex: [30, 130] } },
+    steps: ['左膝を床について（膝の下にタオル）、右脚を前に伸ばす。右のかかとを床につけ、つま先の力は抜く', 'お尻を左膝の真上へ引く', '手を床かブロックについて、背すじを伸ばしたまま、おへそを右膝に近づけるように骨盤から前へ倒す', 'もも裏が張ったところで止める。背中が丸まり始めたら、そこが限界'],
+    key: 'おへそを膝へ。背中は丸めない。つま先は力を抜く',
+    feel: '右のもも裏。腰の後ろが張るなら背中が丸まっている',
+    why: '前へ倒すときに動くのは股関節（骨盤）でなければ、もも裏は伸びない。背中を丸めると手は遠くへ届くが、股関節の角度は増えず、代わりに背骨と神経が引かれる',
+    vars: [
+      { id: 'round', fault: true, label: '背中を丸めて前へ', depth: { R: { hipFlex: [30, 75] }, t: { lumbar: [0, 50], thoracic: [0, 20] } }, say: '骨盤が倒れず、背中が丸まる。もも裏が伸び切る前に、神経（座って背中を丸めたときと同じ）と腰が先に張る' },
+      { id: 'toes', label: 'つま先を手前に引く', change: { R: { ankle: 10 } }, say: '神経の通り道が長くなる' },
+    ], src: [{ title: 'Half Kneeling Hamstring Stretch（The Prehab Guys）', url: PH + 'half-kneeling-hamstring-stretch/' }] },
+  kneel_hip: { name: '膝立ちで股関節の前', kind: 'static', sides: true, sec: 60, aim: ['iliop'],
+    pose: { R: { knee: 90, ankle: -40 }, L: { hipFlex: 90, knee: 90 } }, depth: { R: { hipFlex: [10, -45] } },
+    steps: ['右膝を床について（膝の下にタオル）、左足を前に出す。左膝は 90°', '両手を腰骨に当てる。お尻を軽く締め、骨盤を後ろへ傾けて腰を平らにする', 'その骨盤のまま、体を少しだけ前へ移す。右の脚の付け根の前が張ったら止める', 'もっと伸ばすなら、右腕を上げて体を左へ少し倒す'],
+    key: 'お尻を締めて骨盤を後ろへ。腰は反らさない。少しだけ前へ',
+    feel: '右の脚の付け根の前（ベルトのライン）。腰が張るなら反っている',
+    why: '腸腰筋は股関節の前を通るので、股関節を伸ばすと伸びる。ただし股関節が伸びる範囲は 17° ほどと小さく、腰を反ると「伸ばした分」が腰に逃げる。お尻を締めて骨盤を後ろへ傾けるのは、腰の代わりに股関節を伸ばすため',
+    vars: [
+      { id: 'arch', fault: true, label: '腰を反って前へ出る', depth: { R: { hipFlex: [10, -5] }, t: { lumbar: [0, -35] } }, say: '前へ出た分は腰が反るだけで、股関節はほとんど伸びない。腰の骨の後ろが先に詰まる' },
+      { id: 'reach', label: '右腕を上げて左へ倒す', change: { t: { lumbarSide: -15 }, R: { shElev: 170, shPlane: 30 } }, say: '大腰筋は腰の骨から来るので、体を反対へ倒すと少し長くなる' },
+      { id: 'rf', label: '後ろの足首を持って膝を曲げる', change: { R: { knee: 130 } }, say: '大腿直筋は膝の前も通るので、膝を曲げると先にこちらが張る（カウチストレッチと同じ）' },
+    ], src: [{ title: 'Half Kneeling Hip Flexor Stretch（The Prehab Guys）', url: PH + 'half-kneeling-hip-flexor-stretch-2-2/' }] },
+  lunge_hip: { name: '立って股関節の前（後ろ膝を伸ばす）', kind: 'static', sides: true, sec: 60, aim: ['iliop'],
+    pose: { R: { knee: 10, ankle: 0 }, L: { hipFlex: 70, knee: 70, ankle: 25 } }, depth: { R: { hipFlex: [10, -45] } },
+    steps: ['右脚を後ろへ大きく引いて、前後に足を開く。後ろのかかとは浮かせ、後ろ膝はほぼ伸ばしておく', '両手を腰骨に当てる。お尻を締め、骨盤を後ろへ傾けて腰を平らにする', 'その骨盤のまま、前の膝を曲げて体を少しだけ沈める。右の脚の付け根の前が張ったら止める'],
+    key: 'お尻を締めて骨盤を後ろへ。後ろ膝は伸ばしたまま。腰は反らさない',
+    feel: '右の脚の付け根の前（ベルトのライン）',
+    why: '後ろの膝を伸ばしておくと、膝をまたぐ大腿直筋が緩み、股関節だけをまたぐ腸腰筋が先に伸びる。大腿直筋が硬い人は、膝立ちのストレッチではもも前ばかり張って、腸腰筋まで届かない',
+    vars: [{ id: 'arch', fault: true, label: '腰を反って沈む', depth: { R: { hipFlex: [10, -5] }, t: { lumbar: [0, -35] } }, say: '沈んだ分は腰が反るだけで、股関節はほとんど伸びない' }] },
+  couch: { name: 'カウチストレッチ', kind: 'static', sides: true, sec: 60, aim: ['rf'],
+    pose: { R: { knee: 130, ankle: -45 }, L: { hipFlex: 90, knee: 90 } }, depth: { R: { hipFlex: [40, -30] } },
+    steps: ['ソファや壁の前で、右膝を床について、右のすねを後ろの座面（壁）に沿わせて立てる。膝の下にクッション', '左足を前に出して、片膝立ちになる', 'お尻を締めて骨盤を後ろへ傾けたまま、上体をゆっくり起こす。もも前が張ったら止める'],
+    key: 'お尻を締める。上体を起こす。腰は反らさない',
+    feel: '右のもも前（膝の上から脚の付け根まで）',
+    why: '大腿直筋は股関節の前と膝の前をまたぐので、股関節を伸ばして膝を曲げると最も伸びる。上体を起こすほど股関節が伸びる。腰を反ると骨盤が前へ倒れ、股関節は伸びない',
+    vars: [{ id: 'arch', fault: true, label: '腰を反って起こす', depth: { R: { hipFlex: [40, 15] }, t: { lumbar: [0, -35] } }, say: '起きた分は腰が反るだけ。腰が先に詰まる' }] },
+  pancake: { name: '開脚前屈', kind: 'static', sec: 60, aim: ['grac', 'amag', 'ham'],
+    pose: { both: { hipAbd: 40, hipRot: 15, knee: 0, ankle: -10 } }, depth: { both: { hipFlex: [40, 130] } },
+    steps: ['床に座り、痛くない幅まで脚を左右に開く。膝のお皿とつま先は天井へ', '坐骨の上に座って骨盤を立てる。骨盤が後ろへ倒れるときは、お尻の下にたたんだタオルを敷く', '手を前へ歩かせ、背すじを伸ばしたまま、おへそを床へ近づけるように骨盤から前へ倒す', '内ももやもも裏が張ったところで止める'],
+    key: '膝のお皿は天井。骨盤から前へ。背中は丸めない',
+    feel: '内もも・もも裏の内側',
+    why: '脚を開いた位置で股関節を曲げると、開く筋（内転筋）のうち股関節を伸ばす働きもある筋（大内転筋の後部・もも裏の内側）と、膝もまたぐ薄筋が伸びる。体を起こした開脚とは伸びる筋が違う',
+    vars: [
+      { id: 'round', fault: true, label: '背中を丸めて前へ', depth: { both: { hipFlex: [40, 75] }, t: { lumbar: [0, 50], thoracic: [0, 20] } }, say: '股関節が曲がらず、内ももは伸び切らない。背中と神経が先に張る' },
+      { id: 'bent', label: '膝を少し曲げる', change: { both: { knee: 20 } }, say: '膝をまたぐ薄筋ともも裏が緩み、膝をまたがない大内転筋が主に伸びる' },
+      { id: 'wide', label: 'もっと広く開く', change: { both: { hipAbd: 55 } }, say: '薄筋と、股関節の前の靱帯が先に張る' },
+    ], src: [{ title: 'Seated Straddle Stretch（ACE）', url: 'https://www.acefitness.org/resources/everyone/exercise-library/210/seated-straddle-stretch/' }] },
+  frog: { name: 'フロッグ', kind: 'static', sec: 60, aim: ['amag', 'add'],
+    pose: { both: { hipFlex: 90, hipRot: 0, knee: 90, ankle: 0 } }, depth: { both: { hipAbd: [20, 90] } },
+    steps: ['四つ這いになり、膝の下にクッションを置く', '膝を左右へ少しずつ開き、すねを平行に、足首を膝の真後ろに置く（足の内側を床に）', '前腕を床につき、お尻をゆっくり後ろへ引く。内ももの奥が張ったら止める', '腰は反らさず、背中は平らに'],
+    key: 'すねは平行。少しずつ開く。脚の付け根の前が詰まったら浅く',
+    feel: '内ももの奥（脚の付け根から膝の上の内側まで）',
+    why: '膝を曲げているので、膝をまたぐ薄筋ともも裏は緩む。股関節を曲げて開くので、大内転筋（股関節を伸ばす働きもある）が主に伸びる。お尻を後ろへ引くほど股関節が曲がり、大内転筋の後部が伸びる',
+    vars: [
+      { id: 'back', label: 'お尻を後ろへ引く', change: { both: { hipFlex: 110 } }, key: 'すねは平行。お尻を後ろへ引いて深く曲げる', say: '股関節が深く曲がり、大内転筋の後部が先に張る' },
+      { id: 'fwd', label: 'お尻を前へ出す', change: { both: { hipFlex: 60 } }, key: 'すねは平行。お尻を前へ出し、股関節は浅く曲げる', say: '股関節が浅く曲がるので、大内転筋が緩み、長内転筋・短内転筋の割合が増える' },
+    ], src: [{ title: 'Frog Stretch（The Prehab Guys）', url: PH + 'frog-stretch-2/' }] },
+  fig4: { name: '仰向けで 4 の字', kind: 'static', sides: true, sec: 60, aim: ['rot'],
+    pose: { R: { hipRot: 45, hipAbd: 10, knee: 90 }, L: { hipFlex: 60, knee: 90 } }, depth: { R: { hipFlex: [50, 135] } },
+    steps: ['仰向けで両膝を立て、右の足首を左膝の上にのせる（右膝は外へ）', '左のもも裏を両手で持ち、左膝を胸へ引き寄せる', '右のお尻の奥が張ったら止める。右膝を軽く外へ押すと強くなる'],
+    key: '右の足首を左膝に。左のもも裏を引く。腰は床に',
+    feel: '右のお尻の奥（骨盤の後ろから太ももの外側の出っ張りまで）',
+    why: '梨状筋は、股関節を 60° より深く曲げると、外へひねる筋から内へひねる筋に変わる。だから深く曲げて外へひねる 4 の字で伸びる。曲げが浅いと、外へひねっても伸びない',
+    vars: [{ id: 'push', label: '右膝を外へ押す', change: { R: { hipRot: 60 } }, say: '外ひねりが増え、梨状筋と中殿筋が強く伸びる' }] },
+  knee_cross: { name: '膝を反対の肩へ', kind: 'static', sides: true, sec: 60, aim: ['gmax'],
+    pose: { R: { hipAbd: -20, hipRot: -10, knee: 100 } }, depth: { R: { hipFlex: [50, 130] } },
+    steps: ['仰向けで、右膝を両手で抱える', '右膝を左の肩の方向へ引き寄せる', '右のお尻が張ったら止める。脚の付け根の前が詰まる感じがしたら、引く方向を少し外へずらす'],
+    key: '右膝を左の肩へ。付け根の前が詰まったら外へずらす',
+    feel: '右のお尻（大殿筋）',
+    why: '大殿筋は股関節を伸ばし外へひねる筋なので、深く曲げて内へ寄せると伸びる。ただし曲げ＋内へ寄せる形は、股関節の前で骨が当たりやすい（当たる角度は骨の形で人によって違う）',
+    vars: [{ id: 'out', label: '少し外へずらす', change: { R: { hipAbd: 0, hipRot: 0 } }, say: '骨が当たりにくくなり、深く曲げられる' }] },
+  ninety: { name: '90/90', kind: 'static', sides: true, sec: 60, aim: ['rot'],
+    pose: { R: { hipAbd: 35, hipRot: 50, knee: 90 }, L: { hipFlex: 10, hipAbd: 40, hipRot: -35, knee: 90 } }, depth: { R: { hipFlex: [50, 120] } },
+    steps: ['床に座り、右脚を前に、左脚を横に置く。どちらの膝も 90°（右のすねは体の前を横に、左のすねは後ろへ）', '背すじを伸ばし、右のすねの上へ、胸を骨盤から近づける', '右のお尻と、左の脚の付け根が張ったら止める'],
+    key: '両膝 90°。背すじを伸ばしたまま前へ',
+    feel: '前の脚のお尻、後ろの脚の付け根の外側',
+    why: '前の脚は「曲げて外へひねる」、後ろの脚は「内へひねる」形になり、股関節の回旋の両方向が一度に伸びる',
+    vars: [], src: [{ title: '90/90 Hip Stretch（The Prehab Guys）', url: PH + '90-90-hip-stretch/' }] },
+  calf_straight: { name: '壁押しふくらはぎ（膝を伸ばす）', kind: 'static', sides: true, sec: 45, aim: ['gastroc'],
+    pose: { R: { knee: 0 }, L: { hipFlex: 30, knee: 40 } }, depth: { R: { ankle: [0, 45] } },
+    steps: ['壁に両手をつき、右脚を後ろへ大きく引く。つま先はまっすぐ前へ', '右膝を伸ばし、右のかかとを床につけたまま、左膝を曲げて体を壁へ近づける', '右のふくらはぎ（膝の裏寄り）が張ったら止める'],
+    key: '後ろの膝は伸ばす。かかとは床。つま先は前',
+    feel: '右のふくらはぎの上の方',
+    why: '腓腹筋は膝と足首をまたぐので、膝を伸ばしたまま足首を上げると伸びる',
+    vars: [{ id: 'bend', label: '後ろの膝を曲げる', change: { R: { knee: 45 } }, say: '腓腹筋が緩み、ヒラメ筋に移る' }] },
+  calf_bent: { name: '膝・壁で止める', kind: 'static', sides: true, sec: 45, aim: ['soleus'],
+    pose: { R: { knee: 45 } }, depth: { R: { ankle: [10, 50] } },
+    steps: ['壁に向かって立ち、右足を壁から 10 cm ほど離して置く。左足は後ろ', '右のかかとを床につけたまま、右膝を壁の方へ曲げていく（膝はつま先の方向へまっすぐ）', 'ふくらはぎの下の方（アキレス腱の上）が張ったら止める。足首の前が詰まるなら、そこが関節の限界なので押し込まない'],
+    key: 'かかとは床。膝はつま先の方向へ。前が詰まったら止める',
+    feel: '右のふくらはぎの下の方',
+    why: '膝を曲げると腓腹筋が緩み、足首だけをまたぐヒラメ筋が残る。しゃがむときの足首の深さは、主にここで決まる',
+    vars: [], src: [{ title: 'Knee To Wall Ankle Dorsiflexion（The Prehab Guys）', url: PH + 'knee-to-wall-ankle-dorsiflexion-assessment/' }] },
+  child_reach: { name: '正座から腕を前へ', kind: 'static', sec: 60, aim: ['lat', 'back'],
+    pose: { t: { lumbar: 40, thoracic: 25, neck: 20 }, both: { hipFlex: 115, knee: 140, ankle: -45, shPlane: 10, shRot: 0, elbow: 0 } }, depth: { both: { shElev: [120, 180] } },
+    steps: ['正座から、両手を前の床へ伸ばし、お尻をかかとの方へ下ろす（ふくらはぎと太ももの間にクッションを挟んでもよい）', '手のひらを床につけたまま、胸を床へ近づける', '片手ずつ左へ歩かせると、右の脇の下から腰の横が伸びる'],
+    key: '手は遠くへ。お尻はかかとへ。胸を床へ',
+    feel: '脇の下から背中の横、腰',
+    why: '広背筋は腕から背中・腰・骨盤まで続くので、腕を上げたまま背中を丸めると全体が伸びる。手を横へ歩かせると、反対側へ倒す形が加わる',
+    vars: [{ id: 'side', label: '手を左へ歩かせる', change: { t: { lumbarSide: -25 } }, say: '右の広背筋と腰方形筋が強く伸びる' }],
+    src: [{ title: 'Child’s Pose – Sideways Reach（The Prehab Guys）', url: PH + 'childs-pose-sideways-reach/' }] },
+  bench_lat: { name: 'ベンチで背中の横', kind: 'static', sec: 60, aim: ['lat', 'tri'],
+    pose: { t: { thoracic: -10 }, both: { hipFlex: 90, knee: 90, shPlane: 10, shRot: 30, elbow: 130 } }, depth: { both: { shElev: [120, 180] } },
+    steps: ['ベンチ（椅子）の前に膝をつき、両肘をベンチにのせる。手のひらを合わせ、手を頭の後ろへ', 'お尻を後ろへ引きながら、胸を床の方へ沈める', '脇の下から背中の横、二の腕の裏が張ったら止める。腰は反らせすぎない（おなかを軽く締める）'],
+    key: '肘はベンチ。手は頭の後ろ。胸を沈める。腰は反らさない',
+    feel: '脇の下・背中の横・二の腕の裏',
+    why: '腕を上げて外へひねると、広背筋と大円筋が伸びる。肘を曲げると、肩と肘をまたぐ上腕三頭筋の長頭も伸びる。頭上へ押す・懸垂の動きやすさに効く',
+    vars: [
+      { id: 'straight', label: '肘を伸ばして手をベンチへ', change: { both: { elbow: 0 } }, say: '上腕三頭筋が緩み、広背筋・大円筋が主に伸びる' },
+      { id: 'arch', fault: true, label: '腰を反って沈む', depth: { both: { shElev: [120, 160] }, t: { lumbar: [0, -30] } }, say: '沈んだ分は腰が反るだけ。肩はあまり上がらない' },
+    ] },
+  doorway: { name: '壁で胸', kind: 'static', sides: true, sec: 45, aim: ['pec', 'pmin'],
+    pose: { R: { shElev: 90, shRot: 70, elbow: 90 } }, depth: { R: { shPlane: [90, 170] } },
+    steps: ['壁（ドア枠）の横に立ち、右腕を肩の高さで横に上げ、肘を 90° に曲げて前腕を壁につける', '右足を一歩前に出し、胸を前へ出しながら、体を左へゆっくり回す', '右の胸の前が張ったら止める。肩の前が痛い・手がしびれるときは、肘を下げるか浅くする'],
+    key: '肘は肩の高さ。体を反対へ回す。肩はすくめない',
+    feel: '右の胸の前（脇の前のふくらみ）',
+    why: '大胸筋は腕を体の前へ寄せる筋なので、腕を後ろへ開くと伸びる。肘を高くするほど下の方の線維と小胸筋が伸び、低くすると鎖骨の方が伸びる。肘を曲げておくと、腕の神経は張りにくい',
+    vars: [
+      { id: 'high', label: '肘を頭より上へ', change: { R: { shElev: 130 } }, say: '大胸筋の下の方と小胸筋が伸びる' },
+      { id: 'low', label: '腕を伸ばして低めに', change: { R: { shElev: 60, elbow: 0, shRot: 50 } }, say: '大胸筋の鎖骨部と肩の前（三角筋の前部・上腕二頭筋）が伸びる' },
+      { id: 'nerve', label: '肘を伸ばして手首を反らす', change: { R: { elbow: 0, wrist: 40 } }, say: '正中神経の通り道が長くなる。手がしびれるのはこのため' },
+    ], src: [{ title: 'Pec Major Stretch（The Prehab Guys）', url: PH + 'pec-major-stretch/' }] },
+  cross_body: { name: '腕を胸の前で引き寄せる', kind: 'static', sides: true, sec: 45, aim: ['psh'],
+    pose: { R: { shElev: 90, shRot: 0 } }, depth: { R: { shPlane: [0, -70] } },
+    steps: ['右腕を肩の高さで前へ伸ばす', '左手で右の肘の上を持ち、右腕を胸の前で左へ引き寄せる', '右の肩の後ろが張ったら止める。肩をすくめない'],
+    key: '肩の高さ。肘の上を持つ。肩はすくめない', feel: '右の肩の後ろ',
+    why: '肩の後ろの筋（棘下筋・小円筋・三角筋の後部）と関節包は、腕を体の前で横切らせると伸びる', vars: [] },
+  biceps_back: { name: '腕を後ろへ（肩の前）', kind: 'static', sides: true, sec: 45, aim: ['ash'],
+    pose: { R: { shPlane: 175, elbow: 0, forearm: -80 } }, depth: { R: { shElev: [10, 80] } },
+    steps: ['机やいすの背に背中を向けて立ち、右手を後ろへ伸ばして、手のひらを下にして台に置く', '肘を伸ばしたまま、ゆっくり膝を曲げて体を下げる', '右の肩の前から二の腕の前が張ったら止める'],
+    key: '肘は伸ばす。手のひらは下。ゆっくり下げる', feel: '右の肩の前・二の腕の前',
+    why: '上腕二頭筋の長頭は肩と肘の前をまたぐので、腕を後ろへ引き、肘を伸ばし、手のひらを下へ向けると伸びる。ベンチプレスやディップスの下の位置で張る筋', vars: [] },
+  side_bend: { name: '立って横へ倒す', kind: 'static', sides: true, sec: 45, aim: ['lat', 'ql'],
+    pose: { R: { shElev: 170, shPlane: 60 } }, depth: { t: { lumbarSide: [0, -40] } },
+    steps: ['足を腰幅に開いて立ち、右腕を頭の上へ伸ばす', '右手を斜め上へ遠くへ伸ばしながら、体を左へ倒す', '右の脇の下から腰の横が張ったら止める。体が前に倒れないように'],
+    key: '手は遠くへ。真横に倒す', feel: '右の脇の下から腰の横',
+    why: '広背筋は腕から骨盤まで、腰方形筋は骨盤から肋骨までつながるので、腕を上げて反対へ倒すと伸びる', vars: [] },
+  thoracic_ext: { name: '胸を反らす', kind: 'static', sec: 60, aim: ['abs'],
+    pose: { both: { shElev: 160, shPlane: 30, elbow: 120, hipFlex: 45, knee: 90 } }, depth: { t: { thoracic: [0, -35] } },
+    steps: ['仰向けで膝を立て、肩甲骨の下にたたんだバスタオル（フォームローラー）を横向きに置く', '両手を頭の後ろで組み、肘を開く', 'お尻は床につけたまま、息を吐きながら胸を反らせて保つ。腰は反らさない'],
+    key: 'お尻は床。胸だけを反らす', feel: '背中の上（肩甲骨の間）・胸の前',
+    why: '頭上へ押す・ベンチで胸を張る動きは、肩だけでなく胸の背骨（胸椎）が反ることで楽になる。腰を反って代わりにしないよう、お尻を床につけたまま行う', vars: [] },
+  // ---- 神経を滑らせる ----
+  sciatic_slider: { name: '坐骨神経を滑らせる', kind: 'nerve', sides: true, sec: 45, reps: 'ゆっくり 10 回', aim: ['nerve'],
+    pose: { t: { lumbar: 25, thoracic: 20, neck: -30 }, R: { hipFlex: 85, ankle: 0 }, L: { hipFlex: 85, knee: 90 } }, depth: { R: { knee: [90, 20] } },
+    ends: [{ label: '膝を伸ばし、顔を上げる', change: { t: { neck: -30 }, R: { knee: 20 } } }, { label: '膝を曲げ、顔を下げる', change: { t: { neck: 40 }, R: { knee: 90 } } }],
+    steps: ['いすに座り、背中を軽く丸める', '右膝を伸ばしながら、顔を上げて天井を見る', '右膝を曲げながら、顔を下げる。これを 1 回として、ゆっくり繰り返す', 'しびれや張りが強くなる手前で動かす。痛みが出たら中止'],
+    key: '膝を伸ばすときは顔を上げる。曲げるときは顔を下げる',
+    feel: 'もも裏から膝の裏に、軽く動く感じ。強い張りやしびれは出さない',
+    why: '神経の両端を交互に長く・短くすると、神経はよく滑るが、引き伸ばされる量は増えにくい（スライダー）。神経が張りやすい人は、強く伸ばすより先にこれで動かす',
+    vars: [] },
+  // ---- 筋トレ前の準備（動的） ----
+  leg_swing_f: { name: 'レッグスイング（前後）', kind: 'dynamic', sides: true, sec: 30, reps: '10 回', aim: ['ham', 'iliop'],
+    pose: { R: { knee: 0, ankle: 0 } }, depth: { R: { hipFlex: [-20, 80] } },
+    steps: ['壁や柱に手をつき、左脚で立つ', '右脚を前後に振る。小さな振りから少しずつ大きく', '腰が丸まったり反ったりしない範囲で'],
+    key: '小さく始めて少しずつ大きく。腰は動かさない', feel: 'もも裏と脚の付け根の前',
+    why: '反動の小さい動的な動きは、筋トレの前に筋を温め、必要な範囲まで動かせるようにする。長い静的ストレッチのように力が落ちることはない', vars: [],
+    src: [{ title: 'Leg Swing – Sagittal（The Prehab Guys）', url: PH + 'leg-swing-sagittal/' }] },
+  leg_swing_s: { name: 'レッグスイング（左右）', kind: 'dynamic', sides: true, sec: 30, reps: '10 回', aim: ['add', 'grac'],
+    pose: { R: { knee: 0, ankle: 0 } }, depth: { R: { hipAbd: [-20, 50] } },
+    steps: ['壁に向かって両手をつき、左脚で立つ', '右脚を体の前で左右に振る。小さな振りから少しずつ大きく'],
+    key: '体はまっすぐ。脚だけを振る', feel: '内もも・お尻の横', why: '内ももと股関節の横を、反動の小さい動きで温める', vars: [],
+    src: [{ title: 'Leg Swing – Frontal（The Prehab Guys）', url: PH + 'leg-swing-frontal-2/' }] },
+  cossack_bw: { name: '自重コサック', kind: 'dynamic', sec: 60, reps: '左右に 5 回ずつ', aim: ['grac', 'amag'],
+    pose: { R: { hipFlex: 20, hipRot: 30, knee: 0, ankle: 15 }, L: { hipAbd: 25, hipRot: 20 } }, depth: { R: { hipAbd: [20, 70] }, L: { hipFlex: [60, 115], knee: [60, 135], ankle: [10, 35] } },
+    steps: ['足を大きく横に開いて立つ', '左膝を曲げてお尻を落とし、右脚は伸ばしてつま先を上へ', '届く深さで左右に移る'],
+    key: '曲げる膝はつま先の方向へ。かかとは床', feel: '伸ばした脚の内もも、曲げた脚のお尻と内もも',
+    why: '伸ばした脚は膝を伸ばしたまま開くので薄筋が、曲げた脚は深いしゃがみで大内転筋が伸びる。脚の日のスクワットに必要な範囲を通る', vars: [],
+    src: [{ title: 'Cossack Squat（The Prehab Guys）', url: PH + 'cossack-squat/' }] },
+  squat_pause: { name: 'しゃがんで止める', kind: 'dynamic', sec: 40, reps: '下で 3 秒止めて 5 回', aim: ['soleus', 'amag', 'gmax'],
+    pose: { t: { lumbar: 10 }, both: { hipAbd: 25, hipRot: 20 } }, depth: { both: { hipFlex: [40, 125], knee: [50, 150], ankle: [10, 45] } },
+    steps: ['足は肩幅、つま先は少し外', 'かかとをつけたまま深くしゃがむ', '下で 3 秒止めてから立つ'],
+    key: 'かかとは床。膝はつま先の方向へ', feel: 'ふくらはぎの下・お尻・内もも',
+    why: '深いしゃがみの深さは、主に足首（ヒラメ筋と足首の関節）、大内転筋、お尻で決まる', vars: [],
+    src: [{ title: 'Deep Squat Isometric Hold（The Prehab Guys）', url: PH + 'deep-squat-isometric-hold/' }] },
+  ankle_rock: { name: '足首の前後', kind: 'dynamic', sides: true, sec: 30, reps: '10 回', aim: ['soleus'],
+    pose: { R: { knee: 60 } }, depth: { R: { ankle: [0, 50] } },
+    steps: ['片膝立ちになり、前の右足のかかとを床につける', '膝をつま先の方向へゆっくり前に出し、戻す'],
+    key: 'かかとは床。膝はまっすぐ前へ', feel: '右の足首とふくらはぎの下', why: 'しゃがむ動きに必要な足首の範囲を、温めながら通る', vars: [],
+    src: [{ title: 'Ankle Dorsiflexion Mobilization（The Prehab Guys）', url: PH + 'ankle-dorsiflexion-mobilization-dynamic-box/' }] },
+  cat_cow: { name: 'キャット＆カウ', kind: 'dynamic', sec: 40, reps: 'ゆっくり 8 回', aim: ['back'],
+    pose: { both: { hipFlex: 90, knee: 90, shElev: 90, shPlane: 0 } }, depth: { t: { lumbar: [-20, 45], thoracic: [-15, 35] } },
+    steps: ['四つ這いで、手は肩の下、膝は股関節の下', '息を吐いて背中を丸め、吸って胸を前へ出す'], key: '背骨を一つずつ動かす', feel: '背中全体',
+    why: '背骨の曲げ伸ばしを全体で通し、背中の筋と関節を温める', vars: [], src: [{ title: 'Cat-Cow（ACE）', url: 'https://www.acefitness.org/resources/everyone/exercise-library/15/cat-cow/' }] },
+  open_book: { name: '胸の回旋（オープンブック）', kind: 'dynamic', sides: true, sec: 30, reps: '5 回', aim: ['pec'],
+    pose: { both: { hipFlex: 90, knee: 90 }, R: { shElev: 90, shRot: 20 } }, depth: { R: { shPlane: [60, 170] }, t: { thoracicRot: [0, -60] } },
+    steps: ['左を下に横向きに寝て、膝を 90° に曲げる', '両腕を前でそろえ、右腕を天井から反対側の床へ開く', '目で手を追い、息を吐いてから戻す'],
+    key: '膝は床から離さない。胸から開く', feel: '胸の前・背中の上',
+    why: '胸の背骨（胸椎）のひねりと、胸の前を一緒に動かす', vars: [], src: [{ title: 'Open Book（The Prehab Guys）', url: PH + 'open-book/' }] },
+  wall_slide: { name: '壁スライド', kind: 'dynamic', sec: 40, reps: 'ゆっくり 10 回', aim: ['lat', 'pec'],
+    pose: { both: { shPlane: 80, shRot: 60, elbow: 90 } }, depth: { both: { shElev: [80, 170] } },
+    steps: ['壁に背中と頭をつけて立つ', '腕を W の形にして壁につける', '腕を壁から離さずに上へ滑らせ、戻す'],
+    key: '腰は壁から大きく離さない', feel: '肩甲骨のまわり・胸の上', why: '腕を上げるときの肩甲骨の動き（上へ回る）を通す', vars: [],
+    src: [{ title: 'Wall Slide（The Prehab Guys）', url: PH + 'wall-slide/' }] },
+  shoulder_cars: { name: '肩を大きく回す', kind: 'dynamic', sec: 40, reps: '前回し・後ろ回し 各 5 回', aim: ['pec', 'lat'],
+    pose: { R: { shPlane: 60, shRot: 40, elbow: 0 } }, depth: { R: { shElev: [90, 175] } },
+    steps: ['腕を伸ばして横に下ろす', '肩をすくめず、できるだけ大きな円を描くように、ゆっくり回す', '体はひねらない'],
+    key: 'ゆっくり大きく。体は動かさない', feel: '肩のまわり全体', why: '肩の関節を、すべての向きの端までゆっくり通して温める', vars: [],
+    src: [{ title: 'Shoulder CARs（The Prehab Guys）', url: PH + 'shoulder-cars/' }] },
+  dead_hang: { name: 'ぶら下がり', kind: 'dynamic', sec: 20, aim: ['lat'],
+    pose: { both: { shPlane: 30, shRot: 10, elbow: 0 } }, depth: { both: { shElev: [150, 180] } },
+    steps: ['バーを肩幅で握り、足を床から離す（足を着けたままでもよい）', '肩の力を少し抜いて体を長くする', '痛みやしびれがあれば降りる'],
+    key: '肩の力を少し抜く。握力が尽きる前に降りる', feel: '脇の下・背中の横', why: '懸垂・ラットプルの一番上の位置まで、肩を通す', vars: [],
+    src: [{ title: 'Dead Hang（The Prehab Guys）', url: PH + 'dead-hang-assessment/' }] },
+  // ---- 開脚の強化（週 2 回） ----
+  pnf_half: { name: '縮めてから伸ばす：ハーフスプリット', kind: 'pnf', sides: true, base: 'half_split', aim: ['ham'],
+    contract: '右のかかとで床を押し、膝を曲げる向きに力を入れる（脚は動かさない）' },
+  pnf_kneel: { name: '縮めてから伸ばす：股関節の前', kind: 'pnf', sides: true, base: 'kneel_hip', aim: ['iliop'],
+    contract: '右膝で床を前へ引きずるように力を入れる（脚は動かさない）' },
+  pnf_frog: { name: '縮めてから伸ばす：フロッグ', kind: 'pnf', base: 'frog', aim: ['amag', 'add'],
+    contract: '両膝で床を内へ寄せるように押す（脚は動かさない）' },
+  front_split: { name: '前後開脚（手で支える）', kind: 'static', sides: true, sec: 45, aim: ['ham', 'iliop'],
+    pose: { R: { knee: 0, ankle: -10 }, L: { knee: 0, ankle: -30 } }, depth: [{ R: { hipFlex: [40, 130] } }, { L: { hipFlex: [0, -60] } }],
+    steps: ['両手の下にブロック（厚い本）を置き、右脚を前、左脚を後ろへ伸ばす', '腰を正面に向けたまま、手で体重を支えて、ゆっくり下ろす', '前のもも裏と、後ろの脚の付け根の前が軽く張るところ（10 段階で 3 くらい）で止める', '慣れたらブロックを少しずつ低くする'],
+    key: '手で支える。腰は正面。軽く張るところで止める',
+    feel: '前の脚のもも裏、後ろの脚の付け根の前',
+    why: '前後開脚の角度は、前の脚の股関節が曲がる量と、後ろの脚の股関節が伸びる量の合計。強く伸ばすより、軽い強さで続ける方が、自分の力で動かせる範囲も広がった（ダンサーの研究）',
+    vars: [], src: [{ title: 'Front Split – Supported（The Prehab Guys）', url: PH + 'front-split-supported/' }] },
+  cossack_slow: { name: 'コサックスクワット（ゆっくり）', kind: 'strength', sec: 60, reps: '左右 6 回ずつ。下りに 3 秒・下で 1 秒', aim: ['grac', 'amag'],
+    pose: { R: { hipFlex: 20, hipRot: 30, knee: 0, ankle: 15 }, L: { hipAbd: 25, hipRot: 20 } }, depth: { R: { hipAbd: [20, 70] }, L: { hipFlex: [60, 115], knee: [60, 135], ankle: [10, 35] } },
+    steps: ['自重コサックと同じ形で、下りる動きに 3 秒かける', '一番深いところで 1 秒止める', '慣れたら軽いダンベルを胸の前に持つ'],
+    key: '下りに 3 秒。反動で立たない', feel: '内もも・お尻',
+    why: '伸びた位置で筋に力を出させると、その位置を自分で支えられるようになる。伸ばしながら力を出す練習（遠心性の筋トレ）は柔軟性も広げる', vars: [],
+    src: [{ title: 'Cossack Squat（The Prehab Guys）', url: PH + 'cossack-squat/' }] },
+  side_raise: { name: '横向きの脚上げ', kind: 'strength', sides: true, sec: 45, reps: 'ゆっくり 10 回', aim: ['gmed'], short: true,
+    pose: { R: { hipAbd: 30, hipFlex: -5 } }, depth: { R: { hipAbd: [0, 40] } },
+    steps: ['横向きに寝て、下の脚は軽く曲げる', '上の脚を伸ばしたまま、つま先を前に向けて上げる', '上で 1 秒止めて、ゆっくり下ろす'],
+    key: 'つま先は前。体は後ろへ倒さない', feel: '上の脚のお尻の横',
+    why: '左右開脚では、開いた脚を支えるお尻の横の筋（中殿筋）の力も要る', vars: [],
+    src: [{ title: 'Sidelying Hip Abduction（The Prehab Guys）', url: PH + 'sidelying-hip-abduction/' }] },
+  pancake_gm: { name: '開脚グッドモーニング', kind: 'strength', sec: 45, reps: 'ゆっくり 8 回', aim: ['ham', 'amag'],
+    pose: { both: { hipAbd: 30, hipRot: 15, knee: 5 } }, depth: { both: { hipFlex: [20, 110] } },
+    steps: ['足を大きく開いて立ち、手を胸の前で組む（棒を肩に担いでもよい）', '背中をまっすぐ保ち、股関節から前へ倒す', 'もも裏が伸びたところから、お尻を締めて戻る'],
+    key: '背中はまっすぐ。股関節から倒す', feel: 'もも裏・内もも',
+    why: '開脚前屈の形で、伸びた位置の筋力をつける。重さは軽く、少しずつ', vars: [],
+    src: [{ title: 'Wide-Stance Good Morning（Catalyst Athletics）', url: 'https://catalystathletics.com/exercise/921/Wide-Stance-Good-Morning/' }] },
+  // ---- 目標の姿勢（モデルで見るだけ） ----
+  goal_front: { name: '前後開脚（目標）', kind: 'goal', sides: true, pose: { R: { knee: 0, ankle: -10 }, L: { knee: 0, ankle: -30 } }, depth: [{ R: { hipFlex: [40, 130] } }, { L: { hipFlex: [0, -60] } }],
+    why: '前の脚の股関節の曲げと、後ろの脚の伸ばしの合計が 180°。腰をひねらない（正面を向いた）開脚では、後ろの脚の股関節を標準（17°）よりずっと大きく伸ばす必要がある' },
+  goal_middle: { name: '左右開脚（目標）', kind: 'goal', pose: { both: { hipFlex: 20, hipRot: 30, knee: 0, ankle: 0 } }, depth: { both: { hipAbd: [20, 90] } },
+    why: '骨盤を少し前へ倒し（股関節を曲げ）、膝とつま先を上へ向ける（外ひねり）と、股関節の前の靱帯が緩み、骨も当たりにくくなる' },
+  goal_squat: { name: '深いしゃがみ（目標）', kind: 'goal', pose: { t: { lumbar: 10 }, both: { hipAbd: 25, hipRot: 20 } }, depth: { both: { hipFlex: [40, 125], knee: [50, 150], ankle: [10, 45] } },
+    why: 'かかとをつけた深いしゃがみには、足首を 40° ほど上げる範囲と、深い股関節の曲げが要る' },
+  goal_overhead: { name: '腕を真上へ（目標）', kind: 'goal', pose: { both: { shPlane: 15, shRot: 20, elbow: 0 } }, depth: { both: { shElev: [120, 180] } },
+    why: '腰を反らずに腕を真上へ上げるには、広背筋・大円筋が十分に長い必要がある。足りないと、腰を反って代わりにする' },
+};
+const FLEX_PLANS = {
+  daily: { title: '毎日の柔軟', sub: '入浴後・寝る前' },
+  split: { title: '開脚の強化', sub: '週 2 回・筋トレのあとか休養日', moves: ['pnf_half', 'pnf_kneel', 'pnf_frog', 'front_split', 'cossack_slow', 'side_raise', 'pancake_gm'] },
+  warm1: { title: '筋トレ前の準備（胸・三頭）', moves: ['shoulder_cars', 'wall_slide', 'open_book'] },
+  warm2: { title: '筋トレ前の準備（背中・二頭）', moves: ['cat_cow', 'open_book', 'dead_hang'] },
+  warm3: { title: '筋トレ前の準備（脚）', moves: ['ankle_rock', 'leg_swing_f', 'leg_swing_s', 'cossack_bw', 'squat_pause'] },
+  warm4: { title: '筋トレ前の準備（肩）', moves: ['shoulder_cars', 'wall_slide', 'dead_hang'] },
+};
+/* ---------- 評価：姿勢 → 各組織の指数（100% = その人の限界） ---------- */
+// caps：組織ごとの「使える長さ」（標準 = 1）。キーは `${id}:${side}`。caps.flags：骨の当たりの本人の目印
+function bmEval(pose, caps = {}) {
+  const out = [];
+  for (const t of BM_T) {
+    const ref = BM_REF[t.id].cm;
+    if (ref < 0.2) continue;
+    for (const side of t.mid ? ['C'] : ['R', 'L']) {
+      const s = side === 'C' ? 'R' : side;
+      const dl = bmDL(t, pose, s);
+      if (dl <= 0.05) continue;
+      out.push({ id: t.id, g: t.g, kind: t.kind || 'mtu', name: t.name, side, dl, idx: dl / (ref * (caps[`${t.id}:${s}`] ?? 1)) });
+    }
+  }
+  return out.sort((a, b) => b.idx - a.idx);
+}
+function bmApply(pose, change) {
+  const p = {};
+  for (const part of ['t', 'R', 'L', 'both']) if (pose[part] || change?.[part]) p[part] = { ...(pose[part] || {}), ...(change?.[part] || {}) };
+  return p;
+}
+function bmPoseAt(pose, depth, d) {
+  const ch = {};
+  for (const [part, dd] of Object.entries(depth || {})) ch[part] = Object.fromEntries(Object.entries(dd).map(([k, [a, b]]) => [k, a + (b - a) * d]));
+  return bmApply(pose, ch);
+}
+const bmBonesOf = (pose, flags = {}) => ['R', 'L'].flatMap((s) => bmBones(bmCoords(pose, s), { hipAnt: flags[`hipAnt:${s}`], ankleAnt: flags[`ankleAnt:${s}`] }).map((b) => ({ ...b, side: s })));
+function bmMove(id) {
+  const m = FLEX_MOVES[id];
+  if (!m?.base) return m;
+  const b = FLEX_MOVES[m.base];
+  return { ...b, ...m, pose: b.pose, depth: b.depth, vars: b.vars, steps: b.steps, feel: b.feel, why: b.why, src: m.src || b.src };
+}
+// 種目の書き方：'frog' または 'frog~fwd'（形の違いを ~ のあとに。複数は +）
+const bmEntry = (e) => { const [id, vs] = String(e).split('~'); return { id, vars: vs ? vs.split('+') : [] }; };
+function bmShape(id, vars = []) {
+  const m = bmMove(id);
+  let pose = m.pose || {}, depth = m.depth || {};
+  for (const v of (m.vars || []).filter((x) => vars.includes(x.id))) { if (v.change) pose = bmApply(pose, v.change); if (v.depth) depth = v.depth; }
+  return { pose, depth: Array.isArray(depth) ? depth : [depth] };
+}
+// 深さを 0→1 と増やし、深くするほど伸びる組織のどれかが 100% に届くか、骨が当たったところで止める。
+// depth が配列なら順に（前後開脚：前の脚が止まってから後ろの脚）
+function bmPhase(pose, depth, caps) {
+  const at = (d) => bmPoseAt(pose, depth, d);
+  const L0 = new Map(bmEval(at(0), caps).map((x) => [x.id + x.side, x.dl]));
+  const moving = new Set(bmEval(at(1), caps).filter((x) => x.dl - (L0.get(x.id + x.side) || 0) > 0.15).map((x) => x.id + x.side));
+  const B0 = new Map(bmBonesOf(at(0), caps.flags).map((b) => [b.id + b.side, b.v]));
+  const look = (d) => {
+    const p = at(d), list = bmEval(p, caps);
+    const top = list.find((x) => moving.has(x.id + x.side)) || null;
+    const bone = bmBonesOf(p, caps.flags).find((b) => b.v >= 1 && b.v > (B0.get(b.id + b.side) ?? -9) + 0.02) || null;
+    return { d, pose: p, list, top, bone, depth, stop: !!(bone || (top && top.idx >= 1)), base: list.filter((x) => !moving.has(x.id + x.side) && x.idx >= 1) };
+  };
+  let prev = null;
+  for (let i = 0; i <= 50; i++) {
+    const r = look(i / 50);
+    if (!r.stop) { prev = r; continue; }
+    if (!prev) return r;
+    let lo = prev.d, hi = r.d, best = r; // 止まる位置を細かく詰める
+    for (let k = 0; k < 8; k++) { const m = look((lo + hi) / 2); if (m.stop) { hi = m.d; best = m; } else lo = m.d; }
+    return best;
+  }
+  return prev;
+}
+const bmCache = new Map();
+function bmLimit(entry, caps = {}) {
+  const key = `${entry}|${JSON.stringify(caps)}`;
+  if (bmCache.has(key)) return bmCache.get(key);
+  if (bmCache.size > 600) bmCache.clear();
+  const { id, vars } = bmEntry(entry);
+  const { pose, depth } = bmShape(id, vars);
+  const parts = [];
+  let cur = pose;
+  for (const ph of depth) { const r = bmPhase(cur, ph, caps); parts.push(r); cur = r.pose; }
+  const res = { ...parts[parts.length - 1], base: parts[0].base, parts };
+  bmCache.set(key, res);
+  return res;
+}
+// 左側で行うとき：左右を入れ替えた「使える長さ」で右として計算し、結果の左右を戻す
+const bmSwap = (s) => (s === 'R' ? 'L' : s === 'L' ? 'R' : s);
+function bmMirrorCaps(caps) {
+  const out = {};
+  for (const [k, v] of Object.entries(caps)) {
+    if (k === 'flags') out.flags = Object.fromEntries(Object.entries(v).map(([fk, fv]) => [fk.replace(/:(R|L)$/, (_, s) => ':' + bmSwap(s)), fv]));
+    else out[k.replace(/:(R|L)$/, (_, s) => ':' + bmSwap(s))] = v;
+  }
+  return out;
+}
+function bmLimitSide(entry, caps, side) {
+  if (side !== 'L') return bmLimit(entry, caps);
+  const r = bmLimit(entry, bmMirrorCaps(caps));
+  const sw = (x) => ({ ...x, side: bmSwap(x.side) });
+  return { ...r, list: r.list.map(sw), top: r.top && sw(r.top), bone: r.bone && sw(r.bone), base: r.base.map(sw), mirrored: true };
+}
+// 姿勢の主な角度を文にする（深くする関節だけ）
+function bmAngles(pose, depth) {
+  const out = [];
+  for (const dd of Array.isArray(depth) ? depth : [depth]) for (const part of ['R', 'L', 'both', 't']) for (const k of Object.keys(dd?.[part] || {})) {
+    const v = Math.round(bmCoords(pose, part === 'L' ? 'L' : 'R')[k] ?? 0);
+    const [nm, pos, neg] = BM_DOF[k] || [k, '', ''];
+    const side = part === 'R' ? '右の' : part === 'L' ? '左の' : '';
+    if (k === 'shElev') out.push(`${side}腕 ${v}°`);
+    else if (k === 'shPlane') out.push(`${side}腕の向き ${v < 0 ? '体の前を横切る' : v <= 30 ? '前' : v <= 100 ? '横' : '横より後ろ'}（${v}°）`);
+    else out.push(`${side}${nm}${v >= 0 ? pos : neg} ${Math.abs(v)}°`);
+  }
+  return out;
+}
+
+/* ---------- テストと「使える長さ」 ---------- */
+// set：out（2 週に 1 回・結果）・cause（月に 1 回・原因を調べる）。type: choice は選ぶもの。norm は標準の目安（better の向きに越えていれば標準以上）
+const FLEX_SIDE_OPTS = [['', '—'], ['none', 'どちらも変わらない'], ['R', '右だけ'], ['L', '左だけ'], ['both', '両方']];
+const flexSideOpts = (none) => FLEX_SIDE_OPTS.map(([v, l]) => [v, v === 'none' ? none : l]);
+const FLEX_TESTS = [
+  { k: 'frontR', set: 'out', label: '前後開脚の高さ（右脚が前）', unit: 'cm', better: -1, how: '両手は床かブロックに。腰を正面に向けたまま下ろし、止まったところで床から股までの高さ' },
+  { k: 'frontL', set: 'out', label: '前後開脚の高さ（左脚が前）', unit: 'cm', better: -1, how: '同じく左脚が前' },
+  { k: 'straddle', set: 'out', label: '左右開脚の幅', unit: 'cm', better: 1, how: '床に座り、膝のお皿を天井に向けたまま、痛くない範囲で脚を開く。かかと〜かかとの距離' },
+  { k: 'reach', set: 'out', label: '長座前屈', unit: 'cm', better: 1, how: '脚を前に伸ばして座り、両手をそろえて前へ。指先がつま先を越えたら＋、届かなければ−' },
+  { k: 'shoulderR', set: 'out', label: '背中で手を近づける（右手が上）', unit: 'cm', better: 1, how: '右手を上から、左手を下から背中に回し、中指の先どうしの距離。重なれば＋、離れていれば−' },
+  { k: 'shoulderL', set: 'out', label: '背中で手を近づける（左手が上）', unit: 'cm', better: 1, how: '同じく左手が上' },
+  { k: 'slrR', set: 'cause', area: 'もも裏', label: '仰向けの脚上げ（右）', unit: '°', better: 1, norm: 80, how: '仰向けで左脚は床に伸ばしたまま。右膝を伸ばしてタオルで持ち上げる（人に持ち上げてもらうとより正確）。もも裏が強く張るか、左脚や骨盤が浮く手前で止め、すねにスマホを当てて床からの角度を測る（iPhone の「計測」→「水準器」）' },
+  { k: 'slrL', set: 'cause', area: 'もも裏', label: '仰向けの脚上げ（左）', unit: '°', better: 1, norm: 80, how: '同じく左' },
+  { k: 'slrN', set: 'cause', area: 'もも裏', type: 'choice', opts: flexSideOpts('変わらない'), label: '脚上げで、つま先を引く・頭を起こすと張りが強くなる', how: '止めた角度から少し下ろし、つま先を手前に引く。次に頭を起こす。張りが強くなる・膝の裏やふくらはぎに広がるなら「強くなる」（神経が関わるサイン）' },
+  { k: 'thomR', set: 'cause', area: '股関節の前', label: 'トーマス：太ももの角度（右）', unit: '°', better: -1, norm: 0, how: 'ベッドの端にお尻が来るように仰向けになる。左膝を胸に抱えたまま、右脚の力を抜いて垂らす。太ももにスマホを当て、水平より上なら＋、下なら−' },
+  { k: 'thomL', set: 'cause', area: '股関節の前', label: 'トーマス：太ももの角度（左）', unit: '°', better: -1, norm: 0, how: '同じく左（右膝を抱える）' },
+  { k: 'thomBR', set: 'cause', area: 'もも前', label: 'トーマス：すねの角度（右）', unit: '°', better: -1, how: '同じ姿勢で、すねにスマホを縦に当てる。すねが垂直より前（膝が伸びる向き）に出ていれば＋、後ろ（体の下）へ入っていれば−。太ももの角度とあわせて膝の角度を出す（標準は膝 90° 以上）' },
+  { k: 'thomBL', set: 'cause', area: 'もも前', label: 'トーマス：すねの角度（左）', unit: '°', better: -1, how: '同じく左' },
+  { k: 'thomF', set: 'cause', area: 'もも前', type: 'choice', opts: flexSideOpts('下がらない'), label: 'トーマス：膝を伸ばすと太ももが下がる', how: 'すねを持ち上げて膝を伸ばしたとき、太ももが下がるなら、もも前（大腿直筋）が止めている' },
+  { k: 'thomD', set: 'cause', area: '脚の付け根の外', type: 'choice', opts: flexSideOpts('流れない'), label: 'トーマス：太ももが外へ流れる', how: '垂らした太ももが外へ開いていくか' },
+  { k: 'ankleR', set: 'cause', area: 'ふくらはぎ', label: '膝・壁（右）', unit: 'cm', better: 1, norm: 10, how: '壁に向かって立ち、右足のつま先を壁から離して置く。かかとを床につけたまま膝を壁につける。膝がつく一番遠いつま先〜壁の距離（2 cm 未満の差は測り方の誤差）' },
+  { k: 'ankleL', set: 'cause', area: 'ふくらはぎ', label: '膝・壁（左）', unit: 'cm', better: 1, norm: 10, how: '同じく左' },
+  { k: 'calf', set: 'cause', area: 'ふくらはぎ', type: 'choice', opts: [['', '—'], ['straight', '膝を伸ばしたとき'], ['bent', '膝を曲げたとき'], ['same', '同じくらい'], ['pinch', '足首の前が詰まる']], label: 'ふくらはぎ：強く張るのは', how: '壁押しで膝を伸ばしたときと、膝・壁の形（膝を曲げる）を比べる' },
+  { k: 'strBent', set: 'cause', area: '内もも', type: 'choice', opts: [['', '—'], ['wider', 'もっと開ける'], ['same', '変わらない']], label: '開脚で、膝を少し曲げると', how: '開脚で止まったところから、膝を少しだけ（10〜20°）曲げる' },
+  { k: 'irR', set: 'cause', area: 'お尻の奥', label: '座って内ひねり（右）', unit: '°', better: 1, norm: 35, how: 'いすに深く座り、膝を 90° に曲げる。太ももを動かさずに、右のすねを外へ振る（足が外へ）。すねにスマホを縦に当て、垂直からの角度' },
+  { k: 'irL', set: 'cause', area: 'お尻の奥', label: '座って内ひねり（左）', unit: '°', better: 1, norm: 35, how: '同じく左' },
+  { k: 'erR', set: 'cause', area: 'お尻の奥', label: '座って外ひねり（右）', unit: '°', better: 1, norm: 45, how: '同じ姿勢で、右のすねを内へ振る（足が内へ）' },
+  { k: 'erL', set: 'cause', area: 'お尻の奥', label: '座って外ひねり（左）', unit: '°', better: 1, norm: 45, how: '同じく左' },
+  { k: 'hipPinch', set: 'cause', area: '股関節の前', type: 'choice', opts: flexSideOpts('詰まらない'), label: 'しゃがむ・膝を胸へ引くと、脚の付け根の前が詰まる', how: '詰まる・挟まる感じは、骨か関節の当たりのサイン' },
+  { k: 'shUp', set: 'cause', area: '背中の横', label: '腕を頭上へ：床からの角度', unit: '°', better: -1, norm: 0, how: '仰向けで膝を立て、腰を床につけたまま、両腕を伸ばして頭の上へ下ろす。床につけば 0。浮くなら上腕にスマホを当てて床からの角度' },
+  { k: 'shUpB', set: 'cause', area: '二の腕の裏', label: '同じく肘を曲げて', unit: '°', better: -1, norm: 0, how: '同じ姿勢で、肘を曲げて手を頭の後ろへ。上腕と床の角度' },
+];
+const FLEX_TEST_BY = new Map(FLEX_TESTS.map((x) => [x.k, x]));
+const flexState = (d) => { const f = ckObj(d.flex); return { logs: ckObj(f.logs), tests: ckObj(f.tests) }; };
+function flexLatest(d, T, maxDays = 120) {
+  const out = {};
+  for (const [day, t] of Object.entries(flexState(d).tests).filter(([k]) => YMD_ONLY.test(k) && k <= T && daysBetween(k, T) <= maxDays).sort((a, b) => cmp(a[0], b[0])))
+    for (const [k, v] of Object.entries(ckObj(t))) if (v !== '' && v != null && FLEX_TEST_BY.has(k)) out[k] = { v, day };
+  return out;
+}
+const bmClamp = (x, a, b) => Math.min(b, Math.max(a, x));
+const bmAsin = (x) => Math.asin(bmClamp(x, 0, 0.99)) * 180 / Math.PI;
+function flexHeight(d) { const v = Number(d.meta?.body?.height); return v > 120 && v < 230 ? v : null; }
+// テストの値 → 組織ごとの「使える長さ」（標準 = 1）。
+//  標準の値があるテスト：その姿勢を止める組織（候補）の伸びが、本人と標準の人とで何倍か（本人の伸び ÷ 標準の伸び）
+//  標準の値がないテスト（開脚の幅）：測った姿勢がその人の限界だとして、最も張る候補がちょうど 100% になるようにそろえて縮める。
+//  候補以外の組織（ほかのテストで分かったもの）ですでに説明がつくときは、候補を縮めない
+function flexCaps(d, T) {
+  const L = flexLatest(d, T);
+  const H = flexHeight(d) || 172;
+  const caps = {}, notes = [], flags = {};
+  const num = (k) => (L[k] && Number.isFinite(+L[k].v) ? +L[k].v : null);
+  const ch = (k) => (L[k] ? String(L[k].v) : '');
+  const has = (k, s) => ['both', s].includes(ch(k));
+  const T_ = (id) => BM_BY_ID.get(id);
+  // 標準の値があるテスト：標準の人でその姿勢を止める組織（指数が最も高い候補と、その 95% 以上の候補）だけを、
+  // 本人の伸び ÷ 標準の伸び に縮める。ほかの候補は分からないので変えない
+  // 標準の値がないテスト：測った姿勢がその人の限界だとして、候補をそろえて縮める
+  const put = (ids, s, user, norm, src, lower = false, fixed = null) => {
+    let got = [];
+    if (fixed != null) got = ids.map((id) => [id, fixed]);
+    else if (!norm) { const f = Math.max(...ids.map((id) => bmDL(T_(id), user, s) / BM_REF[id].cm)); got = ids.map((id) => [id, f]); }
+    else {
+      const at = ids.map((id) => ({ id, n: bmDL(T_(id), norm, s) })).map((x) => ({ ...x, i: x.n / BM_REF[x.id].cm }));
+      const top = Math.max(...at.map((x) => x.i));
+      got = at.filter((x) => x.i >= top * 0.95 && x.n > 0.05).map((x) => [x.id, Math.max(0.05, bmDL(T_(x.id), user, s) / x.n)]);
+    }
+    // lower：「少なくともこれだけ」。短いと分かるとき（95% 未満）だけ 5% の余裕をみて使い、そうでなければ標準以上として扱う
+    for (const [id, f] of got) { const k = `${id}:${s}`; caps[k] = Math.min(caps[k] ?? 9, lower ? (f < 0.95 ? f * 1.05 : Math.max(1, f)) : f); }
+    notes.push({ ids: got.map(([id]) => id), side: s, f: Math.min(...got.map(([, f]) => f)), src, lower });
+  };
+  const explained = (ids, pose, s) => bmEval(pose, caps).filter((x) => !ids.includes(x.id) && (x.side === s || x.side === 'C')).some((x) => x.idx >= 0.95);
+  const phiOf = (x) => bmAsin((x + 0.105 * H) / (0.235 * H)); // 膝・壁の距離（cm）→ 足首の角度。身長からすねと足の長さを推定
+  for (const s of ['R', 'L']) {
+    const one = (o) => ({ [s]: o });
+    const slr = num('slr' + s);
+    if (slr != null) {
+      const nerve = has('slrN', s);
+      put(['bflh', 'st', 'sm'], s, one({ hipFlex: slr }), one({ hipFlex: 80 }), `脚上げ ${slr}°（標準 80°）`, nerve);
+      if (nerve) put(['sciatic'], s, one({ hipFlex: slr }), one({ hipFlex: 80 }), `脚上げ ${slr}°で、つま先・頭で張りが強くなる`);
+    }
+    const a = num('thom' + s);
+    if (a != null) {
+      const b = num('thomB' + s), drop = has('thomF', s);
+      put(['psoas', 'iliacus', 'ilioF'], s, one({ hipFlex: a - 7 }), one({ hipFlex: -17 }), `トーマス 太もも ${a > 0 ? '+' : ''}${a}°（標準 −10°）`, drop);
+      if (b != null) put(['rf'], s, one({ hipFlex: a - 7, knee: 90 + a - b }), one({ hipFlex: -17, knee: 90 }), `トーマス 膝 ${Math.round(90 + a - b)}°（標準 90°）`); // 垂らした膝の角度は大腿直筋の長さで決まる
+      if (has('thomD', s)) put(['tfl'], s, null, null, 'トーマスで太ももが外へ流れる', false, 0.7);
+    }
+    const x = num('ankle' + s);
+    if (x != null) {
+      const calf = ch('calf'), user = one({ knee: 40, ankle: phiOf(x) }), norm = one({ knee: 40, ankle: phiOf(10) });
+      put(['soleus', 'anklePost'], s, user, norm, `膝・壁 ${x} cm（足首 約 ${Math.round(phiOf(x))}°・標準 10 cm）`);
+      if (calf === 'straight') put(['gastroc'], s, null, null, '膝を伸ばした方が強く張る（腓腹筋）', false, (caps[`soleus:${s}`] ?? 1) * 0.9);
+      if (calf === 'pinch') flags[`ankleAnt:${s}`] = phiOf(x);
+    }
+    const ir = num('ir' + s), er = num('er' + s);
+    if (ir != null) put(['deepER', 'gmaxL', 'ischioF'], s, one({ hipFlex: 90, knee: 90, hipRot: -ir }), one({ hipFlex: 90, knee: 90, hipRot: -35 }), `座って内ひねり ${ir}°（標準 35°）`);
+    if (er != null) put(['piri', 'gmedA', 'gmedP'], s, one({ hipFlex: 90, knee: 90, hipRot: er }), one({ hipFlex: 90, knee: 90, hipRot: 45 }), `座って外ひねり ${er}°（標準 45°）`);
+    if (has('hipPinch', s)) flags[`hipAnt:${s}`] = true;
+  }
+  const D = num('straddle'), sb = ch('strBent');
+  if (D != null && sb) {
+    const alpha = bmAsin(((D - 0.1 * H) / 2) / (0.52 * H));
+    const slrs = ['R', 'L'].map((s) => num('slr' + s)).filter((v) => v != null);
+    const p = { both: { hipFlex: Math.min(80, slrs.length ? Math.min(...slrs) - 5 : 80), hipAbd: alpha, hipRot: 10, knee: 0, ankle: -10 } };
+    const ids = sb === 'wider' ? ['grac', 'st', 'sm'] : ['al', 'ab', 'pect', 'amAnt', 'amPost', 'puboF'];
+    for (const s of ['R', 'L']) {
+      if (explained(ids, p, s)) notes.push({ ids: [], side: s, f: 1, src: `開脚 ${D} cm は、もも裏の長さで説明がつく`, info: true });
+      else put(ids, s, p, null, `開脚 ${D} cm（片脚 約 ${Math.round(alpha)}°）${sb === 'wider' ? '・膝を曲げると広がる' : '・膝を曲げても変わらない'}`);
+    }
+  }
+  const up = num('shUp');
+  if (up != null) {
+    const arm = (e, elbow) => ({ both: { shElev: e, shPlane: 10, shRot: 20, elbow } });
+    for (const s of ['R', 'L']) put(['lat', 'tmaj', 'pecS', 'shAnt'], s, arm(180 - up, 0), arm(170, 0), `腕を頭上へ 床から ${up}°（標準 10°）`);
+    const upB = num('shUpB');
+    if (upB != null) for (const s of ['R', 'L']) put(['tlh'], s, arm(180 - upB, 120), arm(165, 120), `肘を曲げて頭上へ 床から ${upB}°`, upB <= up + 5);
+  }
+  if (Object.keys(flags).length) caps.flags = flags;
+  return { caps, notes, flags, H, heightKnown: !!flexHeight(d), tests: L };
+}
+function flexGroupCap(C, g, s) { // まとまりの中で最も短い組織
+  let v = null;
+  for (const t of BM_T.filter((x) => x.g === g)) { const c = C.caps[`${t.id}:${s}`]; if (c != null) v = v == null ? c : Math.min(v, c); }
+  return v;
+}
+
+/* ---------- メニューの組み立て ---------- */
+const FLEX_GAP = { side: 5, next: 8, prepare: 10 };
+function flexEntryName(e) {
+  const { id, vars } = bmEntry(e), m = bmMove(id);
+  const v = (m.vars || []).filter((x) => vars.includes(x.id) && !x.fault);
+  return m.name + (v.length ? `（${v.map((x) => x.label).join('・')}）` : '');
+}
+function flexEntryKey(e) {
+  const { id, vars } = bmEntry(e), m = bmMove(id);
+  return (m.vars || []).filter((x) => vars.includes(x.id) && x.key).map((x) => x.key)[0] || m.key;
+}
+// sec：{ 種目: { R: 秒, L: 秒 } }（左右差のある部位は、短い側を長めに）
+function flexStepsFor(title, entries, sec = {}) {
+  if (!entries.length) return [];
+  const steps = [{ title: '準備', text: `${title}。最初は ${flexEntryName(entries[0])} の形を作ります`, sec: FLEX_GAP.prepare, kind: 'prepare' }];
+  entries.forEach((e, i) => {
+    const { id } = bmEntry(e), m = bmMove(id), next = entries[i + 1];
+    const sides = m.sides ? ['R', 'L'] : ['C'];
+    sides.forEach((side, j) => {
+      const sn = side === 'R' ? '（右）' : side === 'L' ? '（左）' : '';
+      const flip = (s) => (side === 'L' ? s.replace(/右/g, '\u0000').replace(/左/g, '右').replace(/\u0000/g, '左') : s);
+      const hold = sec[e]?.[side] || m.sec;
+      if (m.kind === 'pnf') {
+        const st = (t, s2) => ({ title: `${FLEX_MOVES[m.base].name}${sn}${t}`, text: flip(t === '伸ばす' ? FLEX_MOVES[m.base].key : '息を吐きながら、少しだけ深く入って保つ'), sec: s2, kind: 'hold', move: e, side });
+        const push = () => ({ title: '軽く力を入れる（2〜3 割）', text: flip(`${m.contract}。息は止めない`), sec: 5, kind: 'contract', move: e, side, push: true });
+        steps.push(st('伸ばす', 20), push(), st('力を抜いて少し深く', 20), push(), st('力を抜いて少し深く', 20));
+      } else steps.push({ title: `${flexEntryName(e)}${sn}`, text: flip([m.reps, flexEntryKey(e)].filter(Boolean).join('。')), sec: hold, kind: m.kind === 'static' ? 'hold' : 'relax', move: e, side });
+      if (j < sides.length - 1) steps.push({ title: '反対側へ', text: `${m.name}（左）の形を作る`, sec: FLEX_GAP.side, kind: 'switch' });
+    });
+    if (next) steps.push({ title: '次へ', text: `${flexEntryName(next)}の形を作る`, sec: FLEX_GAP.next, kind: 'switch' });
+  });
+  return steps;
+}
+const flexSecs = (steps) => steps.reduce((s, x) => s + x.sec, 0);
+// 部位ごとに試す種目（形の違いを含む）。本人の「使える長さ」で計算し、その部位が実際に止まる組織になる形を選ぶ
+const FLEX_FOR = {
+  ham: ['slr_strap', 'slr_strap~out', 'slr_strap~in', 'half_split'],
+  iliop: ['lunge_hip', 'kneel_hip', 'kneel_hip~reach'],
+  rf: ['couch', 'kneel_hip~rf'],
+  grac: ['pancake', 'pancake~bent'],
+  amag: ['frog', 'frog~fwd', 'frog~back'],
+  add: ['frog~fwd', 'frog'],
+  soleus: ['calf_bent'], gastroc: ['calf_straight'],
+  rot: ['fig4', 'fig4~push', 'ninety'],
+  gmax: ['knee_cross~out', 'knee_cross'],
+  lat: ['bench_lat~straight', 'bench_lat', 'child_reach'], tri: ['bench_lat'],
+  pec: ['doorway', 'doorway~high', 'doorway~low'],
+};
+function flexScore(e, g, caps) {
+  const m = bmMove(bmEntry(e).id);
+  const sides = m.sides ? ['R', 'L'] : ['R'];
+  let sum = 0;
+  for (const s of sides) {
+    const r = bmLimitSide(e, caps, s);
+    const mine = r.list.filter((x) => x.g === g && (x.side === s || x.side === 'C' || !m.sides));
+    const idx = mine.length ? Math.min(1.05, mine[0].idx) : 0;
+    const lim = !r.bone && r.top && r.top.g === g;
+    sum += (lim ? 1 : 0.6) * idx - (r.d < 0.05 ? 0.5 : 0) - (r.bone ? 0.15 : 0);
+  }
+  return sum / sides.length;
+}
+function flexBest(g, caps, avoid = []) {
+  let best = null;
+  for (const e of FLEX_FOR[g] || []) {
+    if (avoid.some((a) => e.startsWith(a))) continue;
+    const sc = flexScore(e, g, caps);
+    if (!best || sc > best.sc + 0.02) best = { e, sc };
+  }
+  return best?.e || null;
+}
+const FLEX_DAILY_DEFAULT = ['slr_strap', 'kneel_hip', 'pancake', 'frog', 'calf_bent', 'doorway', 'bench_lat'];
+// 毎日の柔軟：テストがなければ標準のメニュー。あれば、開脚に要る部位（もも裏・股関節の前・内もも）を必ず入れ、
+// ほかは「使える長さ」が短い順に足す（合計 12 分まで）。左右差が 10 ポイント以上ある部位は、短い側を 30 秒長く
+function flexDailyPlan(d, T) {
+  const C = flexCaps(d, T);
+  if (!C.notes.some((n) => !n.info)) return { moves: FLEX_DAILY_DEFAULT.slice(), why: {}, sec: {}, C, tested: false };
+  const caps = C.caps, why = {}, moves = [], sec = {};
+  const capOf = (g) => ['R', 'L'].map((s) => [s, flexGroupCap(C, g, s)]).filter(([, c]) => c != null);
+  const minc = (g) => { const v = capOf(g).map(([, c]) => c); return v.length ? Math.min(...v) : null; };
+  const pinch = Object.keys(C.flags).some((k) => k.startsWith('hipAnt'));
+  const add = (e, g, reason) => {
+    if (!e || moves.some((x) => bmEntry(x).id === bmEntry(e).id)) return;
+    moves.push(e);
+    why[e] = reason;
+    const v = capOf(g), m = bmMove(bmEntry(e).id);
+    if (m.sides && v.length === 2 && Math.abs(v[0][1] - v[1][1]) >= 0.1) { const short = v[0][1] < v[1][1] ? 'R' : 'L'; sec[e] = { [short]: m.sec + 30 }; }
+  };
+  if (C.notes.some((n) => n.ids.includes('sciatic'))) add('sciatic_slider', 'nerve', '脚上げで、つま先・頭で張りが強くなった。先に神経を滑らせる');
+  add(flexBest('ham', caps), 'ham', 'ham');
+  const ip = minc('iliop'), rf = minc('rf');
+  const front = rf != null && (ip == null || rf < ip) ? ['rf', 'iliop'] : ['iliop', 'rf'];
+  add(flexBest(front[0], caps), front[0], front[0]);
+  if (ip != null && rf != null && ip < 0.9 && rf < 0.9) add(flexBest(front[1], caps), front[1], front[1]);
+  const sb = String(C.tests.strBent?.v || '');
+  if (sb !== 'same') add(flexBest('grac', caps), 'grac', 'grac');
+  if (sb !== 'wider') add(flexBest('amag', caps), 'amag', 'amag');
+  const extra = ['soleus', 'gastroc', 'rot', 'lat', 'tri', 'pec', 'gmax'].map((g) => ({ g, c: minc(g) })).filter((x) => x.c != null && x.c < 0.95).sort((a, b) => a.c - b.c);
+  for (const x of extra) add(flexBest(x.g, caps, pinch ? ['knee_cross'] : []), x.g, x.g);
+  for (const [e, g] of [['calf_bent', 'soleus'], ['doorway', 'pec'], ['bench_lat', 'lat']]) add(e, g, 'lift');
+  while (moves.length > 4 && flexSecs(flexStepsFor('', moves, sec)) > 720) { const e = moves.pop(); delete why[e]; delete sec[e]; }
+  return { moves, why, sec, C, tested: true };
+}
+function flexPlan(d, T, planId) {
+  if (planId === 'daily') return flexDailyPlan(d, T);
+  return { moves: FLEX_PLANS[planId].moves.slice(), why: {}, sec: {}, C: null, tested: false };
+}
+function flexSteps(planId, d = DATA, T = routineDay()) { const p = flexPlan(d, T, planId); return flexStepsFor(FLEX_PLANS[planId].title, p.moves, p.sec); }
+const flexMinutes = (planId) => Math.ceil(flexSecs(flexSteps(planId)) / 60);
+
+/* ---------- 1 週間の量（部位ごとに、伸びた時間を数える） ---------- */
+// 記録の sec：{ 種目: { R: 秒, L: 秒, C: 秒 } }。その種目の止まる位置で 80% 以上伸びる筋に、その秒数を数える
+function flexDose(d, T) {
+  const C = flexCaps(d, T), out = {};
+  const logs = flexState(d).logs;
+  for (let i = 0; i < 7; i++) {
+    const sec = ckObj(ckObj(logs[ymd(addDays(parseYmd(T), -i))]).sec);
+    for (const [e, bySide] of Object.entries(sec)) {
+      const m = bmMove(bmEntry(e).id);
+      if (!m || !['static', 'pnf'].includes(m.kind)) continue;
+      for (const [side, s] of Object.entries(ckObj(bySide))) {
+        if (!(s > 0)) continue;
+        const seen = new Set();
+        for (const x of bmLimitSide(e, C.caps, side).list.filter((y) => y.idx >= 0.8 && y.kind === 'mtu')) {
+          const k = `${x.g}:${x.side === 'C' ? 'C' : x.side}`;
+          if (!seen.has(k)) { seen.add(k); out[k] = (out[k] || 0) + s; }
+        }
+      }
+    }
+  }
+  return out;
+}
+/* ---------- 画面 ---------- */
 let moveTab = 'flex';
+let flexSub = 'today';
 let flexOpen = null;
+let bmView = { e: 'slr_strap', side: 'R', d: null };
+const FLEX_SUBS = [['today', '今日'], ['model', '体のモデル'], ['test', 'テスト'], ['why', '仕組み']];
 const FLEX_SOURCES = {
   nhs: { title: 'NHS Dynamic Health · 男性の骨盤底筋', url: 'https://dynamichealth.nhs.uk/help-and-advice/pelvic-health/pelvic-floor-exercises-for-men/' },
   niddk: { title: 'NIDDK · Kegel Exercises', url: 'https://www.niddk.nih.gov/health-information/urologic-diseases/kegel-exercises' },
   pelvicVideo: { title: 'Michelle Kenway · 男性の骨盤底（動画）', url: 'https://www.youtube.com/watch?v=MJ7EfGu03-0' },
 };
-// 種目：name・area（伸びる場所）・steps（手順）・miss（よくある間違い）・sec（保持の秒数）・sides（左右）・reps（回数で行う動き）・src（見本）
-const FLEX_MOVES = {
-  long_sit_fold: { name: '長座前屈', area: 'もも裏・ふくらはぎ', sec: 60, steps: ['床に座り、両脚を前へまっすぐ伸ばす（膝の裏は少し曲がってもよい）', '背中を丸めず、股関節から体を前へ倒す', 'もも裏が伸びて痛くないところで止め、息を吐きながら保つ'], miss: ['背中だけを丸めて手を伸ばす', '反動をつける'], src: [] },
-  kneel_hip: { name: '膝立ちの腸腰筋', area: '後ろ脚の股関節の前・もも前', sec: 45, sides: true, steps: ['片膝立ちになり、後ろ脚の膝の下にタオルを敷く', 'お尻を軽く締めて骨盤を後ろへ傾け、体を少し前へ移す', '後ろ脚と同じ側の腕を上げると、さらに伸びる'], miss: ['腰を反らせて前へ出る（腰が反るだけで股関節の前が伸びない）'], src: [] },
-  half_split: { name: 'ハーフスプリット', area: '前脚のもも裏（前後開脚の準備）', sec: 45, sides: true, steps: ['片膝立ちから前脚を伸ばし、かかとを床につけてつま先を天井へ', 'お尻を後ろへ引き、後ろ脚の膝の真上へ戻す', '背中をまっすぐ保ったまま前へ倒す（手は床かブロックへ）'], miss: ['背中を丸める', '前脚のつま先が外へ倒れる'], src: [] },
-  pancake: { name: '開脚前屈', area: '内もも・もも裏（横開脚の準備）', sec: 60, steps: ['座って、痛くない幅まで脚を左右に開く（膝のお皿は天井へ）', '背中をまっすぐ保ち、股関節から前へ倒す', '手を床について体重を支え、息を吐きながら保つ'], miss: ['膝が内側へ倒れる', '背中を丸めて頭だけを下げる'], src: [] },
-  frog: { name: 'フロッグ', area: '内もも', sec: 45, steps: ['四つ這いになり、膝を左右に少しずつ開く（膝の下にクッション）', 'すねは平行にし、足首は膝の真後ろに置く', '前腕をつき、お尻をゆっくり後ろへ引いて止める'], miss: ['股関節の前が詰まるほど深く入る', '膝が痛むのに続ける'], src: [] },
-  ninety: { name: '90/90', area: '前脚のお尻・股関節の外側', sec: 45, sides: true, steps: ['座って、前の脚と後ろの脚の膝をどちらも 90 度に曲げる', '背すじを伸ばし、前のすねの上へ胸を近づける', '反対側も同じように'], miss: ['背中を丸めて前に倒れるだけ', '膝に痛みが出るまで押し込む'], src: [] },
-  ankle_wall: { name: '壁で足首', area: 'ふくらはぎ・足首の前（しゃがみやすく）', sec: 30, sides: true, steps: ['壁に向かって立ち、片足を壁から少し離して前に置く', 'かかとを床につけたまま、膝を壁へ近づける', '膝をつま先の方向へまっすぐ出す'], miss: ['かかとが浮く', '膝が内側へ入る'], src: [] },
-  wall_pec: { name: '壁で胸', area: '胸・肩の前（ベンチ・頭上の動きやすさ）', sec: 30, sides: true, steps: ['壁の横に立ち、肘を肩の高さで曲げて前腕を壁につける', '壁側の足を一歩前に出し、体を壁と反対へゆっくり回す', '胸の前が伸びるところで保つ（肩の前が痛いときは肘を下げる）'], miss: ['肩をすくめる', '痛みがあるのに続ける'], src: [] },
-  // 筋トレ前の準備（動的）
-  arm_circle: { name: '腕回し', area: '肩まわり', sec: 30, reps: '前回し 15 秒・後ろ回し 15 秒', steps: ['腕を横に伸ばし、小さな円から大きな円へ', '肩をすくめず、ゆっくり回す'], miss: ['勢いで振り回す'], src: [] },
-  wall_slide: { name: '壁スライド', area: '肩甲骨・胸の上', sec: 40, reps: 'ゆっくり 10 回', steps: ['壁に背中と頭をつけて立つ', '腕を W の形にして壁につける', '腕を壁から離さずに上へ滑らせ、戻す'], miss: ['腰が壁から大きく離れる'], src: [] },
-  open_book: { name: '胸の回旋（オープンブック）', area: '背中の上（胸椎）・胸', sec: 30, sides: true, reps: '5 回', steps: ['横向きに寝て、膝を 90 度に曲げる', '両腕を前でそろえ、上の腕を天井から反対側の床へ開く', '目で手を追い、息を吐いてから戻す'], miss: ['膝が床から離れて腰だけがねじれる'], src: [] },
-  cat_cow: { name: 'キャット＆カウ', area: '背骨全体', sec: 40, reps: 'ゆっくり 8 回', steps: ['四つ這いで、手は肩の下、膝は股関節の下', '息を吐いて背中を丸め、吸って胸を前へ出す'], miss: ['首だけを大きく動かす'], src: [] },
-  dead_hang: { name: 'ぶら下がり', area: '広背筋・肩', sec: 20, steps: ['バーを肩幅で握り、足を床から離す（足を着けたままでもよい）', '肩の力を少し抜いて体を長くする', '痛みやしびれがあれば降りる'], miss: ['握力が尽きるまで続ける'], src: [] },
-  leg_swing: { name: 'レッグスイング', area: '股関節（前後・左右）', sec: 40, sides: true, reps: '前後 10 回・左右 10 回', steps: ['壁や柱に手をつき、片脚で立つ', '反対の脚を前後に振ってから、左右に振る', '小さな振りから少しずつ大きく'], miss: ['腰ごと大きく振る'], src: [] },
-  cossack_bw: { name: '自重コサック', area: '内もも・お尻', sec: 60, reps: '左右に 5 回ずつ', steps: ['足を大きく横に開いて立つ', '片側の膝を曲げてお尻を落とし、反対の脚は伸ばしてつま先を上へ', '届く深さで左右に移る'], miss: ['曲げた膝が内側へ入る', 'かかとが浮く'], src: [] },
-  squat_pause: { name: 'しゃがんで止める', area: '股関節・足首', sec: 40, reps: '下で 3 秒止めて 5 回', steps: ['足は肩幅、つま先は少し外', 'かかとをつけたまま深くしゃがむ', '下で 3 秒止めてから立つ'], miss: ['かかとが浮く', '膝が内側へ入る'], src: [] },
-  ankle_rock: { name: '足首の前後', area: '足首', sec: 30, sides: true, reps: '10 回', steps: ['片膝立ちになり、前脚のかかとを床につける', '膝をつま先の方向へゆっくり前に出し、戻す'], miss: ['かかとが浮く'], src: [] },
-  // 開脚の強化（週 2 回）
-  cossack_slow: { name: 'コサックスクワット（ゆっくり）', area: '内もも・お尻（深い位置の筋力）', sec: 60, reps: '左右 6 回ずつ。下りに 3 秒', steps: ['自重コサックと同じ形で、下りる動きに 3 秒かける', '一番深いところで 1 秒止める', '慣れたら軽いダンベルを胸の前に持つ'], miss: ['反動で立ち上がる'], src: [] },
-  side_raise: { name: '横向きの脚上げ', area: 'お尻の横（脚を開く筋力）', sec: 45, sides: true, reps: 'ゆっくり 10 回', steps: ['横向きに寝て、下の脚は軽く曲げる', '上の脚を伸ばしたまま、つま先を前に向けて上げる', '上で 1 秒止めて、ゆっくり下ろす'], miss: ['体が後ろへ倒れる', 'つま先が天井を向く'], src: [] },
-  pancake_gm: { name: '開脚グッドモーニング', area: 'もも裏・内もも（伸ばした位置の筋力）', sec: 45, reps: 'ゆっくり 8 回', steps: ['足を大きく開いて立ち、手を胸の前で組む', '背中をまっすぐ保ち、股関節から前へ倒す', 'もも裏が伸びたところから、お尻を締めて戻る'], miss: ['背中を丸める'], src: [] },
-};
-// 縮めてから伸ばす（PNF）：伸ばして 20 秒 → 30〜50% の力で床を押す 5 秒 → 力を抜いてもう少し深く 20 秒 を 2 回
-const PNF = (name, side) => [
-  { title: `${name}（${side}）伸ばす`, text: '痛くないところまで伸ばして保つ', sec: 20, kind: 'hold' },
-  { title: '床を押す（30〜50% の力）', text: '前脚のかかとで床を押すように力を入れる。息は止めない', sec: 5, kind: 'contract' },
-  { title: '力を抜いて少し深く', text: '息を吐きながら、少しだけ深く入って保つ', sec: 20, kind: 'hold' },
-  { title: '床を押す（30〜50% の力）', text: 'もう一度、軽く押す', sec: 5, kind: 'contract' },
-  { title: '力を抜いて少し深く', text: '痛みのない範囲で保つ', sec: 20, kind: 'hold' },
-];
-const FLEX_PLANS = {
-  daily: { title: '毎日の柔軟', sub: '入浴後・寝る前', moves: ['long_sit_fold', 'kneel_hip', 'half_split', 'pancake', 'frog', 'ninety', 'ankle_wall', 'wall_pec'] },
-  split: { title: '開脚の強化', sub: '週 2 回・筋トレのあとか休養日', moves: ['cossack_slow', 'side_raise', 'pancake_gm'], pnf: true },
-  warm1: { title: '筋トレ前の準備（胸・三頭）', moves: ['arm_circle', 'wall_slide', 'open_book'] },
-  warm2: { title: '筋トレ前の準備（背中・二頭）', moves: ['cat_cow', 'open_book', 'dead_hang'] },
-  warm3: { title: '筋トレ前の準備（脚）', moves: ['ankle_rock', 'leg_swing', 'cossack_bw', 'squat_pause'] },
-  warm4: { title: '筋トレ前の準備（肩）', moves: ['arm_circle', 'wall_slide', 'dead_hang'] },
-};
-function flexSteps(planId) {
-  const pl = FLEX_PLANS[planId];
-  const steps = [{ title: '準備', text: `${pl.title}。最初は ${FLEX_MOVES[pl.moves[0]].name} の形を作ります`, sec: 10, kind: 'prepare' }];
-  pl.moves.forEach((id, i) => {
-    const m = FLEX_MOVES[id];
-    const text = [m.reps, m.steps[m.steps.length - 1]].filter(Boolean).join('。');
-    const one = (side) => ({ title: `${m.name}${side ? `（${side}）` : ''}`, text: `${m.area}。${text}`, sec: m.sec, kind: 'hold', move: id });
-    if (m.sides) steps.push(one('右'), { title: '反対側へ', text: `${m.name}（左）の形を作る`, sec: 5, kind: 'switch' }, one('左'));
-    else steps.push(one(''));
-    const next = pl.moves[i + 1];
-    if (next) steps.push({ title: '次へ', text: `${FLEX_MOVES[next].name}の形を作る`, sec: 8, kind: 'switch' });
-  });
-  if (pl.pnf) steps.push({ title: '次へ', text: 'ハーフスプリットの形を作る（縮めてから伸ばす）', sec: 8, kind: 'switch' }, ...PNF('ハーフスプリット', '右'), { title: '反対側へ', text: 'ハーフスプリット（左）の形を作る', sec: 8, kind: 'switch' }, ...PNF('ハーフスプリット', '左'));
-  return steps;
+function flexSourceLinks(ids, label = '見本：') {
+  const list = ids.map((x) => (typeof x === 'string' ? FLEX_SOURCES[x] : x)).filter((x) => x && /^https?:\/\//.test(x.url));
+  if (!list.length) return null;
+  return h('div', { class: 'flex-src' }, h('span', { class: 'hint', style: 'margin:0' }, label), list.map((x) => h('a', { href: x.url, target: '_blank', rel: 'noopener noreferrer' }, x.title)));
 }
-const flexMinutes = (planId) => Math.ceil(flexSteps(planId).reduce((s, x) => s + x.sec, 0) / 60);
-const flexState = (d) => { const f = ckObj(d.flex); return { logs: ckObj(f.logs), tests: ckObj(f.tests) }; };
+const bmSideName = (s) => (s === 'R' ? '右' : s === 'L' ? '左' : s === 'LR' ? '左右' : '');
+const bmFlipText = (s) => s.replace(/右/g, '\u0000').replace(/左/g, '右').replace(/\u0000/g, '左');
+const bmTisName = (x) => `${x.name}${bmSideName(x.side) ? `（${bmSideName(x.side)}）` : ''}`;
+// 指数の棒（120% まで。100% に印）。左右が同じ値なら 1 本にまとめる
+function bmBars(list, max = 10) {
+  const merged = [];
+  for (const x of list) {
+    const twin = merged.find((y) => y.id === x.id && y.side !== x.side && Math.abs(y.idx - x.idx) < 0.01);
+    if (twin) twin.side = 'LR'; else merged.push({ ...x });
+  }
+  const rows = merged.filter((x) => x.idx >= 0.4).slice(0, max);
+  if (!rows.length) return h('p', { class: 'hint' }, 'この位置では、どの組織も 40% 未満です');
+  return h('div', { class: 'bm-bars', role: 'list' }, rows.map((x) => {
+    const pct = Math.round(x.idx * 100);
+    return h('div', { class: `bm-row k-${x.kind}${x.idx >= 0.995 ? ' over' : ''}`, role: 'listitem', 'aria-label': `${bmTisName(x)} ${pct}%` },
+      h('span', { class: 'bm-name' }, x.name, bmSideName(x.side) ? h('small', null, `（${bmSideName(x.side)}）`) : null, x.kind !== 'mtu' ? h('small', { class: 'bm-kind' }, x.kind === 'nerve' ? '神経' : '靱帯') : null),
+      h('span', { class: 'bm-track', 'aria-hidden': 'true' }, h('span', { class: 'bm-fill', style: `width:${Math.min(100, pct / 1.2)}%` }), h('span', { class: 'bm-100' })),
+      h('span', { class: 'bm-pct' }, `${pct}%`));
+  }));
+}
+// 止まる位置の説明：「右の股関節曲げ 81° で、大腿二頭筋（長頭）（右）が止める」
+function bmStopText(r, depth, mirrored) {
+  const fix = (s) => (mirrored ? bmFlipText(s) : s);
+  const parts = (r.parts || [r]).map((p) => {
+    const ang = fix(bmAngles(p.pose, p.depth).join('・'));
+    const both = (x, list) => list.some((y) => y.id === x.id && y.side !== x.side && Math.abs((y.idx ?? y.v) - (x.idx ?? x.v)) < 0.01);
+    const sd = (x, list) => (both(x, list) ? 'LR' : mirrored ? bmSwap(x.side) : x.side);
+    const by = p.bone ? `${p.bone.name}（${bmSideName(sd(p.bone, bmBonesOf(p.pose)))}）` : p.top && p.top.idx >= 0.995 ? bmTisName({ ...p.top, side: sd(p.top, p.list) }) : null;
+    return by ? `${ang} で、${by}が止める` : `${ang}（ここまでで止まらない）`;
+  });
+  return parts.join('／');
+}
+const flexAimOf = (e) => bmMove(bmEntry(e).id).aim || [];
+function flexAimIdx(r, e, side) {
+  const aim = flexAimOf(e);
+  const x = r.list.find((y) => aim.includes(y.g) && (side === 'C' || y.side === side || y.side === 'C'));
+  return x ? x.idx : 0;
+}
+function flexWhyText(C, g) {
+  if (g === 'lift') return '筋トレの動きやすさ（しゃがみ・ベンチ・頭上）';
+  if (g === 'nerve') return '脚上げで、つま先・頭で張りが強くなった。強く伸ばす前に神経を滑らせる';
+  const ids = new Set(BM_T.filter((t) => t.g === g).map((t) => t.id));
+  const src = [...new Set(C.notes.filter((n) => n.ids.some((id) => ids.has(id))).map((n) => `${bmSideName(n.side)}：${n.src}`))];
+  return src.length ? src.join('、') : `${BM_GROUPS[g] || g}（開脚に要る）`;
+}
+function flexMoveRow(e, C, sec) {
+  const { id } = bmEntry(e), m = bmMove(id);
+  const r = bmLimitSide(e, C.caps, 'R');
+  const stop = m.kind === 'nerve' ? null : r.bone ? r.bone.name : r.top && r.top.idx >= 0.995 ? (BM_GROUPS[r.top.g] || r.top.name) : null;
+  const t = m.kind === 'pnf' ? `約 70 秒${m.sides ? '（左右）' : ''}` : m.sides ? (sec?.R || sec?.L ? `右 ${sec.R || m.sec} 秒・左 ${sec.L || m.sec} 秒` : `${m.reps ? m.reps + '・' : ''}${m.sec} 秒（左右）`) : m.reps || `${m.sec} 秒`;
+  return h('li', null, h('b', null, flexEntryName(e)), h('small', { class: 'hint' }, ` ${t}${m.kind === 'nerve' ? '・神経を伸ばさずに動かす' : stop ? `・伸びる：${stop}` : ''}`));
+}
 function startFlex(planId, opts = {}) {
   const T = routineDay();
-  openGuidedTimer({ title: FLEX_PLANS[planId].title, sub: FLEX_PLANS[planId].sub || '', steps: flexSteps(planId), doneLabel: '記録する',
-    doneText: '痛みはありませんでしたか。痛みが出た動きは、次回は浅くするか外してください',
-    onDone: () => {
-      const cur = ckObj(flexState(DATA).logs[T]);
-      const ops = [{ t: 'flexLog', day: T, set: { [planId]: true, at: nowIso() } }];
+  const steps = flexSteps(planId, DATA, T);
+  openGuidedTimer({ title: FLEX_PLANS[planId].title, sub: FLEX_PLANS[planId].sub || '', steps, doneLabel: '記録する',
+    doneText: '痛み・しびれはありませんでしたか。出た種目は、次回は浅くするか外してください',
+    onDone: (spent = []) => {
+      const add = {}; // 種目ごと・左右ごとに、実際に保った秒数（縮める 5 秒は数えない）
+      steps.forEach((s, i) => {
+        const sec = Math.round(Math.min(s.sec, spent[i] || 0));
+        if (!s.move || s.push || sec < 1) return;
+        add[s.move] = add[s.move] || {};
+        add[s.move][s.side] = (add[s.move][s.side] || 0) + sec;
+      });
+      const ops = [{ t: 'flexLog', day: T, set: { [planId]: true, at: nowIso() }, add }];
       if (opts.routineId && !routineDone(DATA, T).has(opts.routineId)) ops.push({ t: 'routineToggle', day: T, id: opts.routineId, on: true });
       mutate(ops);
       toast(`${FLEX_PLANS[planId].title}を記録しました`);
       if (opts.routineId) playDone();
-      void cur;
     } });
 }
-function flexSourceLinks(ids) {
-  const list = ids.map((x) => (typeof x === 'string' ? FLEX_SOURCES[x] : x)).filter((x) => x && /^https?:\/\//.test(x.url));
-  if (!list.length) return null;
-  return h('div', { class: 'flex-src' }, h('span', { class: 'hint', style: 'margin:0' }, '見本：'), list.map((x) => h('a', { href: x.url, target: '_blank', rel: 'noopener noreferrer' }, x.title)));
-}
-function flexMoveCard(id) {
-  const m = FLEX_MOVES[id];
-  const open = flexOpen === id;
-  return h('div', { class: 'card flex-move' + (open ? ' open' : ''), 'data-move': id },
-    h('button', { type: 'button', class: 'gym-ex-h', 'aria-expanded': String(open), onclick: () => { flexOpen = open ? null : id; render(); } },
-      h('span', { class: 'gym-ex-t' }, h('b', null, m.name), h('small', null, `${m.area}・${m.reps || `${m.sec} 秒${m.sides ? '（左右）' : ''}`}`))),
-    open ? h('div', { class: 'flex-body' },
-      h('ol', { class: 'flex-steps' }, m.steps.map((x) => h('li', null, x))),
-      m.miss?.length ? h('p', { class: 'hint' }, `よくある間違い：${m.miss.join('／')}`) : null,
-      flexSourceLinks(m.src || []) || h('p', { class: 'hint' }, '見本の動画は準備中です')) : null);
-}
 function flexNodes(d, T) {
-  const fs = flexState(d);
-  const today = ckObj(fs.logs[T]);
+  const tabs = h('div', { class: 'dl-seg flex-tabs', role: 'tablist', 'aria-label': '柔軟性の画面' }, FLEX_SUBS.map(([k, l]) =>
+    h('button', { type: 'button', role: 'tab', class: flexSub === k ? 'on' : '', 'aria-selected': String(flexSub === k), 'data-fx': k, onclick: () => { flexSub = k; render(); } }, l)));
+  const body = { today: flexTodayNodes, model: flexModelNodes, test: flexTestNodes, why: flexWhyNodes }[flexSub] || flexTodayNodes;
+  return [tabs, ...body(d, T)];
+}
+function flexTodayNodes(d, T) {
+  const fs = flexState(d), today = ckObj(fs.logs[T]);
   const week = [];
   for (let i = 0; i < 7; i++) week.push(ckObj(fs.logs[ymd(addDays(parseYmd(T), -i))]));
-  const dailyN = week.filter((x) => x.daily).length, splitN = week.filter((x) => x.split).length;
-  const plan = (id, label) => h('div', { class: 'card flex-plan' },
-    h('div', { class: 'row', style: 'gap:10px;flex-wrap:wrap' }, h('div', { style: 'flex:1;min-width:180px' }, h('b', null, FLEX_PLANS[id].title), h('div', { class: 'hint', style: 'margin:2px 0 0' }, `${FLEX_PLANS[id].sub}・約 ${flexMinutes(id)} 分・${label}`)),
-      h('button', { class: 'btn-primary', type: 'button', onclick: () => startFlex(id, { routineId: id === 'daily' ? (d.routines || []).find((r) => r.guide === 'flex')?.id : null }) }, today[id] ? 'もう一度' : '始める')),
-    today[id] ? h('div', { class: 'rt-done', style: 'margin-top:10px' }, icon('check'), '今日は済み') : null,
-    h('div', { class: 'hint flex-list' }, FLEX_PLANS[id].moves.map((m) => FLEX_MOVES[m].name).join('・') + (FLEX_PLANS[id].pnf ? '・縮めてから伸ばす（ハーフスプリット）' : '')));
+  const daily = flexDailyPlan(d, T), C = daily.C;
+  const card = (planId, P, label) => h('div', { class: 'card flex-plan', 'data-plan': planId },
+    h('div', { class: 'row', style: 'gap:10px;flex-wrap:wrap' }, h('div', { style: 'flex:1;min-width:180px' }, h('b', null, FLEX_PLANS[planId].title), h('div', { class: 'hint', style: 'margin:2px 0 0' }, `${FLEX_PLANS[planId].sub}・約 ${Math.ceil(flexSecs(flexStepsFor('', P.moves, P.sec)) / 60)} 分・${label}`)),
+      h('button', { class: 'btn-primary', type: 'button', onclick: () => startFlex(planId, { routineId: planId === 'daily' ? (d.routines || []).find((r) => r.guide === 'flex')?.id : null }) }, today[planId] ? 'もう一度' : '始める')),
+    today[planId] ? h('div', { class: 'rt-done', style: 'margin-top:10px' }, icon('check'), '今日は済み') : null,
+    h('ol', { class: 'flex-list' }, P.moves.map((e) => flexMoveRow(e, C, P.sec[e]))),
+    planId === 'daily' && P.tested ? h('details', { class: 'flex-why' }, h('summary', null, 'なぜこの種目と時間か'),
+      h('ul', null, P.moves.map((e) => h('li', null, h('b', null, flexEntryName(e)), '：', flexWhyText(C, P.why[e] || flexAimOf(e)[0]), P.sec[e] ? '。左右差があるので、短い側を 30 秒長く' : ''))))
+      : planId === 'daily' ? h('p', { class: 'hint' }, '今は標準の体として選んでいます。「テスト」で測ると、あなたの体で止まる組織から種目と時間を選び直します') : null);
+  const split = { moves: FLEX_PLANS.split.moves, sec: {}, why: {} };
+  const moves = [...new Set([...daily.moves, ...split.moves])];
   return [
-    plan('daily', `この 7 日で ${dailyN} 日（目安は週 5 日以上）`),
-    plan('split', `この 7 日で ${splitN} 回（目安は週 2 回）`),
-    flexTestCard(d, T),
+    card('daily', daily, `この 7 日で ${week.filter((x) => x.daily).length} 日（目安は週 5 日以上）`),
+    card('split', split, `この 7 日で ${week.filter((x) => x.split).length} 回（目安は週 2 回）`),
+    flexDoseCard(d, T),
     h('div', { class: 'card' }, h('div', { class: 'chart-h' }, '筋トレ前の準備（部位ごと・約 2〜4 分）'),
-      h('p', { class: 'hint', style: 'margin:0' }, '筋トレの画面の「準備運動」からも始められます。長い静的ストレッチは筋トレのあとか夜に回します'),
+      h('p', { class: 'hint', style: 'margin:0' }, '筋トレの画面の「準備運動」からも始められます。筋トレの前は動かす準備だけにして、長く保つストレッチ（1 つの筋で 60 秒以上）はあとに回します'),
       h('div', { class: 'row', style: 'gap:8px;flex-wrap:wrap;margin-top:10px' }, [1, 2, 3, 4].map((n) => h('button', { type: 'button', onclick: () => startFlex(`warm${n}`) }, `${gymDay(n)?.title || ['胸・三頭', '背中・二頭', '脚', '肩'][n - 1]}（${flexMinutes(`warm${n}`)} 分）`)))),
-    h('div', { class: 'chart-h', style: 'margin-top:18px' }, 'やり方（押すと手順と見本）'),
-    ...Object.keys(FLEX_MOVES).map(flexMoveCard),
-    h('p', { class: 'hint' }, '伸びる感じは「気持ちよく張る」くらいまで。鋭い痛み・しびれ・股関節の詰まる感じが出たら、浅くするか中止します。開脚の角度は人によって限界が違うので、無理に 180 度を目指しません'),
+    h('div', { class: 'chart-h', style: 'margin-top:18px' }, 'やり方（押すと手順・理由・見本）'),
+    ...moves.map((e) => flexMoveCard(e, C)),
+    h('p', { class: 'hint' }, '強さは、痛みのない範囲ではっきり張るところ（10 段階で 5〜6）。鋭い痛み・しびれ・脚の付け根の詰まる感じが出たら、浅くするか中止します。坐骨（お尻の下の骨）の近くの鋭い痛みは、もも裏の付け根を傷めたサインなので、その日は中止します'),
   ];
 }
-// テスト（2 週に 1 回）。最初の記録からの変化を見る
-const FLEX_TESTS = [
-  ['reach', '長座前屈', 'cm', '壁に背中をつけて長座し、両手をそろえて前へ。つま先までの距離（越えたら＋、届かなければ−）', 1],
-  ['straddle', '開脚の幅', 'cm', '座って痛くない範囲で脚を開き、かかととかかとの間を測る', 1],
-  ['frontR', '前後開脚の高さ（右脚が前）', 'cm', '前後開脚で止まったところで、床から股までの高さ（低いほどよい）', -1],
-  ['frontL', '前後開脚の高さ（左脚が前）', 'cm', '同じく左脚が前', -1],
-  ['ankleR', '足首（右）', 'cm', '壁で足首と同じ形で、かかとを浮かせずに膝が壁につく、つま先から壁までの最大の距離', 1],
-  ['ankleL', '足首（左）', 'cm', '同じく左', 1],
-  ['shoulderR', '肩（右手が上）', 'cm', '右手を上から、左手を下から背中に回し、指先の間の距離（重なれば＋、離れていれば−）', 1],
-  ['shoulderL', '肩（左手が上）', 'cm', '同じく左手が上', 1],
-];
-function flexTestCard(d, T) {
+function flexMoveCard(e, C) {
+  const { id } = bmEntry(e), m = bmMove(id), open = flexOpen === e;
+  return h('div', { class: 'card flex-move' + (open ? ' open' : ''), 'data-move': id },
+    h('button', { type: 'button', class: 'gym-ex-h', 'aria-expanded': String(open), onclick: () => { flexOpen = open ? null : e; render(); } },
+      h('span', { class: 'gym-ex-t' }, h('b', null, flexEntryName(e)), h('small', null, [m.feel?.split('。')[0], m.kind === 'pnf' ? '縮めてから伸ばす' : m.reps || (m.sec ? `${m.sec} 秒${m.sides ? '（左右）' : ''}` : '')].filter(Boolean).join('・')))),
+    open ? h('div', { class: 'flex-body' },
+      m.steps ? h('ol', { class: 'flex-steps' }, m.steps.map((x) => h('li', null, x))) : null,
+      m.kind === 'pnf' ? h('p', { class: 'hint' }, `20 秒伸ばす → ${m.contract}（2〜3 割の力で 5 秒） → 力を抜いて少し深く 20 秒、を 2 回。力は弱くてよい（20% でも 100% と同じ効果だった研究がある）`) : null,
+      h('p', { class: 'flex-key' }, h('b', null, 'ここを守る：'), flexEntryKey(e)),
+      m.feel ? h('p', { class: 'hint' }, `感じる場所：${m.feel}`) : null,
+      m.why ? h('p', { class: 'hint' }, `理由：${m.why}`) : null,
+      (m.vars || []).filter((v) => v.fault).map((v) => h('p', { class: 'hint' }, `よくある間違い：${v.label}。${v.say}`)),
+      h('button', { type: 'button', class: 'link-btn', style: 'margin-top:8px', onclick: () => { bmView = { e, side: 'R', d: null }; flexSub = 'model'; render(); scrollTo(0, 0); } }, '体のモデルで見る（どこが伸び、どこで止まるか）'),
+      flexSourceLinks(m.src || []) || null) : null);
+}
+// この 7 日に、部位ごとに伸びた時間（その種目の止まる位置で 80% 以上伸びる筋に数える）
+const FLEX_DOSE_ORDER = ['ham', 'iliop', 'rf', 'grac', 'amag', 'add', 'soleus', 'gastroc', 'rot', 'gmax', 'lat', 'tri', 'pec', 'pmin', 'back'];
+function flexDoseCard(d, T) {
+  const dose = flexDose(d, T);
+  const rows = FLEX_DOSE_ORDER.map((g) => ({ g, v: ['R', 'L', 'C'].map((s) => [s, dose[`${g}:${s}`] || 0]).filter(([, x]) => x > 0) })).filter((x) => x.v.length);
+  return h('div', { class: 'card flex-dose' }, h('div', { class: 'chart-h' }, 'この 7 日に伸ばした時間（目安：1 つの部位に週 5 分以上）'),
+    rows.length ? h('div', { class: 'fx-dose' }, rows.map(({ g, v }) => {
+      const minv = Math.min(...v.map(([, x]) => x));
+      return [h('span', null, BM_GROUPS[g]), h('span', { class: 'meter' + (minv >= 300 ? ' ok' : ''), 'aria-hidden': 'true' }, h('span', { class: 'fill', style: `width:${Math.min(100, minv / 3)}%` })),
+        h('span', { class: 'fx-dv' }, v.map(([s, x]) => `${bmSideName(s) ? bmSideName(s) + ' ' : ''}${g1(x / 60)} 分`).join('・'))];
+    })) : h('p', { class: 'hint' }, '柔軟を記録すると、部位ごとの 1 週間の時間がここに出ます'),
+    h('p', { class: 'hint' }, '週 5 分以上で可動域が広がりやすい（23 の研究のまとめ）。量の多い少ないで差が出なかったまとめもあるので、続けることを優先します'));
+}
+
+/* ---- 体のモデル ---- */
+function flexModelNodes(d, T) {
+  const C = flexCaps(d, T), daily = flexDailyPlan(d, T);
+  const groups = [
+    ['今日の柔軟', daily.moves], ['開脚の強化', FLEX_PLANS.split.moves],
+    ['目標の姿勢', ['goal_front', 'goal_middle', 'goal_squat', 'goal_overhead']],
+    ['筋トレ前の準備', [...new Set([1, 2, 3, 4].flatMap((n) => FLEX_PLANS[`warm${n}`].moves))]],
+  ];
+  const used = new Set(groups.flatMap(([, l]) => l));
+  groups.push(['ほかの種目', Object.keys(FLEX_MOVES).filter((k) => !used.has(k) && FLEX_MOVES[k].kind !== 'pnf')]);
+  if (!FLEX_MOVES[bmEntry(bmView.e).id]) bmView = { e: 'slr_strap', side: 'R', d: null };
+  const sel = h('select', { 'data-k': 'bm-move', 'aria-label': '姿勢を選ぶ', onchange: (ev) => { bmView = { e: ev.target.value, side: 'R', d: null }; render(); } },
+    groups.map(([label, list]) => h('optgroup', { label }, list.map((e) => h('option', { value: e, selected: e === bmView.e ? '' : null }, flexEntryName(e))))));
+  return [
+    h('div', { class: 'card bm-card' }, h('div', { class: 'chart-h' }, '姿勢を選ぶ'), sel, bmPanel(C, bmView)),
+    h('p', { class: 'hint' }, C.notes.some((n) => !n.info) ? '% は、あなたのテストの値から置き直した「その組織の限界」に対する伸び。100% で体が止まる' : '% は、標準の可動域でその組織が伸びる長さに対する伸び。テストをすると、あなたの体の値に置き直します'),
+    bmTissueTable(C),
+  ];
+}
+function bmPanel(C, v) {
+  const { id, vars } = bmEntry(v.e), m = bmMove(id);
+  const side = m.sides ? v.side : 'R', mirrored = side === 'L';
+  const caps = mirrored ? bmMirrorCaps(C.caps) : C.caps;
+  const { pose, depth } = bmShape(id, vars);
+  const lim = bmLimit(v.e, caps);
+  const sw = (x) => (mirrored ? { ...x, side: bmSwap(x.side) } : x);
+  const out = h('div', { class: 'bm-out', 'aria-live': 'polite' });
+  const multi = depth.length > 1 || m.ends;
+  const draw = (dd) => {
+    let list = lim.list, p = lim.pose;
+    if (dd != null && !multi) { p = bmPoseAt(pose, depth[0], dd); list = bmEval(p, caps); }
+    const ang = (mirrored ? bmFlipText : (s) => s)(bmAngles(p, depth[0]).join('・'));
+    const kids = m.ends ? m.ends.map((en) => { const pe = bmApply(pose, en.change); return [h('div', { class: 'bm-sub' }, en.label), bmBars(bmEval(pe, caps).map(sw), 6)]; })
+      : [h('div', { class: 'bm-stop' }, h('b', null, '止まる位置：'), bmStopText(lim, depth, mirrored)),
+        dd != null && Math.abs(dd - lim.d) > 0.005 ? h('div', { class: 'bm-sub' }, `いまの深さ：${ang}`) : null,
+        lim.base.length && lim.d < 0.05 ? h('p', { class: 'hint bm-warn' }, `この形では、深くする前から ${lim.base.slice(0, 2).map((x) => bmTisName(sw(x))).join('・')} が限界に届きます。形を浅くするか、別の種目にします`) : null,
+        bmBars(list.map(sw))];
+    out.replaceChildren(...kids.flat(Infinity).filter(Boolean)); // replaceChildren は配列を展開しない
+  };
+  const slider = multi ? null : h('input', { type: 'range', class: 'bm-range', min: '0', max: '100', step: '1', value: String(Math.round((v.d ?? lim.d) * 100)), 'aria-label': '深さ', 'data-k': 'bm-depth',
+    oninput: (ev) => { bmView.d = +ev.target.value / 100; draw(bmView.d); } });
+  draw(v.d);
+  const base = vars.length ? bmLimit(id, caps) : null;
+  const cmpText = base ? (() => {
+    const a = flexAimIdx(base, id, side === 'L' ? 'R' : 'R'), b = flexAimIdx(lim, v.e, 'R');
+    const by = (r) => (r.bone ? r.bone.name : r.top && r.top.idx >= 0.995 ? bmTisName(sw(r.top)) : 'なし');
+    return `元の形と比べると：止めるもの ${by(base)} → ${by(lim)}。狙いの部位の伸び ${Math.round(a * 100)}% → ${Math.round(b * 100)}%`;
+  })() : null;
+  const chip = (x) => h('button', { type: 'button', class: 'fchip' + (vars.includes(x.id) ? ' on' : ''), 'aria-pressed': String(vars.includes(x.id)), 'data-var': x.id,
+    onclick: () => { const nv = vars.includes(x.id) ? vars.filter((y) => y !== x.id) : [...vars, x.id]; bmView = { ...bmView, e: nv.length ? `${id}~${nv.join('+')}` : id, d: null }; render(); } },
+  x.fault ? `間違い：${x.label}` : x.label);
+  return h('div', { class: 'bm-panel' },
+    m.sides ? h('div', { class: 'dl-seg', role: 'group', 'aria-label': '左右', style: 'margin-top:10px' }, [['R', '右で行う'], ['L', '左で行う']].map(([s, l]) =>
+      h('button', { type: 'button', class: side === s ? 'on' : '', 'aria-pressed': String(side === s), onclick: () => { bmView = { ...bmView, side: s, d: null }; render(); } }, l))) : null,
+    m.vars?.length ? [h('div', { class: 'chart-h', style: 'margin-top:12px' }, '形を変えて比べる'), h('div', { class: 'fchips' }, m.vars.map(chip))] : null,
+    slider ? h('label', { class: 'bm-depth' }, h('span', { class: 'hint', style: 'margin:0' }, '深さ（右端が最も深い）'), slider) : null,
+    out,
+    cmpText ? h('p', { class: 'bm-cmp' }, cmpText) : null,
+    (m.vars || []).filter((x) => vars.includes(x.id)).map((x) => h('p', { class: 'hint' }, `${x.label}：${x.say}`)),
+    m.why ? h('p', { class: 'hint' }, `理由：${mirrored ? bmFlipText(m.why) : m.why}`) : null);
+}
+// モデルの中身：組織ごとの場所・伸びる動き・100% の基準
+function bmTissueTable(C) {
+  const order = Object.keys(BM_GROUPS);
+  const list = BM_T.filter((t) => BM_REF[t.id].cm >= 0.2).sort((a, b) => order.indexOf(a.g) - order.indexOf(b.g));
+  return h('details', { class: 'card bm-table' }, h('summary', null, `モデルの中身（組織 ${list.length} 個・関節 ${Object.keys(BM_DOF).length} の動き）`),
+    h('p', { class: 'hint' }, '各組織の長さの変化を、関節の角度 × てこの長さ（モーメントアーム）で足し合わせて計算しています。てこの長さは角度で変わるものは角度ごとに入れています（例：梨状筋の回旋は股関節を 60° ほど曲げると向きが逆になる）'),
+    list.map((t) => {
+      const capR = C.caps[`${t.id}:R`], capL = C.caps[`${t.id}:L`];
+      return h('div', { class: 'bm-tis' }, h('b', null, t.name), h('small', { class: 'hint' }, ` ${t.kind === 'nerve' ? '神経' : t.kind === 'lig' ? '靱帯・関節包' : BM_GROUPS[t.g]}`),
+        h('div', { class: 'hint', style: 'margin:2px 0 0' }, `${t.where}。伸びる動き：${t.how}`),
+        h('div', { class: 'hint', style: 'margin:2px 0 0' }, `100% の基準：${BM_REF[t.id].at}（${g1(BM_REF[t.id].cm)} cm 伸びる）${capR != null || capL != null ? `・あなた：${[['右', capR], ['左', capL]].filter(([, c]) => c != null).map(([s, c]) => `${s} ${Math.round(c * 100)}%`).join('・')}` : ''}`));
+    }));
+}
+
+/* ---- テスト ---- */
+function flexTestNodes(d, T) {
+  const C = flexCaps(d, T);
   const tests = Object.entries(flexState(d).tests).filter(([k]) => YMD_ONLY.test(k)).sort((a, b) => cmp(a[0], b[0]));
-  const last = tests[tests.length - 1];
-  const due = !last || daysBetween(last[0], T) >= 14;
-  const rows = FLEX_TESTS.map(([k, label, unit, , better]) => {
-    const vals = tests.map(([day, t]) => ({ day, v: t[k] })).filter((x) => Number.isFinite(x.v));
+  const lastOf = (set) => { const ks = FLEX_TESTS.filter((x) => x.set === set).map((x) => x.k); return tests.filter(([, t]) => ks.some((k) => ckObj(t)[k] != null && ckObj(t)[k] !== '')).pop()?.[0] || null; };
+  const lastOut = lastOf('out'), lastCause = lastOf('cause');
+  const dueOut = !lastOut || daysBetween(lastOut, T) >= 14, dueCause = !lastCause || daysBetween(lastCause, T) >= 28;
+  const outRows = FLEX_TESTS.filter((x) => x.set === 'out').map((x) => {
+    const vals = tests.map(([day, t]) => ({ day, v: ckObj(t)[x.k] })).filter((y) => Number.isFinite(y.v));
     if (!vals.length) return null;
-    const first = vals[0], now = vals[vals.length - 1];
-    const diff = Math.round((now.v - first.v) * 10) / 10;
-    const good = diff * better > 0;
-    return h('div', { class: 'flex-test-row' }, h('span', null, label), h('b', null, `${g1(now.v)} ${unit}`),
-      h('span', { class: 'hint' + (good ? ' flex-up' : ''), style: 'margin:0' }, vals.length > 1 ? `最初（${fmtShort(first.day)}）から ${diff > 0 ? '+' : diff < 0 ? '−' : '±'}${g1(Math.abs(diff))}` : '1 回目'));
+    const first = vals[0], now = vals[vals.length - 1], diff = Math.round((now.v - first.v) * 10) / 10;
+    return h('div', { class: 'flex-test-row' }, h('span', null, x.label), h('b', null, `${g1(now.v)} ${x.unit}`),
+      h('span', { class: 'hint' + (diff * x.better > 0 ? ' flex-up' : ''), style: 'margin:0' }, vals.length > 1 ? `最初（${fmtShort(first.day)}）から ${diff > 0 ? '+' : diff < 0 ? '−' : '±'}${g1(Math.abs(diff))}` : '1 回目'));
   }).filter(Boolean);
+  const H = C.H, fr = ['frontR', 'frontL'].map((k) => [k, C.tests[k]?.v]).filter(([, v]) => Number.isFinite(+v));
+  const frontAng = (hcm) => Math.round(180 - 2 * bmAsin((+hcm + 0.06 * H) / (0.53 * H)));
+  return [
+    h('div', { class: 'card' },
+      h('div', { class: 'row' }, h('div', { class: 'chart-h', style: 'flex:1;margin:0' }, '結果（2 週に 1 回）'), h('button', { class: dueOut || dueCause ? 'btn-primary' : 'link-btn', type: 'button', onclick: () => openFlexTest(T) }, dueOut || dueCause ? '測る' : '測り直す')),
+      outRows.length ? h('div', { class: 'flex-tests' }, outRows) : h('p', { class: 'hint' }, '最初に一度測っておくと、どれだけ伸びたかが分かります'),
+      fr.length ? h('p', { class: 'hint' }, `前後開脚の角度の目安：${fr.map(([k, v]) => `${k === 'frontR' ? '右前' : '左前'} 約 ${frontAng(v)}°`).join('・')}（股の高さと身長${C.heightKnown ? '' : '（172 cm として）'}から計算）`) : null,
+      lastOut && !dueOut ? h('p', { class: 'hint' }, `次は ${fmtShort(ymd(addDays(parseYmd(lastOut), 14)))} ごろ${dueCause ? '。原因を調べるテスト（月に 1 回）が残っています' : ''}`) : null),
+    flexCauseCard(C, lastCause),
+    flexGoalCard(C),
+  ];
+}
+// 原因：部位ごとに、テストの値と標準、そこから分かること
+function flexCauseCard(C, lastCause) {
+  const L = C.tests, v = (k) => (L[k] != null ? L[k].v : null);
+  const pair = (kR, kL, unit) => [['右', v(kR)], ['左', v(kL)]].filter(([, x]) => x != null && x !== '').map(([s, x]) => `${s} ${x}${unit}`).join('・');
+  // 標準より短い側（測り方の誤差の分は見逃す：角度 3°・距離 2 cm）
+  const short = (kR, kL, norm, better) => [['右', v(kR)], ['左', v(kL)]].filter(([, x]) => x != null && x !== '' && Number.isFinite(+x) && (+x - norm) * better < -(FLEX_TEST_BY.get(kR)?.unit === 'cm' ? 2 : 3)).map(([s]) => s);
+  const rows = [];
+  const add = (area, val, norm, msg) => { if (val) rows.push(h('div', { class: 'fx-cause' }, h('b', null, area), h('div', null, val, h('small', { class: 'hint' }, `（標準 ${norm}）`)), msg ? h('div', { class: 'hint', style: 'margin:2px 0 0' }, msg) : null)); };
+  const nerve = String(v('slrN') || '');
+  const sh = short('slrR', 'slrL', 80, 1);
+  add('もも裏', pair('slrR', 'slrL', '°'), '80°', [sh.length ? `${sh.join('・')}はもも裏（大腿二頭筋・半腱様筋・半膜様筋）が短め。` : '', ['R', 'L', 'both'].includes(nerve) ? `${nerve === 'both' ? '両方' : bmSideName(nerve)}は、つま先・頭で張りが強くなる＝神経が関わっている。多くの人でふつうに起こる反応で、神経が短いのではない。強く伸ばすより、神経を滑らせる動きを先に入れる` : ''].join('') || null);
+  // 膝の角度 ＝ 90 ＋ 太ももの角度 − すねの角度（太ももが水平より上なら＋、すねが垂直より前なら＋）
+  const kneeOf = (s) => { const a = v('thom' + s), b = v('thomB' + s); return a != null && b != null && a !== '' && b !== '' ? Math.round(90 + +a - +b) : null; };
+  const knees = [['右', kneeOf('R')], ['左', kneeOf('L')]].filter(([, x]) => x != null);
+  const th = short('thomR', 'thomL', -10, -1), tb = knees.filter(([, x]) => x < 87).map(([s]) => s), thF = String(v('thomF') || '');
+  add('股関節の前・もも前', [pair('thomR', 'thomL', '°') && `太もも ${pair('thomR', 'thomL', '°')}`, knees.length && `膝 ${knees.map(([s, x]) => `${s} ${x}°`).join('・')}`].filter(Boolean).join('／'), '太もも −10° 以下・膝 90° 以上',
+    [th.length ? `${th.join('・')}は股関節の前（腸腰筋か、股関節の前の靱帯）が短め。` : '', tb.length || ['R', 'L', 'both'].includes(thF) ? `${[...new Set([...tb, ...(thF === 'both' ? ['右', '左'] : thF === 'R' ? ['右'] : thF === 'L' ? ['左'] : [])])].join('・')}はもも前（大腿直筋）も短め。膝を伸ばして行う股関節の前のストレッチと、カウチストレッチを分けて行う` : ''].join('') || null);
+  const an = short('ankleR', 'ankleL', 10, 1), calf = String(v('calf') || '');
+  add('ふくらはぎ・足首', pair('ankleR', 'ankleL', ' cm'), '10 cm（目安）', [an.length ? `${an.join('・')}は足首が硬め（しゃがむとかかとが浮きやすい）。` : '', calf === 'straight' ? '膝を伸ばすと強く張る＝腓腹筋。' : calf === 'bent' ? '膝を曲げると強く張る＝ヒラメ筋か足首の関節。' : calf === 'pinch' ? '足首の前が詰まる＝骨か関節の当たり。押し込まない。' : ''].join('') || null);
+  const ir = short('irR', 'irL', 35, 1), er = short('erR', 'erL', 45, 1), pin = String(v('hipPinch') || '');
+  add('お尻の奥（回旋）', [pair('irR', 'irL', '°') && `内 ${pair('irR', 'irL', '°')}`, pair('erR', 'erL', '°') && `外 ${pair('erR', 'erL', '°')}`].filter(Boolean).join('／'), '内 35°・外 45°',
+    [ir.length ? `内ひねりが小さい（${ir.join('・')}）＝外へひねる筋か股関節の後ろの靱帯。` : '', er.length ? `外ひねりが小さい（${er.join('・')}）＝曲げた位置で内へひねる筋（梨状筋・中殿筋）。` : '', ['R', 'L', 'both'].includes(pin) ? '脚の付け根の前が詰まる＝骨の形か関節唇の当たりの可能性。深く曲げて内へ寄せる形は避け、外へずらす。内ひねりがとても小さく詰まりもあるなら、一度整形外科で相談を' : ''].join('') || null);
+  const sb = String(v('strBent') || '');
+  const strNote = C.notes.find((n) => /開脚/.test(n.src));
+  add('内もも', v('straddle') != null ? `開脚 ${v('straddle')} cm${sb ? `・膝を曲げると${sb === 'wider' ? 'もっと開ける' : '変わらない'}` : ''}` : '', '—',
+    strNote?.info ? 'この幅は、もも裏の長さで説明がつく（座ると骨盤が後ろへ倒れ、内側のもも裏が先に張る）' : sb === 'wider' ? '膝をまたぐ筋（薄筋・もも裏の内側）が止めている。開脚前屈で伸ばす' : sb === 'same' ? '膝をまたがない内転筋（大内転筋など）が止めている。フロッグで伸ばす' : '膝を少し曲げると開けるか確かめると、どの筋が止めているか分かります');
+  add('肩（頭上）', v('shUp') != null ? `床から ${v('shUp')}°${v('shUpB') != null ? `・肘を曲げて ${v('shUpB')}°` : ''}` : '', '10° ほど',
+    v('shUp') != null && +v('shUp') > 10 ? `腕が上がり切らない＝大円筋・広背筋。${v('shUpB') != null && +v('shUpB') > +v('shUp') + 5 ? '肘を曲げるとさらに上がらない＝上腕三頭筋の長頭も。' : ''}足りない分は、頭上へ押すときに腰を反って補いやすい` : null);
   return h('div', { class: 'card' },
-    h('div', { class: 'row' }, h('div', { class: 'chart-h', style: 'flex:1;margin:0' }, '伸びたかを測る（2 週に 1 回）'), h('button', { class: due ? 'btn-primary' : 'link-btn', type: 'button', onclick: () => openFlexTest(T) }, due ? '測る' : '測り直す')),
-    rows.length ? h('div', { class: 'flex-tests' }, rows) : h('p', { class: 'hint' }, '最初に一度測っておくと、2 週ごとにどれだけ伸びたかが分かります'),
-    last && !due ? h('p', { class: 'hint' }, `次は ${fmtShort(ymd(addDays(parseYmd(last[0]), 14)))} ごろ`) : null);
+    h('div', { class: 'chart-h' }, `原因を調べる（月に 1 回）${lastCause ? `・${fmtShort(lastCause)}` : ''}`),
+    rows.length ? h('div', { class: 'fx-causes' }, rows) : h('p', { class: 'hint' }, '脚上げ・トーマス・膝・壁・股関節のひねり・腕を頭上へ、を測ると、どの組織が止めているかを体のモデルで見分けて、毎日のメニューを選び直します'),
+    !C.heightKnown ? h('p', { class: 'hint' }, '身長を入れると、膝・壁と開脚の幅を角度に直す計算が正確になります（「食事・体重」の 1 日の目標で入力。今は 172 cm として計算）') : null);
+}
+// 目標までの分析：本人の「使える長さ」で、目標の姿勢を深くしていくとどこで止まるか
+function flexGoalCard(C) {
+  const row = (label, e, msg) => {
+    const r = bmLimit(e, C.caps), { depth } = bmShape(e);
+    return h('div', { class: 'fx-goal' }, h('b', null, label), h('div', { class: 'hint', style: 'margin:2px 0 0' }, bmStopText(r, depth, false)), msg ? h('div', { class: 'hint', style: 'margin:2px 0 0' }, msg(r)) : null);
+  };
+  const fr = (r) => { const a = (r.parts || [r]).map((p) => p.pose); const f = bmCoords(a[a.length - 1], 'R').hipFlex || 0, b = -(bmCoords(a[a.length - 1], 'L').hipFlex || 0); return `正面を向いた開脚の角度 ＝ 前の脚の曲げ ${Math.round(f)}° ＋ 後ろの脚の伸ばし ${Math.round(b)}° ＝ ${Math.round(f + b)}°（目標 180°）。実際は後ろの脚を外へひねって補うので、測った角度はこれより大きくなる`; };
+  return h('div', { class: 'card' }, h('div', { class: 'chart-h' }, '目標までの分析（体のモデルで計算）'),
+    row('前後開脚（右脚が前）', 'goal_front', fr),
+    row('左右開脚', 'goal_middle', (r) => `片脚 ${Math.round(bmCoords(r.pose, 'R').hipAbd || 0)}°・両脚で ${Math.round(2 * (bmCoords(r.pose, 'R').hipAbd || 0))}°（骨盤を少し前へ倒し、つま先を上へ向けた形）`),
+    row('深いしゃがみ', 'goal_squat'),
+    row('腕を真上へ（腰を反らずに）', 'goal_overhead'),
+    h('p', { class: 'hint' }, C.notes.some((n) => !n.info) ? 'テストの値から計算しています。体のモデルの画面で、止めている組織を確かめられます' : '標準の体として計算しています。テストをすると、あなたの体で計算し直します'));
 }
 function openFlexTest(T) {
   const cur = ckObj(flexState(DATA).tests[T]);
-  const el = Object.fromEntries(FLEX_TESTS.map(([k, label]) => [k, fxNum('ft-' + k, label, { value: cur[k] ?? '', inputmode: 'text' })]));
+  const el = {};
+  const field = (x) => {
+    el[x.k] = x.type === 'choice'
+      ? h('select', { 'data-k': 'ft-' + x.k, 'aria-label': x.label }, x.opts.map(([v, l]) => h('option', { value: v, selected: String(cur[x.k] ?? '') === v ? '' : null }, l)))
+      : fxNum('ft-' + x.k, x.label, { value: cur[x.k] ?? '', inputmode: 'text' });
+    return h('label', { class: 'ev-field' }, x.unit ? `${x.label}（${x.unit}）` : x.label, el[x.k], h('small', { class: 'hint', style: 'margin:0' }, x.how));
+  };
+  const sec = (title, set, open, note) => h('details', { class: 'ft-sec', open: open ? '' : null }, h('summary', null, title), note ? h('p', { class: 'hint' }, note) : null, FLEX_TESTS.filter((x) => x.set === set).map(field));
   formSheet(`柔軟性のテスト（${fmtShort(T)}）`, '保存', 'flextest', [
-    h('p', { class: 'hint' }, '体が温まってから（入浴後など）測ると比べやすくなります。測れないものは空欄で'),
-    ...FLEX_TESTS.map(([k, label, unit, how]) => h('label', { class: 'ev-field' }, `${label}（${unit}）`, el[k], h('small', { class: 'hint', style: 'margin:0' }, how))),
+    h('p', { class: 'hint' }, '体が温まってから（入浴後など）、毎回同じ床・同じ時間帯で測ると比べやすくなります。測れないものは空欄で。角度は iPhone の「計測」アプリの「水準器」で測れます'),
+    sec('結果（2 週に 1 回）', 'out', true),
+    sec('原因を調べる（月に 1 回）', 'cause', true, 'どの組織が止めているかを見分けるテスト。体のモデルが、これを使ってあなたの限界を置き直します'),
   ], (fail) => {
     const v = {};
-    for (const [k] of FLEX_TESTS) {
-      const s = toHalf(el[k].value).trim().replace(/^−/, '-');
+    for (const x of FLEX_TESTS) {
+      if (x.type === 'choice') { const s = el[x.k].value; if (s) v[x.k] = s; continue; }
+      const s = toHalf(el[x.k].value).trim().replace(/^[−ー]/, '-');
       if (!s) continue;
       const n = Number(s);
-      if (!Number.isFinite(n) || Math.abs(n) > 300) return fail('cm の数字で入れてください（マイナスは −10 のように）');
-      v[k] = Math.round(n * 10) / 10;
+      if (!Number.isFinite(n) || Math.abs(n) > (x.unit === '°' ? 180 : 300)) return fail(`${x.label}は ${x.unit} の数字で入れてください（マイナスは −10 のように）`);
+      v[x.k] = Math.round(n * 10) / 10;
     }
     if (!Object.keys(v).length) return fail('どれか 1 つは入れてください');
     mutate({ t: 'flexTest', day: T, test: v });
     closeSheet();
-    toast('記録しました。2 週間後にまた測ります');
+    toast('記録しました。体のモデルとメニューを、この値で計算し直します');
   });
+}
+
+/* ---- 仕組み ---- */
+const FLEX_REFS = {
+  acsm: { title: 'ACSM 2011（Garber）・運動の量と質の推奨', url: 'https://pubmed.ncbi.nlm.nih.gov/21694556/' },
+  thomas: { title: 'Thomas 2018・ストレッチの時間と可動域', url: 'https://pubmed.ncbi.nlm.nih.gov/29506306/' },
+  konrad: { title: 'Konrad 2024・長期のストレッチと可動域（77 研究）', url: 'https://pubmed.ncbi.nlm.nih.gov/37301370/' },
+  feland: { title: 'Feland & Marin 2004・縮める力の強さ', url: 'https://pubmed.ncbi.nlm.nih.gov/15273211/' },
+  alizadeh: { title: 'Alizadeh 2023・筋トレと可動域（55 研究）', url: 'https://pubmed.ncbi.nlm.nih.gov/36622555/' },
+  behm: { title: 'Behm 2016・運動前のストレッチと力', url: 'https://pubmed.ncbi.nlm.nih.gov/26642915/' },
+  wyon: { title: 'Wyon 2013・ダンサーの柔軟性と筋力', url: 'https://pubmed.ncbi.nlm.nih.gov/23439346/' },
+  askling: { title: 'Askling 2007・ダンサーのもも裏の付け根の損傷', url: 'https://pubmed.ncbi.nlm.nih.gov/17567821/' },
+  weppler: { title: 'Weppler & Magnusson 2010・伸びるのは長さか感覚か', url: 'https://doi.org/10.2522/ptj.20090012' },
+  nakamura: { title: 'Nakamura 2021・ストレッチの強さの違い', url: 'https://doi.org/10.3389/fphys.2021.796497' },
+  bourne: { title: 'Bourne 2017・ノルディックと大腿二頭筋の筋束長', url: 'https://doi.org/10.1136/bjsports-2016-096130' },
+  andrews: { title: 'Andrews 2025・筋トレで直列のサルコメアが増える', url: 'https://doi.org/10.1016/j.jshs.2024.100996' },
+  panidi: { title: 'Panidi 2023・ストレッチと筋束長（まとめ）', url: 'https://doi.org/10.1186/s40798-023-00591-7' },
+  herbert: { title: 'Herbert 2002・筋線維と腱の伸びの割合', url: 'https://doi.org/10.1113/jphysiol.2001.012756' },
+  coppieters: { title: 'Coppieters & Butler 2008・神経のスライダーとテンショナー', url: 'https://pubmed.ncbi.nlm.nih.gov/17398140/' },
+  boyd: { title: 'Boyd 2009・脚上げでの神経の反応（健康な人）', url: 'https://pubmed.ncbi.nlm.nih.gov/19881004/' },
+  castellote: { title: 'Castellote-Caballero 2014・神経を滑らせる運動と脚上げ', url: 'https://pubmed.ncbi.nlm.nih.gov/26464889/' },
+  delp: { title: 'Delp 1999・股関節の回旋のてこは屈曲で変わる', url: 'https://doi.org/10.1016/S0021-9290(99)00032-9' },
+  arnold: { title: 'Arnold 2010・下肢の筋骨格モデル', url: 'https://doi.org/10.1007/s10439-009-9852-5' },
+  rajagopal: { title: 'Rajagopal 2016・全身の筋骨格モデル（OpenSim）', url: 'https://doi.org/10.1109/TBME.2016.2586891' },
+  chen: { title: 'Chen & Franklin 2025・下肢のモーメントアームのまとめ', url: 'https://doi.org/10.1007/s10439-025-03735-w' },
+  kato: { title: 'Kato 2023・股関節の角度と内転筋の硬さ', url: 'https://doi.org/10.1038/s41598-023-36698-w' },
+  martin: { title: 'Martin 2008・股関節の靱帯の働き', url: 'https://doi.org/10.1016/j.arthro.2007.08.024' },
+  ferber: { title: 'Ferber 2010・トーマステストの正常値', url: 'https://doi.org/10.4085/1062-6050-45.4.344' },
+  powden: { title: 'Powden 2015・膝・壁テストの誤差', url: 'https://pubmed.ncbi.nlm.nih.gov/25704110/' },
+  borstad: { title: 'Borstad & Ludewig 2006・小胸筋の 3 つのストレッチ', url: 'https://doi.org/10.1016/j.jse.2005.08.011' },
+};
+function flexWhyNodes() {
+  const sec = (title, paras, refs) => h('div', { class: 'card fx-why' }, h('div', { class: 'chart-h' }, title), paras.map((p) => h('p', { class: 'fx-p' }, p)), refs ? flexSourceLinks(refs.map((k) => FLEX_REFS[k]), '出典：') : null);
+  return [
+    sec('動きを止めるのは 4 つ', [
+      '筋と腱：関節をまたいで骨と骨をつなぐ。関節が動くと長さが変わる。伸びの一部は腱が受け持つ（ふくらはぎでは、伸びのうち筋線維は 3 割ほど）。',
+      '神経：背骨から手足の先まで続く一本の線。関節が動くと通り道の長さが変わり、神経は滑って追いつく。張りが強まると、しびれやピリピリを感じ、体は筋を緊張させて守る。',
+      '関節包と靱帯：関節を包む袋と、その補強。股関節の前の靱帯は、股関節を伸ばしたとき・外へひねったときに張り、曲げると緩む。',
+      '骨の形：股関節の受け皿の向きや、太ももの骨のねじれ（前捻角）は人によって 30° 以上違う。骨が当たる先は、ストレッチでは伸びない。前が詰まる・奥で硬く止まる感じは、骨か関節の限界のサイン。',
+    ], ['herbert', 'martin']),
+    sec('このアプリの体のモデル', [
+      '関節の角度（股関節の曲げ伸ばし・開閉・ひねり、膝、足首、背骨、首、肩、肘、手首）から、筋と腱・神経の通り道・靱帯の長さの変化を、角度 × てこの長さ（モーメントアーム）で足し合わせて計算します。てこの長さは、OpenSim の筋骨格モデルや解剖の研究の値を使い、角度で変わるもの（梨状筋・内転筋・お尻の筋の回旋など）は角度ごとに入れています。',
+      '各組織の 100% は、標準的な可動域の限界（脚上げ 80°、股関節の伸展 17°、膝・壁 10 cm など）でその組織が伸びる長さです。姿勢を深くしていくと、最初に 100% に届いた組織か骨の当たりで体が止まります。そこが、その姿勢で「伸びる場所」です。',
+      'テストの値があると、組織ごとの 100% をあなたの体に置き直し、毎日のメニューは「あなたの体で、狙った部位が実際に止める組織になる形」を選びます。',
+      '限界：数値は文献の近似で、骨の形や筋の付き方の個人差は入っていません。肩は下肢より粗いモデルです。痛み・しびれは、数字より優先します。',
+    ], ['rajagopal', 'arnold', 'chen', 'delp']),
+    sec('2 つの関節をまたぐ筋', [
+      'もも裏は股関節と膝をまたぐ：股関節を曲げて膝を伸ばすと最も伸び、膝が曲がると緩む。背中を丸めても股関節は曲がらないので、もも裏は伸びない。',
+      '大腿直筋は股関節の前と膝の前：股関節を伸ばして膝を曲げると伸びる（カウチストレッチ）。大腿直筋が硬い人は、膝を曲げた股関節の前のストレッチでは、もも前が先に止まり、腸腰筋まで届かない。後ろの膝を伸ばして行うと、腸腰筋に届く。',
+      '腓腹筋は膝と足首、ヒラメ筋は足首だけ：膝を曲げると腓腹筋が緩み、ヒラメ筋が残る。',
+      '薄筋は股関節と膝：膝を伸ばした開脚で伸び、膝を曲げるフロッグでは緩む。フロッグで伸びるのは大内転筋。',
+      '長内転筋は、股関節を伸ばした位置では曲げる筋なので、体を起こした開脚（股関節を伸ばして開く）で強く張る。体を前に倒すと緩み、代わりにもも裏・大内転筋の後部・薄筋が張る（股関節の角度と内転筋の硬さを測った研究と合う）。',
+      '梨状筋は、股関節を 60° ほどより深く曲げると、外へひねる筋から内へひねる筋に変わる。4 の字（深く曲げて外へひねる）で伸びるのはこのため。',
+    ], ['kato', 'delp']),
+    sec('神経', [
+      '坐骨神経は、腰からお尻・もも裏・膝の裏を通って足の裏まで続く。股関節を曲げる・膝を伸ばす・足首を上げると、通り道が長くなる。首や背中を丸めると、背骨の中から神経が引かれ、張りを感じやすくなる。',
+      '見分け方：もも裏が張る姿勢で、つま先を引く・頭を起こすと張りが強くなるなら、神経が関わっている。足首や首は、もも裏の長さを変えないから。健康な人でも、つま先を引くと脚上げの角度が 10° ほど小さくなる。これは神経が敏感に反応するふつうの仕組みで、神経が短いのではない。',
+      '神経は「伸ばす」より「滑らせる」：一方の端を長くしながら、もう一方を短くすると、神経はよく動き、引き伸ばされる量は増えにくい（死体の研究で、動く量 12.6 mm 対 6.1 mm、伸びの割合 0.8% 対 6.8%）。神経が張りやすい人は、強く伸ばす前に滑らせる動きを入れる。',
+      '神経は 8% ほど引き伸ばされると血の流れが半分ほどに落ちる（動物の研究）。しびれ・ピリピリ・焼ける感じが出たら浅くする。',
+    ], ['boyd', 'coppieters', 'castellote']),
+    sec('どうやって伸びるのか', [
+      '数週間で広がる分の多くは、伸ばされる感覚に慣れること（伸張耐性の向上）。筋そのものの長さは、ストレッチだけではほとんど変わらない。',
+      '続けると、筋と腱の硬さも少しずつ下がる。強さを上げた方（10 段階で 6〜7）が、4 週間で可動域も硬さも大きく変わった研究がある。一方、強さで差が出なかったまとめもある。このアプリは、痛みのない範囲ではっきり張る強さ（5〜6）にしています。',
+      '伸びた位置で力を出す筋トレ（もも裏のノルディックなど）は、筋線維そのものを長くする（大腿二頭筋の筋束が 12〜22% 長くなり、9 週で直列のサルコメアが増えた）。ストレッチだけでは、筋束の長さはほとんど変わらない。',
+      '筋トレも深いところまで動かせば、ストレッチと同じくらい可動域が広がる（55 の研究のまとめ）。ただし研究は一般の可動域が中心で、開脚のような大きな可動域にそのまま当てはまるとは限らない。開脚にはストレッチも続ける。',
+    ], ['weppler', 'nakamura', 'konrad', 'bourne', 'andrews', 'panidi', 'alizadeh']),
+    sec('量・頻度・タイミング', [
+      '1 つのストレッチで合計 60 秒（10〜30 秒を繰り返してもよい）。週 2〜3 日以上、毎日が最もよい。1 つの部位に週 5 分以上・週 5 日以上で可動域が広がりやすい。',
+      '縮めてから伸ばす方法（PNF）は、静的ストレッチとほぼ同じ効果。縮める力は弱くてよい（20% でも 100% と同じだった）。',
+      '筋トレの前の静的ストレッチは、1 つの筋で 60 秒未満なら力の低下はわずか（約 1%）。60 秒以上だと 4〜5% 落ちる。筋トレの前は動的な準備にして、長く保つストレッチと PNF は筋トレのあとか入浴後に行う。',
+      '開脚では、軽めの伸ばしと、限界付近の筋トレを組み合わせた方が、自分の力で動かせる範囲が広がった（ダンサーの研究）。坐骨の近くの鋭い痛みは、もも裏の付け根の損傷のサイン（ゆっくりした開脚・前屈の動きでも起きる）。出たら中止する。',
+    ], ['acsm', 'thomas', 'konrad', 'feland', 'behm', 'wyon', 'askling']),
+    sec('テストについて', [
+      'トーマステストは、太ももが水平より 10° ほど下がるのが標準。骨盤の傾きで結果が変わるので、反対の膝をしっかり抱えて行う。',
+      '膝・壁は、2 cm 未満の差は測り方の誤差の範囲。',
+      '背中で手を近づけるテストは高齢者向けに作られたもので、若い人の標準値はない。最初の自分の値からの変化を見る。',
+    ], ['ferber', 'powden']),
+  ];
 }
 
 function openRoutines() { openSheet(h('div', { id: 'rtEditor' }, routineEditorBody()), { kind: 'routines', label: 'ルーティンの編集' }); }
