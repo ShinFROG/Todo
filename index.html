@@ -444,8 +444,40 @@
   .zt.alert .zt-page { animation: pop .35s ease 2; }
   /* 食事・体重 */
   .form-sheet input[inputmode] { font: inherit; font-size: 16px; }
-  .fd-streak { position: absolute; top: 6px; left: 8px; font-size: 11px; font-weight: 700; font-variant-numeric: tabular-nums; }
-  .rt.fd-add { border-style: dashed; color: var(--muted); }
+  .fgroup { margin-top: 10px; }
+  .fg-h { display: flex; align-items: center; gap: 8px; font-size: 14px; }
+  .fg-all { border: 1px solid var(--accent); color: var(--accent); background: var(--accent-soft); border-radius: 999px; padding: 6px 14px; min-height: 36px; font-size: 14px; font-weight: 600; }
+  .fg-done { display: inline-flex; align-items: center; gap: 4px; color: var(--accent); font-size: 13px; font-weight: 700; }
+  .fg-done .ic { width: 16px; height: 16px; }
+  .fg-part { margin-top: 6px; }
+  .fg-pl { display: block; font-size: 12px; color: var(--muted); margin-bottom: 4px; }
+  .fchips { display: flex; flex-wrap: wrap; gap: 6px; }
+  .ftools { margin-top: 10px; }
+  .fchip { display: inline-flex; align-items: center; gap: 5px; min-height: 38px; padding: 4px 12px 4px 8px; border-radius: 999px; border: 1.5px solid var(--line); background: var(--card); font-size: 14px; max-width: 100%; }
+  .fchip.on { background: var(--accent); border-color: var(--accent); color: var(--accent-ink); }
+  .fchip:active { transform: scale(.96); }
+  .fc-emo { font-size: 17px; line-height: 1; }
+  .fc-name { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+  .fc-streak { font-size: 11px; font-weight: 700; font-variant-numeric: tabular-nums; }
+  .fchip.fc-add { border-style: dashed; color: var(--muted); }
+  .fd-more { margin-top: 6px; font-size: 13px; color: var(--muted); }
+  .fd-more summary { cursor: pointer; padding: 4px 0; }
+  .fd-more .fd-nums { margin-top: 4px; }
+  .fd-more .fd-num { flex: 1 1 30%; }
+  .fd-note { margin-top: 6px; }
+  .nut { display: grid; grid-template-columns: auto auto minmax(0, 1fr); gap: 6px 14px; align-items: baseline; font-size: 14px; }
+  .nut .nv { text-align: right; font-variant-numeric: tabular-nums; font-weight: 600; }
+  .nut .nm-miss { font-size: 12px; color: var(--muted); }
+  .stk { display: flex; flex-direction: column; gap: 6px; }
+  .stk-row { display: flex; align-items: center; gap: 8px; }
+  .stk-name { flex: 1; min-width: 0; font-weight: 600; }
+  .stk-n { min-width: 64px; text-align: center; font-variant-numeric: tabular-nums; }
+  .stk-n b { font-size: 18px; }
+  .stk-btn { border: 1px solid var(--line); border-radius: 50%; width: 40px; height: 40px; font-size: 20px; }
+  .stk-ed { margin-top: 8px; gap: 8px; }
+  .stk-ed .stk-unit { width: 22%; flex: none; }
+  .stk-ed select { width: auto; flex: none; }
+  .stk-row.zero .stk-name, .stk-row.zero .stk-n { color: var(--muted); }
   .fd-sum { margin-top: 10px; }
   .fd-sum .meter { height: 8px; }
   .meter.over .fill { background: var(--warn); }
@@ -1447,6 +1479,14 @@ function applyOp(d, op) {
       if (e.ids.length || e.extra.length) d.foodLog[op.day] = e; else delete d.foodLog[op.day];
       break;
     }
+    case 'stockSet': // ストックの名前・単位・並び（数は変えない。数は stockCount だけで変える）
+      d.stocks = op.list.map((x) => { const old = (Array.isArray(d.stocks) ? d.stocks : []).find((y) => y.id === x.id); return normStock({ ...x, count: old ? old.count : x.count }); });
+      break;
+    case 'stockCount': { // ストックの数（増減した結果の数を送る。二重に適用しても同じ）
+      const x = (Array.isArray(d.stocks) ? d.stocks : []).find((y) => y.id === op.id);
+      if (x && Number.isFinite(op.count) && op.count >= 0) x.count = op.count;
+      break;
+    }
     case 'weight': // 体重（kg）。null で消す
       d.weightLog = d.weightLog && typeof d.weightLog === 'object' && !Array.isArray(d.weightLog) ? d.weightLog : {};
       if (Number.isFinite(op.kg) && op.kg > 0) d.weightLog[op.day] = op.kg; else delete d.weightLog[op.day];
@@ -1454,7 +1494,7 @@ function applyOp(d, op) {
   }
   return d;
 }
-const OP_LABEL = { add: '追加', patch: '更新', del: '削除', complete: '完了', focus: '集中記録', restore: '元に戻す', renameProject: 'プロジェクト名変更', meta: '設定', routineSeed: 'ルーティンを用意', routineSet: 'ルーティンを編集', routineToggle: 'ルーティン', foodSet: 'いつもの食べ物を編集', foodToggle: '食事', foodExtra: '食事', weight: '体重' };
+const OP_LABEL = { add: '追加', patch: '更新', del: '削除', complete: '完了', focus: '集中記録', restore: '元に戻す', renameProject: 'プロジェクト名変更', meta: '設定', routineSeed: 'ルーティンを用意', routineSet: 'ルーティンを編集', routineToggle: 'ルーティン', foodSet: 'いつもの食べ物を編集', foodToggle: '食事', foodExtra: '食事', weight: '体重', stockSet: 'ストックを編集', stockCount: 'ストック' };
 function commitMessage(ops) {
   return ops.length === 1 ? `todo: ${OP_LABEL[ops[0].t] || '更新'}` : `todo: ${ops.length} 件の変更`;
 }
@@ -1812,6 +1852,7 @@ function navModel(d, T) {
     { v: { type: 'review' }, label: '週次レビュー', ic: 'review', count: !last || daysBetween(last, T) >= 7 ? '●' : null, alert: true },
     { v: { type: 'logbook' }, label: '完了ログ', ic: 'checkCircle' },
     { v: { type: 'body' }, label: '食事・体重', ic: 'bolt' },
+    { v: { type: 'stock' }, label: 'ストック', ic: 'folder' },
     { action: () => openRoutines(), label: 'ルーティンを編集', ic: 'checklist' },
   ];
   const projects = new Map();
@@ -2175,7 +2216,12 @@ function renderMain(d, T, model) {
     case 'body': {
       title = '食事・体重';
       const day = foodDay();
-      nodes.push(foodSection(d, T), bodyCard(d, day), weightCard(d, day), kcalCard(d, day), foodStreakCard(d, day));
+      nodes.push(foodSection(d, T), bodyCard(d, day), nutrientCard(d, day), weightCard(d, day), kcalCard(d, day), foodStreakCard(d, day));
+      break;
+    }
+    case 'stock': {
+      title = 'ストック'; sub = '家にある数（＋−で増減）';
+      nodes.push(...stockCards(d));
       break;
     }
     case 'logbook': {
@@ -2502,32 +2548,44 @@ function ztRender() {
 }
 /* =========================================================================
  * 食事と体重：いつも食べるものを登録しておき、毎日チェックする
- * 1 日の合計カロリー・目標との差・PFC、それぞれ何日続いたか、体重のグラフ。データは todos.json（非公開）の
- * foods（登録した食べ物）・foodLog（日付 → 食べたものの id と、その日だけの食事）・weightLog（日付 → kg）・
- * meta.body（目標の計算に使う性別・生まれた年・身長・活動量・調整）。日付はルーティンと同じく午前 4 時に切り替わる
+ * 1 日の合計カロリー・目標との差・PFC と細かい栄養素、それぞれ何日続いたか、体重のグラフ、ストックの数。
+ * データは todos.json（非公開）の foods（登録した食べ物・サプリ）・foodLog（日付 → 食べたものの id と、その日だけの食事）・
+ * weightLog（日付 → kg）・stocks（ストックの数）・meta.body（目標の計算に使う値）。日付はルーティンと同じく午前 4 時に切り替わる
  * ========================================================================= */
-const FOOD_PARTS = [['morning', '朝'], ['noon', '昼'], ['night', '夜'], ['snack', '間食']];
+const FOOD_PARTS = [['main', '主食・主菜'], ['side', '副菜・汁物'], ['snack', '間食'], ['drink', '飲み物'], ['night', '夜食'], ['supp', 'サプリ']];
+// 「いつもどおり」で 1 回で記録するまとまり（FORME と同じく、食事とサプリを分ける）
+const FOOD_GROUPS = [['meal', '食べ物', (x) => x.part !== 'supp', 'いつもどおり食べた'], ['supp', 'サプリ', (x) => x.part === 'supp', 'いつもどおり飲んだ']];
+const NUTRIENTS = [['kcal', 'エネルギー', 'kcal'], ['p', 'たんぱく質', 'g'], ['f', '脂質', 'g'], ['c', '炭水化物', 'g'], ['fiber', '食物繊維', 'g'],
+  ['salt', '食塩相当量', 'g'], ['ca', 'カルシウム', 'mg'], ['mg', 'マグネシウム', 'mg'], ['zn', '亜鉛', 'mg'], ['vd', 'ビタミンD', 'µg']];
 // 身体活動レベル（日本人の食事摂取基準）
 const PAL_LEVELS = [[1.5, '低い（座っていることが多い）'], [1.75, 'ふつう（座り仕事に通勤・家事・軽い運動）'], [2, '高い（立ち仕事や、よく運動する）']];
 const KCAL_ADJUST = [[0, '体重を保つ'], [-250, 'ゆっくり減らす（−250 kcal）'], [-500, '減らす（−500 kcal）'], [250, 'ゆっくり増やす（+250 kcal）']];
 const fmtN = (n) => Math.round(n).toLocaleString('ja-JP');
 const g1 = (n) => String(Math.round(n * 10) / 10);
+const fmtNut = (k, v) => (k === 'kcal' || k === 'ca' || k === 'mg' ? fmtN(v) : String(Math.round(v * 10) / 10));
 // 入力欄の数字（全角でもよい）。空は null、数字でなければ NaN
-const numIn = (v) => { const s = toHalf(String(v ?? '')).trim(); if (!s) return null; const n = Number(s); return Number.isFinite(n) && n >= 0 ? Math.round(n * 10) / 10 : NaN; };
+const numIn = (v) => { const s = toHalf(String(v ?? '')).trim(); if (!s) return null; const n = Number(s); return Number.isFinite(n) && n >= 0 ? Math.round(n * 100) / 100 : NaN; };
 function normFood(x) {
   const days = Array.isArray(x.days) ? [...new Set(x.days.map(Number).filter((n) => n >= 0 && n <= 6))].sort((a, b) => a - b) : [];
-  const n = (v) => (Number.isFinite(v) && v >= 0 ? Math.round(v * 10) / 10 : null);
+  const n = (v) => (Number.isFinite(v) && v >= 0 ? Math.round(v * 100) / 100 : null); // 値が無い ＝ 不明（0 とは区別する）
   return {
     ...x,
     id: String(x.id || uid()),
     name: String(x.name ?? '').trim() || '（無題）',
     emoji: typeof x.emoji === 'string' ? x.emoji.trim().slice(0, 8) : '',
     amount: typeof x.amount === 'string' ? x.amount.trim() : '',
-    kcal: n(x.kcal), p: n(x.p), f: n(x.f), c: n(x.c),
-    part: FOOD_PARTS.some(([v]) => v === x.part) ? x.part : 'morning',
+    note: typeof x.note === 'string' ? x.note.trim() : '',
+    ...Object.fromEntries(NUTRIENTS.map(([k]) => [k, n(x[k])])),
+    part: FOOD_PARTS.some(([v]) => v === x.part) ? x.part : 'main',
     days: days.length ? days : [0, 1, 2, 3, 4, 5, 6],
     archived: x.archived === true, // 外したもの。前の日の合計と記録を残すため消さない
   };
+}
+const STOCK_CATS = [['food', '食品'], ['daily', '日用品']];
+function normStock(x) {
+  return { ...x, id: String(x.id || uid()), name: String(x.name ?? '').trim() || '（無題）', unit: typeof x.unit === 'string' ? x.unit.trim() : '',
+    cat: STOCK_CATS.some(([v]) => v === x.cat) ? x.cat : 'food',
+    count: Number.isFinite(x.count) && x.count >= 0 ? Math.round(x.count * 10) / 10 : 0 };
 }
 const foodDay = () => routineDay();
 function foodsFor(d, day) {
@@ -2540,13 +2598,18 @@ function foodEntry(d, day) {
   const e = (d.foodLog || {})[day];
   return { ids: Array.isArray(e?.ids) ? e.ids : [], extra: Array.isArray(e?.extra) ? e.extra.filter((x) => x && typeof x === 'object') : [] };
 }
-// その日の合計（登録した食べ物は、いまの登録の数字で数える）
+// その日の合計（登録した食べ物は、いまの登録の数字で数える）。値が無い品は missing に名前を残す
 function foodTotals(d, day) {
   const e = foodEntry(d, day);
   const byId = new Map((d.foods || []).map((x) => [x.id, x]));
   const items = [...e.ids.map((id) => byId.get(id)).filter(Boolean), ...e.extra];
-  const sum = (k) => items.reduce((s, x) => s + (Number.isFinite(x[k]) ? x[k] : 0), 0);
-  return { kcal: Math.round(sum('kcal')), p: sum('p'), f: sum('f'), c: sum('c'), n: items.length };
+  const out = { n: items.length, missing: {} };
+  for (const [k] of NUTRIENTS) {
+    out[k] = items.reduce((s, x) => s + (Number.isFinite(x[k]) ? x[k] : 0), 0);
+    out.missing[k] = items.filter((x) => !Number.isFinite(x[k])).map((x) => x.name);
+  }
+  out.kcal = Math.round(out.kcal);
+  return out;
 }
 // 何日続いたか（食べる曜日だけを数える。今日まだなら昨日まで）
 function foodStreak(d, x, day) {
@@ -2566,7 +2629,7 @@ function latestWeight(d, day) {
   const k = Object.keys(log).filter((x) => x <= day && Number.isFinite(log[x])).sort().pop();
   return k ? { k, kg: log[k] } : null;
 }
-// 1 日の目安。基礎代謝は国立健康・栄養研究所の式（日本人向け）、活動量は日本人の食事摂取基準の身体活動レベル
+// 1 日の目安。基礎代謝は国立健康・栄養研究所の式（日本人向け、Ganpule ら 2007）、活動量は日本人の食事摂取基準の身体活動レベル
 function bodyTarget(d, day) {
   const b = d.meta.body && typeof d.meta.body === 'object' ? d.meta.body : {};
   if (Number.isFinite(b.target) && b.target > 0) return { kcal: Math.round(b.target), manual: true };
@@ -2588,6 +2651,7 @@ function pfcOf(t) {
 }
 
 /* ---------- 今日の「食事」の欄 ---------- */
+let showFoodsDone = false;
 function foodSection(d, T) {
   if (!(d.foods || []).some((x) => !x.archived)) {
     return h('div', { class: 'nudge fd-nudge' }, icon('bolt'), 'いつも食べるものを登録すると、毎日チェックしてカロリーと続いた日数を出します',
@@ -2595,36 +2659,53 @@ function foodSection(d, T) {
   }
   const day = foodDay();
   const e = foodEntry(d, day);
+  const list = foodsFor(d, day);
   const tot = foodTotals(d, day);
   const tg = bodyTarget(d, day);
   const wt = (d.weightLog || {})[day];
+  const allDone = list.length > 0 && list.every((x) => e.ids.includes(x.id));
   const head = h('div', { class: 'group-h' }, h('h3', null, '食事'),
     h('span', { class: 'count' }, tg ? `${fmtN(tot.kcal)} / ${fmtN(tg.kcal)} kcal` : `${fmtN(tot.kcal)} kcal`),
     day !== T ? h('span', { class: 'count' }, `（${fmtShort(day)} の分）`) : null,
     h('span', { class: 'sp' }),
-    view.type !== 'body' ? h('button', { class: 'link-btn', type: 'button', onclick: () => setView({ type: 'body' }) }, 'グラフ') : null,
+    allDone && view.type !== 'body' ? h('button', { class: 'link-btn', type: 'button', onclick: () => { showFoodsDone = !showFoodsDone; render(); } }, showFoodsDone ? 'たたむ' : '表示') : null,
+    view.type !== 'body' ? h('button', { class: 'link-btn', type: 'button', style: 'margin-left:14px', onclick: () => setView({ type: 'body' }) }, 'グラフ') : null,
     h('button', { class: 'link-btn', type: 'button', style: 'margin-left:14px', onclick: openFoods }, '編集'));
-  const tile = (x) => {
+  if (allDone && !showFoodsDone && view.type !== 'body') {
+    return h('section', { class: 'group', 'aria-label': '食事' }, head,
+      h('div', { class: 'rt-done' }, icon('check'), '今日の食事とサプリはすべて記録済み', wt == null ? h('button', { class: 'link-btn', type: 'button', style: 'margin-left:auto', onclick: () => openWeight(day) }, '体重を記録') : null),
+      foodSummary(tot, tg));
+  }
+  const chip = (x) => {
     const on = e.ids.includes(x.id);
     const s = foodStreak(d, x, day);
-    return h('div', { class: 'rt-wrap' }, h('button', {
-      class: 'rt fd' + (on ? ' on' : ''), type: 'button', 'aria-pressed': String(on), 'data-fid': x.id, title: foodDesc(x) || x.name,
+    return h('button', {
+      class: 'fchip' + (on ? ' on' : ''), type: 'button', 'aria-pressed': String(on), 'data-fid': x.id, title: [foodDesc(x), x.note].filter(Boolean).join('\n') || x.name,
       'aria-label': `${x.name}${foodDesc(x) ? `（${foodDesc(x)}）` : ''}${s >= 2 ? `、${s}日続いています` : ''}`, onclick: () => toggleFood(x.id),
-    }, s >= 2 ? h('span', { class: 'fd-streak', 'aria-hidden': 'true' }, `🔥${s}`) : null,
-      h('span', { class: 'rt-emo', 'aria-hidden': 'true' }, x.emoji || '🍽️'), h('span', { class: 'rt-t' }, x.name),
-      h('span', { class: 'rt-s' }, x.kcal != null ? `${fmtN(x.kcal)} kcal` : '')));
+    }, h('span', { class: 'fc-emo', 'aria-hidden': 'true' }, x.emoji || '🍽️'), h('span', { class: 'fc-name' }, x.name),
+      s >= 2 ? h('span', { class: 'fc-streak', 'aria-hidden': 'true' }, `🔥${s}`) : null);
   };
-  const extraTile = (x) => h('div', { class: 'rt-wrap' }, h('button', {
-    class: 'rt fd on fd-extra', type: 'button', 'data-xid': x.id, title: '押すと消せます',
-    'aria-label': `${x.name}（今日だけ・${fmtN(x.kcal || 0)} kcal）を消す`, onclick: () => delFoodExtra(day, x),
-  }, h('span', { class: 'rt-emo', 'aria-hidden': 'true' }, '🍽️'), h('span', { class: 'rt-t' }, x.name), h('span', { class: 'rt-s' }, `${fmtN(x.kcal || 0)} kcal`)));
-  const addTile = h('div', { class: 'rt-wrap' }, h('button', { class: 'rt fd-add', type: 'button', 'aria-label': '今日だけの食事を足す', onclick: () => openFoodExtra(day) },
-    h('span', { class: 'rt-emo', 'aria-hidden': 'true' }, '＋'), h('span', { class: 'rt-t' }, 'その他'), h('span', { class: 'rt-s' }, '今日だけ')));
-  const wtTile = h('div', { class: 'rt-wrap' }, h('button', { class: 'rt fd-wt' + (wt != null ? ' on' : ''), type: 'button', 'aria-label': wt != null ? `体重 ${g1(wt)} kg（直す）` : '体重を記録', onclick: () => openWeight(day) },
-    h('span', { class: 'rt-emo', 'aria-hidden': 'true' }, '⚖️'), h('span', { class: 'rt-t' }, '体重'), h('span', { class: 'rt-s' }, wt != null ? `${g1(wt)} kg` : '記録')));
-  return h('section', { class: 'group', 'aria-label': '食事' }, head,
-    h('div', { class: 'rt-grid' }, foodsFor(d, day).map(tile), e.extra.map(extraTile), addTile, wtTile),
-    foodSummary(tot, tg));
+  const groups = FOOD_GROUPS.map(([g, label, test, allLabel]) => {
+    const items = list.filter(test);
+    if (!items.length) return null;
+    const rest = items.filter((x) => !e.ids.includes(x.id));
+    return h('div', { class: 'fgroup', 'data-group': g },
+      h('div', { class: 'fg-h' }, h('b', null, label), h('span', { class: 'count' }, `${items.length - rest.length}/${items.length}`), h('span', { class: 'sp' }),
+        rest.length ? h('button', { class: 'fg-all', type: 'button', onclick: () => eatAll(day, rest, label) }, `${allLabel}（${rest.length}）`)
+          : h('span', { class: 'fg-done' }, icon('check'), '全部済み')),
+      FOOD_PARTS.filter(([p]) => items.some((x) => x.part === p)).map(([p, pl]) => h('div', { class: 'fg-part' },
+        g === 'meal' ? h('span', { class: 'fg-pl' }, pl) : null,
+        h('div', { class: 'fchips' }, items.filter((x) => x.part === p).map(chip)))));
+  });
+  const tools = h('div', { class: 'fchips ftools' },
+    e.extra.map((x) => h('button', { class: 'fchip on fc-extra', type: 'button', 'data-xid': x.id, title: '押すと消せます',
+      'aria-label': `${x.name}（今日だけ・${fmtN(x.kcal || 0)} kcal）を消す`, onclick: () => delFoodExtra(day, x) },
+      h('span', { class: 'fc-emo', 'aria-hidden': 'true' }, '🍽️'), h('span', { class: 'fc-name' }, `${x.name} ${fmtN(x.kcal || 0)} kcal`))),
+    h('button', { class: 'fchip fc-add', type: 'button', 'aria-label': '今日だけの食事を足す', onclick: () => openFoodExtra(day) },
+      h('span', { class: 'fc-emo', 'aria-hidden': 'true' }, '＋'), h('span', { class: 'fc-name' }, 'その他（今日だけ）')),
+    h('button', { class: 'fchip fc-wt' + (wt != null ? ' on' : ''), type: 'button', 'aria-label': wt != null ? `体重 ${g1(wt)} kg（直す）` : '体重を記録', onclick: () => openWeight(day) },
+      h('span', { class: 'fc-emo', 'aria-hidden': 'true' }, '⚖️'), h('span', { class: 'fc-name' }, wt != null ? `体重 ${g1(wt)} kg` : '体重')));
+  return h('section', { class: 'group', 'aria-label': '食事' }, head, groups, tools, foodSummary(tot, tg));
 }
 function foodSummary(tot, tg) {
   const pc = pfcOf(tot);
@@ -2648,7 +2729,13 @@ function toggleFood(id) {
   if (!on) return;
   playDone();
   haptic();
-  document.querySelector(`.rt[data-fid="${CSS.escape(id)}"]`)?.classList.add('pop');
+}
+// まとまり（食事・サプリ）の残りを全部「食べた」に。元に戻せる
+function eatAll(day, rest, label) {
+  mutate(rest.map((x) => ({ t: 'foodToggle', day, id: x.id, on: true })));
+  playDone();
+  haptic();
+  toast(`${label}をいつもどおりで記録しました（${rest.length} 品）`, rest.map((x) => ({ t: 'foodToggle', day, id: x.id, on: false })));
 }
 function delFoodExtra(day, x) {
   mutate({ t: 'foodExtra', day, del: x.id });
@@ -2699,7 +2786,7 @@ function openWeight(day) {
   ].filter(Boolean), (fail) => {
     const kg = numIn(inp.value);
     if (!(kg >= 20 && kg <= 300)) return fail('体重を kg の数字で入れてください（例：69.2）');
-    mutate({ t: 'weight', day, kg });
+    mutate({ t: 'weight', day, kg: Math.round(kg * 10) / 10 });
     closeSheet();
     toast(`体重 ${g1(kg)} kg を記録しました`);
   });
@@ -2758,7 +2845,9 @@ function refreshFoods(focusKey) {
   const top = s.scrollTop;
   const ae = document.activeElement;
   const key = focusKey || (s.contains(ae) ? ae.dataset.f : null);
+  const open = new Set([...s.querySelectorAll('details[open][data-fid]')].map((x) => x.dataset.fid));
   $('fdEditor').replaceChildren(...foodEditorBody().filter(Boolean));
+  for (const id of open) s.querySelector(`details[data-fid="${CSS.escape(id)}"]`)?.setAttribute('open', '');
   s.scrollTop = top;
   if (key) s.querySelector(`[data-f="${CSS.escape(key)}"]`)?.focus();
 }
@@ -2773,16 +2862,16 @@ function foodEditorBody() {
     oninput: (e) => { const v = e.target.value.trim(); if (v || field !== 'name') editLater(key + x.id, () => upd(x.id, { [field]: v }, false)); },
     onblur: (e) => { flushEdit(key + x.id); if (field === 'name' && !e.target.value.trim()) e.target.value = x.name; },
   });
-  const numF = (x, key, field, label, full) => h('label', { class: 'fd-num' }, h('span', { 'aria-hidden': 'true' }, label), h('input', {
-    type: 'text', inputmode: 'decimal', value: x[field] ?? '', 'data-f': key + x.id, autocomplete: 'off', 'aria-label': `${x.name}の${full}`,
-    oninput: (e) => { const n = numIn(e.target.value); if (!Number.isNaN(n)) editLater(key + x.id, () => upd(x.id, { [field]: n }, false)); },
-    onblur: () => flushEdit(key + x.id),
+  const numF = (x, field, label, full) => h('label', { class: 'fd-num' }, h('span', { 'aria-hidden': 'true' }, label), h('input', {
+    type: 'text', inputmode: 'decimal', value: x[field] ?? '', 'data-f': `${field}-${x.id}`, autocomplete: 'off', 'aria-label': `${x.name}の${full}`,
+    oninput: (e) => { const n = numIn(e.target.value); if (!Number.isNaN(n)) editLater(`${field}-${x.id}`, () => upd(x.id, { [field]: n }, false)); },
+    onblur: () => flushEdit(`${field}-${x.id}`),
   }));
   const rows = list.map((x, i) => h('div', { class: 'rt-ed fd-ed' },
     h('div', { class: 'row' },
       text(x, 'e-', 'emoji', { class: 'emo', 'aria-label': '絵文字' }),
       text(x, 'n-', 'name', { 'aria-label': '名前' }),
-      h('select', { 'aria-label': `${x.name}を食べる時`, onchange: (e) => upd(x.id, { part: e.target.value }) },
+      h('select', { 'aria-label': `${x.name}の区分`, onchange: (e) => upd(x.id, { part: e.target.value }) },
         FOOD_PARTS.map(([v, l]) => h('option', { value: v, selected: x.part === v }, l))),
       h('button', { class: 'icon-btn', type: 'button', 'aria-label': `${x.name} を上へ`, disabled: i === 0,
         onclick: () => { const n = cur(); const a = n.findIndex((y) => y.id === list[i - 1].id), b2 = n.findIndex((y) => y.id === x.id); [n[a], n[b2]] = [n[b2], n[a]]; save(n); } }, '↑'),
@@ -2790,8 +2879,11 @@ function foodEditorBody() {
         onclick: () => { const before = clone(all); upd(x.id, { archived: true }); toast(`「${x.name}」を外しました`, { t: 'foodSet', list: before }); } }, icon('trash'))),
     h('div', { class: 'row fd-nums' },
       text(x, 'a-', 'amount', { class: 'fd-amount', placeholder: '量（例：1 杯 200 g）', 'aria-label': `${x.name}の量` }),
-      numF(x, 'k-', 'kcal', 'kcal', 'カロリー'), numF(x, 'p-', 'p', 'P', 'たんぱく質（g）'), numF(x, 'f-', 'f', 'F', '脂質（g）'), numF(x, 'c-', 'c', 'C', '炭水化物（g）')),
-    h('div', { class: 'wd', role: 'group', 'aria-label': `${x.name} を食べる曜日` }, [1, 2, 3, 4, 5, 6, 0].map((wd) => {
+      numF(x, 'kcal', 'kcal', 'カロリー'), numF(x, 'p', 'P', 'たんぱく質（g）'), numF(x, 'f', 'F', '脂質（g）'), numF(x, 'c', 'C', '炭水化物（g）')),
+    h('details', { class: 'fd-more', 'data-fid': x.id }, h('summary', null, '細かい栄養素・メモ'),
+      h('div', { class: 'row fd-nums' }, NUTRIENTS.slice(4).map(([k, label, unit]) => numF(x, k, `${label}（${unit}）`, `${label}（${unit}）`))),
+      text(x, 'm-', 'note', { class: 'fd-note', placeholder: 'メモ（出どころ・注意など）', 'aria-label': `${x.name}のメモ` })),
+    h('div', { class: 'wd', role: 'group', 'aria-label': `${x.name} の曜日` }, [1, 2, 3, 4, 5, 6, 0].map((wd) => {
       const on = x.days.includes(wd);
       return h('button', { type: 'button', 'aria-pressed': String(on), onclick: () => {
         const days = on ? x.days.filter((y) => y !== wd) : [...x.days, wd];
@@ -2800,12 +2892,12 @@ function foodEditorBody() {
     }))));
   return [
     sheetHead('いつもの食べ物'),
-    h('p', { class: 'hint', style: 'margin-top:-4px' }, '毎日のように食べるものを登録します。「今日」の食事の欄で押すと、その日に食べたことになり、何日続いたかも数えます。P たんぱく質・F 脂質・C 炭水化物（g）'),
+    h('p', { class: 'hint', style: 'margin-top:-4px' }, '毎日のように食べるもの・飲むサプリを登録します。「今日」の食事の欄で押すと、その日に食べたことになり、何日続いたかも数えます。P たんぱく質・F 脂質・C 炭水化物（g）。分からない値は空のままにします（0 とは別に扱います）'),
     ...rows,
     h('div', { class: 'dlg-foot', style: 'justify-content:flex-start;margin-top:12px' },
       h('button', { type: 'button', onclick: () => {
         const id = uid();
-        save([...cur(), { id, emoji: '🍽️', name: '新しい食べ物', part: 'morning' }], false);
+        save([...cur(), { id, emoji: '🍽️', name: '新しい食べ物', part: 'main' }], false);
         refreshFoods('n-' + id);
         $('sheet').querySelector(`[data-f="n-${CSS.escape(id)}"]`)?.select();
       } }, '＋ 追加')),
@@ -2813,7 +2905,7 @@ function foodEditorBody() {
   ];
 }
 
-/* ---------- 「食事・体重」の画面（グラフ・目標・続いた日数） ---------- */
+/* ---------- 「食事・体重」の画面（グラフ・目標・栄養素・続いた日数・ストック） ---------- */
 function bodyCard(d, day) {
   const tg = bodyTarget(d, day);
   const tot = foodTotals(d, day);
@@ -2829,6 +2921,18 @@ function bodyCard(d, day) {
       tg && !tg.manual ? h('span', { class: 'hint' }, `基礎代謝 ${fmtN(tg.bmr)} × ${tg.pal}${tg.adj ? `（${tg.adj > 0 ? '+' : '−'}${Math.abs(tg.adj)}）` : ''}`) : null),
     h('div', { class: 'chart-h', style: 'margin-top:12px' }, '今日の PFC（緑が目安の範囲）'),
     h('div', { class: 'pfc' }, row('たんぱく質', tot.p, pc.p, rg.p), row('脂質', tot.f, pc.f, rg.f), row('炭水化物', tot.c, pc.c, rg.c)));
+}
+// 今日の栄養素の合計（サプリを含む）。値の無い品は「計算に入っていない」として名前を出す（0 として扱わない）
+function nutrientCard(d, day) {
+  const tot = foodTotals(d, day);
+  if (!tot.n) return h('div', { class: 'card' }, h('div', { class: 'chart-h' }, '今日の栄養素'), h('p', { class: 'hint' }, '食べたものを記録すると、ここに合計が出ます'));
+  const short = (names) => (names.length > 2 ? `${names.slice(0, 2).join('・')} ほか ${names.length - 2} 品` : names.join('・'));
+  return h('div', { class: 'card' },
+    h('div', { class: 'chart-h' }, `今日の栄養素（${tot.n} 品・サプリを含む）`),
+    h('div', { class: 'nut' }, NUTRIENTS.map(([k, label, unit]) => [
+      h('span', null, label), h('span', { class: 'nv' }, `${fmtNut(k, tot[k])} ${unit}`),
+      h('span', { class: 'nm-miss' }, tot.missing[k].length ? `不明：${short(tot.missing[k])}` : '')])),
+    h('p', { class: 'hint' }, '値の分からない品は合計に入れていません（0 とは別です）。量や成分は「編集」で直せます'));
 }
 function weightCard(d, day) {
   const N = 30;
@@ -2848,12 +2952,17 @@ function weightCard(d, day) {
   const last = pts[pts.length - 1];
   const week = pts.filter((p) => p.k <= ymd(addDays(Td, -7))).pop();
   const diff = week ? Math.round((last.kg - week.kg) * 10) / 10 : null;
+  const svg = document.createElementNS('http://www.w3.org/2000/svg', 'svg');
+  svg.setAttribute('viewBox', '0 0 100 100');
+  svg.setAttribute('preserveAspectRatio', 'none');
+  svg.setAttribute('aria-hidden', 'true');
+  const pl = document.createElementNS('http://www.w3.org/2000/svg', 'polyline');
+  pl.setAttribute('points', pts.map((p) => `${X(p.i)},${Y(p.kg)}`).join(' '));
+  svg.append(pl);
   return h('div', { class: 'card' }, head,
     h('div', { class: 'wt-now' }, h('b', null, `${g1(last.kg)} kg`), ` ${fmtShort(last.k)}`, diff != null ? h('span', { class: 'hint' }, `　1 週間前から ${diff > 0 ? '+' : diff < 0 ? '−' : '±'}${g1(Math.abs(diff))} kg`) : null),
     h('div', { class: 'wchart', role: 'img', 'aria-label': `体重の推移: ${pts.map((p) => `${fmtShort(p.k)} ${g1(p.kg)}kg`).join('、')}` },
-      h('span', { class: 'yl', style: 'top:0' }, String(hi)), h('span', { class: 'yl', style: 'top:100%' }, String(lo)),
-      (() => { const s = document.createElementNS('http://www.w3.org/2000/svg', 'svg'); s.setAttribute('viewBox', '0 0 100 100'); s.setAttribute('preserveAspectRatio', 'none'); s.setAttribute('aria-hidden', 'true');
-        const pl = document.createElementNS('http://www.w3.org/2000/svg', 'polyline'); pl.setAttribute('points', pts.map((p) => `${X(p.i)},${Y(p.kg)}`).join(' ')); s.append(pl); return s; })(),
+      h('span', { class: 'yl', style: 'top:0' }, String(hi)), h('span', { class: 'yl', style: 'top:100%' }, String(lo)), svg,
       pts.map((p) => h('span', { class: 'dot', style: `left:${X(p.i)}%;top:${Y(p.kg)}%`, 'data-tip': `${fmtShort(p.k)}  ${g1(p.kg)} kg` }))),
     h('div', { class: 'wc-x', 'aria-hidden': 'true' }, h('span', null, fmtShort(ymd(addDays(Td, -(N - 1))))), h('span', null, fmtShort(day))));
 }
@@ -2886,15 +2995,66 @@ function foodStreakCard(d, day) {
       const k = ymd(dd);
       const applies = x.days.includes(dd.getDay());
       const ate = foodEntry(d, k).ids.includes(x.id);
-      cells.push(h('span', { class: 'c' + (ate ? ' on' : applies ? '' : ' na'), 'data-tip': `${x.name}  ${fmtShort(k)}  ${ate ? '食べた' : applies ? '—' : '対象外'}` }));
+      cells.push(h('span', { class: 'c' + (ate ? ' on' : applies ? '' : ' na'), 'data-tip': `${x.name}  ${fmtShort(k)}  ${ate ? '済' : applies ? '—' : '対象外'}` }));
     }
     cells.push(h('span', { class: 'pc' }, `${foodStreak(d, x, day)}日`));
   }
   return h('div', { class: 'card' },
-    h('div', { class: 'chart-h' }, 'いつもの食べ物（直近 14 日・続いた日数）'),
+    h('div', { class: 'chart-h' }, 'いつもの食べ物とサプリ（直近 14 日・続いた日数）'),
     h('div', { class: 'hg', role: 'img', 'aria-label': '直近14日の記録: ' + list.map((x) => `${x.name} ${foodStreak(d, x, day)}日連続`).join('、') }, cells));
 }
 
+/* ---------- ストック（米・洗剤など、家にある数。数は手で増減する） ---------- */
+function stockCards(d) {
+  const list = d.stocks || [];
+  if (!list.length) {
+    return [h('div', { class: 'card' }, h('p', { class: 'hint', style: 'margin:0' }, '米や洗剤など、家にある数を記録できます'),
+      h('div', { class: 'dlg-foot', style: 'justify-content:flex-start' }, h('button', { type: 'button', onclick: openStocks }, '＋ 追加')))];
+  }
+  const step = (x, delta) => mutate({ t: 'stockCount', id: x.id, count: Math.max(0, Math.round((x.count + delta) * 10) / 10) });
+  const row = (x) => h('div', { class: 'stk-row' + (x.count <= 0 ? ' zero' : ''), 'data-sid': x.id },
+    h('span', { class: 'stk-name' }, x.name),
+    h('button', { class: 'icon-btn stk-btn', type: 'button', 'aria-label': `${x.name}を 1 減らす`, disabled: x.count <= 0, onclick: () => step(x, -1) }, '−'),
+    h('span', { class: 'stk-n', 'aria-live': 'polite' }, h('b', null, g1(x.count)), x.unit ? ` ${x.unit}` : ''),
+    h('button', { class: 'icon-btn stk-btn', type: 'button', 'aria-label': `${x.name}を 1 増やす`, onclick: () => step(x, 1) }, '＋'));
+  return STOCK_CATS.map(([c, label], i) => {
+    const items = list.filter((x) => x.cat === c);
+    if (!items.length) return null;
+    return h('div', { class: 'card', 'data-cat': c },
+      h('div', { class: 'row' }, h('div', { class: 'chart-h', style: 'flex:1;margin:0' }, `${label}（${items.length}）`),
+        i === 0 || !list.some((x) => x.cat === STOCK_CATS[0][0]) ? h('button', { class: 'link-btn', type: 'button', onclick: openStocks }, '編集') : null),
+      h('div', { class: 'stk' }, items.map(row)));
+  });
+}
+function openStocks() {
+  const body = () => {
+    const list = DATA.stocks || [];
+    const cur = () => (DATA.stocks || []).map((x) => ({ ...x }));
+    const save = (next, rebuild = true) => { mutate({ t: 'stockSet', list: next }); if (rebuild) openStocks(); };
+    const text = (x, key, field, attrs) => h('input', { type: 'text', value: x[field] ?? '', 'data-f': key + x.id, autocomplete: 'off', ...attrs,
+      oninput: (e) => { const v = e.target.value.trim(); if (v || field !== 'name') editLater(key + x.id, () => save(cur().map((y) => (y.id === x.id ? { ...y, [field]: v } : y)), false)); },
+      onblur: () => flushEdit(key + x.id) });
+    return [
+      sheetHead('ストック'),
+      ...list.map((x) => h('div', { class: 'row stk-ed' },
+        text(x, 'sn-', 'name', { 'aria-label': '名前', placeholder: '名前' }),
+        text(x, 'su-', 'unit', { class: 'stk-unit', 'aria-label': `${x.name}の単位`, placeholder: '単位' }),
+        h('select', { 'aria-label': `${x.name}の区分`, onchange: (e) => save(cur().map((y) => (y.id === x.id ? { ...y, cat: e.target.value } : y))) },
+          STOCK_CATS.map(([v, l]) => h('option', { value: v, selected: x.cat === v }, l))),
+        h('button', { class: 'icon-btn', type: 'button', 'aria-label': `${x.name} を外す`,
+          onclick: () => { const before = clone(list); save(cur().filter((y) => y.id !== x.id)); toast(`「${x.name}」を外しました`, { t: 'stockSet', list: before }); } }, icon('trash')))),
+      h('div', { class: 'dlg-foot', style: 'justify-content:flex-start;margin-top:12px' },
+        h('button', { type: 'button', onclick: () => { const id = uid(); save([...cur(), { id, name: '新しいストック', unit: '袋', cat: 'food', count: 0 }]); $('sheet').querySelector(`[data-f="sn-${CSS.escape(id)}"]`)?.select(); } }, '＋ 追加')),
+      h('div', { class: 'dlg-foot' }, h('button', { class: 'btn-primary', type: 'button', onclick: closeSheet }, '完了')),
+    ];
+  };
+  if (sheetKind === 'stocks' && !$('sheet').hidden) {
+    const s = $('sheet');
+    const key = s.contains(document.activeElement) ? document.activeElement.dataset.f : null;
+    s.querySelector('#stkEditor').replaceChildren(...body());
+    if (key) s.querySelector(`[data-f="${CSS.escape(key)}"]`)?.focus();
+  } else openSheet(h('div', { id: 'stkEditor' }, body()), { kind: 'stocks', label: 'ストック' });
+}
 function openRoutines() { openSheet(h('div', { id: 'rtEditor' }, routineEditorBody()), { kind: 'routines', label: 'ルーティンの編集' }); }
 function refreshRoutines(focusKey) {
   if (sheetKind !== 'routines') return;
