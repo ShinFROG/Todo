@@ -539,48 +539,122 @@
   .rcp-ul { margin: 0; padding-left: 20px; font-size: 14px; }
   .rcp textarea { margin-top: 10px; }
   .rcp-src { margin-top: 14px; font-size: 13px; }
-  /* 筋トレ */
+  /* 筋トレ（FORME に合わせる：開始は体調→メニュー→大きな開始ボタン。記録中は 1 種目ずつ大きく、押しやすく） */
+  body[data-view="gym"] #fab { display: none; }
   .gym-title { font-size: 20px; font-weight: 800; }
-  .gym-menu { margin: 10px 0 0; padding-left: 20px; font-size: 14px; }
-  .gym-menu li { padding: 3px 0; }
-  .gym-menu li .hint { margin-left: 6px; }
+  .gym-title-lg { margin: 0; font-size: 30px; line-height: 1.2; }
+  .gym-bar2 .ic, .gym-foot .ic { width: 20px; height: 20px; }
+  .gym-parts { display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); gap: 6px; margin-top: 10px; }
+  .gym-parts button { min-height: 44px; padding: 6px 3px; border-radius: 10px; border-color: var(--line); background: var(--card); color: var(--muted); font-size: 15px; font-weight: 600; }
+  .gym-parts button.on { border-color: var(--accent); background: var(--accent); color: var(--accent-ink); }
+  .gym-sub { margin: 8px 0 0; }
+  .gym-check { border-radius: 18px; padding: 16px; margin-top: 16px; }
+  .gym-check-top { display: flex; align-items: baseline; gap: 8px; }
+  .gym-check-top b { flex: 1; font-size: 17px; }
+  .gym-check-state { font-size: 13px; font-weight: 600; color: var(--muted); }
+  .gym-ok { width: 100%; min-height: 52px; margin-top: 12px; border-radius: 14px; font-size: 16px; font-weight: 700; }
+  .gym-check-more { display: inline-flex; align-items: center; min-height: 44px; margin-top: 4px; font-size: 15px; }
+  .gym-check-form { margin-top: 4px; }
   .gym-check .gym-q { margin-top: 10px; display: flex; align-items: center; gap: 10px; flex-wrap: wrap; font-size: 14px; }
   .gym-check select { width: auto; min-height: 36px; padding: 4px 8px; font-size: 14px; }
   .gym-color { margin: 12px 0 0; font-size: 14px; padding: 8px 12px; border-radius: 10px; background: var(--sunk); }
   .gym-color[data-color="green"] { background: color-mix(in srgb, var(--ok) 14%, transparent); }
   .gym-color[data-color="yellow"] { background: color-mix(in srgb, var(--warn) 16%, transparent); }
   .gym-color[data-color="red"] { background: color-mix(in srgb, var(--danger) 14%, transparent); }
-  .gym-start { margin-top: 14px; }
-  .gym-start .btn-primary { min-height: 48px; padding: 10px 22px; font-size: 16px; }
-  .gym-head { display: flex; align-items: center; gap: 14px; flex-wrap: wrap; margin-top: 6px; }
-  .gym-head + .meter { margin-top: 8px; }
+  .gym-sec-h { display: flex; align-items: baseline; gap: 8px; margin-top: 24px; }
+  .gym-sec-h b { flex: 1; font-size: 17px; }
+  .gym-sec-h .hint { margin: 0; }
+  .gym-menu-note { margin: 4px 0 0; }
+  .gym-menu { list-style: none; margin: 8px 0 0; padding: 0; }
+  .gym-menu li { display: flex; align-items: baseline; gap: 14px; padding: 10px 0; border-top: 1px solid var(--line); }
+  .gym-menu li:first-child { border-top: 0; }
+  .gym-menu-n { min-width: 22px; color: var(--accent); font-size: 15px; font-weight: 700; font-variant-numeric: tabular-nums; }
+  .gym-menu-t { flex: 1; min-width: 0; display: flex; flex-direction: column; gap: 2px; }
+  .gym-menu-t b { font-size: 15px; }
+  .gym-menu-t small { color: var(--muted); font-size: 13px; }
+  .gym-sub-acts { display: flex; flex-wrap: wrap; gap: 8px; margin-top: 12px; }
+  .gym-sub-acts button { flex: 1 1 140px; min-height: 44px; border-radius: 12px; font-size: 14px; }
+  /* 開始ボタンは、FORME と同じく画面の下に固定（スマホは下のタブの上） */
+  .gym-start { position: sticky; z-index: 5; bottom: calc(57px + env(safe-area-inset-bottom)); margin: 14px -16px 0; padding: 10px 16px 12px; border-top: 1px solid var(--line); background: var(--bg); }
+  @media (min-width: 900px) { .gym-start { bottom: 0; } }
+  .gym-start-note { margin: 0 0 8px; text-align: center; font-size: 13px; }
+  .gym-go, .gym-rec, .gym-nextex { width: 100%; min-height: 54px; border-radius: 16px; font-size: 17px; font-weight: 700; }
+  .gym-go:disabled { opacity: .45; cursor: not-allowed; }
+  .gym-guide { margin-top: 14px; }
+  .gym-pill { align-self: center; min-height: 40px; padding: 6px 14px; border-radius: 999px; border-color: transparent; background: var(--sunk); color: var(--text); font-size: 14px; font-weight: 600; white-space: nowrap; }
+  .gym-bar2 { display: flex; align-items: center; gap: 8px; }
+  .gym-bar2 .link-btn, .gym-foot .link-btn { display: inline-flex; align-items: center; gap: 8px; min-height: 44px; font-size: 15px; }
+  .gym-meter { margin-top: 2px; }
+  .gym-cur-t { margin: 18px 0 0; font-size: 24px; line-height: 1.25; font-weight: 800; }
+  .gym-cur-eq, .gym-prev { margin-top: 4px; color: var(--muted); font-size: 13px; }
+  .gym-target { display: flex; flex-direction: column; gap: 2px; margin-top: 10px; font-size: 14px; }
+  .gym-target span { color: var(--muted); font-size: 12px; }
   .gym-last { display: flex; align-items: center; gap: 12px; flex-wrap: wrap; margin-top: 10px; font-size: 14px; padding: 8px 12px; border-radius: 10px; background: var(--accent-soft); }
-  .gym-ex { padding: 0; overflow: hidden; }
-  .gym-ex.done:not(.open) { opacity: .75; }
-  .gym-ex.pain { border-color: var(--danger); }
+  .gym-setcard, .gym-sets-card { border-radius: 18px; padding: 16px; margin-top: 12px; }
+  .gym-setno { color: var(--accent); font-size: 15px; font-weight: 700; }
+  .gym-lab { margin-top: 12px; font-size: 15px; font-weight: 700; }
+  .gym-wstep { display: grid; grid-template-columns: 64px minmax(0, 1fr) 64px; align-items: center; gap: 10px; margin-top: 8px; }
+  .gym-stepbtn { width: 64px; height: 64px; padding: 0; border: 0; border-radius: 50%; background: var(--accent-soft); color: var(--accent); display: grid; place-items: center; }
+  .gym-stepbtn .ic { width: 28px; height: 28px; }
+  .gym-seg2 .ic { width: 20px; height: 20px; }
+  .gym-stepbtn:active, .gym-seg2 button:active { transform: scale(.94); }
+  .gym-bignum { display: flex; align-items: baseline; justify-content: center; gap: 6px; min-width: 0; }
+  .gym-setcard input.gym-big { width: 100%; max-width: 150px; min-height: 56px; padding: 2px 4px; border: 0; border-bottom: 2px solid var(--line); border-radius: 0; background: transparent; color: var(--text); font-size: 44px; font-weight: 700; line-height: 1.1; text-align: center; font-variant-numeric: tabular-nums; }
+  .gym-setcard input.gym-big:focus { border-bottom-color: var(--accent); box-shadow: none; background: var(--accent-soft); }
+  .gym-setcard input.gym-big::placeholder { color: var(--faint); font-size: 18px; font-weight: 600; }
+  .gym-unit { color: var(--muted); font-size: 16px; }
+  .gym-loadnote { margin: 8px 0 0; font-size: 12px; }
+  .gym-div { height: 1px; margin: 14px 0; background: var(--line); }
+  .gym-rstep { display: flex; align-items: center; gap: 10px; }
+  .gym-rstep .gym-bignum { flex: 1; justify-content: flex-start; }
+  .gym-setcard .gym-rstep input.gym-big { max-width: 96px; text-align: left; }
+  .gym-seg2 { display: flex; flex: none; border-radius: 999px; background: var(--sunk); overflow: hidden; }
+  .gym-seg2 button { min-width: 54px; min-height: 44px; padding: 0 12px; border: 0; border-radius: 0; background: none; color: var(--text); display: grid; place-items: center; }
+  .gym-seg2 button + button { border-left: 1px solid var(--line); }
+  .gym-repnote { margin: 6px 0 0; font-size: 13px; }
+  .gym-sels { display: grid; grid-template-columns: repeat(auto-fit, minmax(130px, 1fr)); gap: 4px 16px; margin-top: 12px; }
+  .gym-sel { display: flex; flex-direction: column; gap: 0; min-width: 0; }
+  .gym-sel > span { font-size: 15px; font-weight: 700; }
+  .gym-selbox { position: relative; }
+  .gym-selbox select { appearance: none; -webkit-appearance: none; width: 100%; min-height: 44px; padding: 0 28px 0 0; border: 0; background: transparent; color: var(--accent); font-size: 16px; font-weight: 600; }
+  .gym-selbox select:focus { box-shadow: none; }
+  .gym-selbox select:focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; border-radius: 6px; }
+  .gym-selbox .ic { position: absolute; right: 0; top: 50%; width: 18px; height: 18px; transform: translateY(-50%); color: var(--accent); pointer-events: none; }
+  .gym-rec { margin-top: 16px; }
+  .gym-recnote { margin: 8px 0 0; font-size: 12px; }
+  .gym-sets-h { display: flex; align-items: baseline; gap: 10px; }
+  .gym-sets-h b { font-size: 16px; }
+  .gym-sets-h .hint { margin: 0; }
+  .gym-tbl { margin-top: 6px; }
+  .gym-tr { display: grid; grid-template-columns: 40px 64px 44px minmax(0, 1fr) 36px; align-items: center; gap: 6px; width: 100%; min-height: 44px; padding: 8px 0; border: 0; border-top: 1px solid var(--line); border-radius: 0; background: none; color: var(--text); font-size: 16px; text-align: left; font-variant-numeric: tabular-nums; }
+  .gym-tr.gym-th { min-height: 0; padding: 4px 0; border-top: 0; color: var(--muted); font-size: 12px; }
+  .gym-tr span:nth-child(2), .gym-tr span:nth-child(3) { text-align: right; }
+  .gym-tr:not(.gym-th) span:nth-child(2), .gym-tr:not(.gym-th) span:nth-child(3) { color: var(--accent); font-weight: 700; }
+  .gym-tr span:nth-child(4) { padding-left: 8px; color: var(--muted); font-size: 13px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+  .gym-tr-fix { color: var(--accent); font-size: 13px; font-weight: 600; text-align: right; }
+  .gym-tbl-note { margin: 6px 0 0; font-size: 12px; }
+  .gym-done-box { display: flex; flex-direction: column; gap: 12px; margin-top: 12px; }
+  .gym-addset { display: flex; align-items: center; justify-content: center; gap: 8px; width: 100%; min-height: 52px; border: 0; border-radius: 999px; background: var(--accent-soft); color: var(--accent); font-size: 16px; font-weight: 600; }
+  .gym-nextex { display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 1px; }
+  .gym-nextex small { font-size: 12px; font-weight: 500; opacity: .85; }
+  .gym-fin { margin-top: 0; padding: 18px 16px; border-radius: 18px; text-align: center; }
+  .gym-fin > .ic { width: 36px; height: 36px; color: var(--accent); }
+  .gym-fin b { display: block; margin-top: 4px; font-size: 18px; }
+  .gym-fin .gym-nextex { margin-top: 12px; }
+  .gym-foot { display: flex; align-items: center; gap: 12px; margin-top: 12px; }
+  .gym-pain { color: var(--danger); }
+  .gym-pick-edit { min-height: 44px; margin-bottom: 4px; }
+  .gym-pick-row, .gym-more-row { display: flex; align-items: center; gap: 12px; width: 100%; min-height: 52px; padding: 10px 6px; border: 0; border-top: 1px solid var(--line); border-radius: 0; background: none; color: var(--text); text-align: left; }
+  .gym-pick-row.on { border-radius: 10px; background: var(--accent-soft); }
+  .gym-pick-row > .ic { color: var(--accent); }
+  .gym-more-row { flex-direction: column; align-items: flex-start; gap: 2px; color: var(--accent); font-size: 16px; font-weight: 600; }
+  .gym-more-row small { color: var(--muted); font-size: 12px; font-weight: 400; }
+  .gym-more-eq { margin-top: 4px; padding-top: 12px; border-top: 1px solid var(--line); font-size: 14px; }
+  .gym-more-eq input { min-height: 40px; padding: 4px 8px; font-size: 16px; }
   .gym-ex-h { display: flex; align-items: center; gap: 10px; width: 100%; text-align: left; background: none; border: 0; padding: 12px 14px; color: var(--text); }
-  .gym-ex-n { width: 26px; height: 26px; border-radius: 50%; background: var(--sunk); display: grid; place-items: center; font-size: 13px; font-weight: 700; flex: none; }
   .gym-ex-t { flex: 1; min-width: 0; display: flex; flex-direction: column; }
   .gym-ex-t small { color: var(--muted); font-size: 12px; }
   .gym-ex-h .ic { color: var(--accent); }
-  .gym-ex.open > :not(.gym-ex-h) { margin-left: 14px; margin-right: 14px; }
-  .gym-ex.open > :last-child { margin-bottom: 12px; }
-  .gym-target { display: flex; flex-direction: column; gap: 2px; font-size: 14px; }
-  .gym-target .hint { margin: 0; }
-  .gym-prev { margin-top: 6px; }
-  .gym-sets { margin: 8px 0 0; padding-left: 22px; font-size: 14px; }
-  .gym-sets li { padding: 3px 0; }
-  .gym-sets .link-btn { margin-left: 10px; font-size: 13px; }
-  .gym-input { margin-top: 10px; }
-  .gym-row { display: flex; gap: 10px; margin-top: 6px; }
-  .gym-row .ev-field { flex: 1; min-width: 0; display: flex; flex-direction: column; gap: 4px; font-size: 13px; color: var(--muted); }
-  .gym-row input { font-size: 20px; font-weight: 700; text-align: center; min-height: 48px; }
-  .gym-row select { flex: 1; min-width: 0; min-height: 40px; font-size: 14px; padding: 6px 8px; }
-  .gym-rec { width: 100%; min-height: 50px; margin-top: 10px; font-size: 16px; }
-  .gym-pain { color: var(--danger); }
-  .gym-more { margin-top: 10px; font-size: 13px; }
-  .gym-more summary { cursor: pointer; color: var(--muted); }
-  .gym-more input { font-size: 15px; min-height: 36px; padding: 4px 8px; }
   .gym-edit-row { gap: 4px; padding: 6px 0; border-top: 1px solid var(--line); align-items: center; }
   .gym-edit-n { min-width: 56px; text-align: center; font-variant-numeric: tabular-nums; font-size: 14px; }
   .gym-edit select { flex: 1; min-width: 0; }
@@ -1264,6 +1338,7 @@ const ICONS = {
   flag: '<path d="M5 21V4h11l-2 4 2 4H5"/>',
   folder: '<path d="M3 6a1 1 0 0 1 1-1h5l2 2h9a1 1 0 0 1 1 1v10a1 1 0 0 1-1 1H4a1 1 0 0 1-1-1z"/>',
   plus: '<path d="M12 5v14M5 12h14"/>',
+  minus: '<path d="M5 12h14"/>',
   chevron: '<path d="M9 5l7 7-7 7"/>',
   down: '<path d="M5 9l7 7 7-7"/>',
   search: '<circle cx="11" cy="11" r="7"/><path d="M20 20l-4-4"/>',
@@ -2101,6 +2176,7 @@ function render() {
   const fabLabel = view.type === 'calendar' ? '予定を追加' : 'タスクを追加（n）';
   $('fab').setAttribute('aria-label', fabLabel);
   $('fab').title = fabLabel;
+  document.body.dataset.view = view.type;
   renderMain(DATA, T, model);
   renderDetail(false);
   updateQuickChips();
@@ -2569,7 +2645,10 @@ function renderMain(d, T, model) {
       break;
     }
     case 'gym': {
-      title = '筋トレ'; sub = 'FORME の4分割（胸・背中・脚・肩）';
+      const live = GYMPLAN.state === 'ok' ? gymActive(d) : null; // 記録中は、見出しを今の部位にする
+      title = live ? gymDay(live.split)?.title || '筋トレ' : '筋トレ';
+      sub = live ? `記録中・${fmtTime(live.startedAt)} 開始${live.color === 'yellow' ? '・軽くする日' : ''}` : fmtFull(T);
+      if (live) extra = gymLiveBar(live);
       nodes.push(...gymNodes(d, T));
       break;
     }
@@ -3996,139 +4075,258 @@ function gymNodes(d, T) {
       : GYMPLAN.state === 'error' ? 'メニューを読み込めませんでした。通信を確かめて、もう一度開いてください。' : 'メニューを読み込んでいます…')];
   }
   const act = gymActive(d);
-  return [...(act ? gymSessionNodes(d, act) : gymStartNodes(d, T)), gymHistoryCard(d)];
+  return act ? gymSessionNodes(d, act) : [...gymStartNodes(d, T), gymHistoryCard(d)];
 }
+// 体調：いつもどおりなら大きなボタン 1 つで済ませ、気になることがあるときだけ細かく聞く（FORME と同じ流れ）
+let gymCheckOpen = false;
 function gymCheckCard(d, T) {
   const c = todayCheck(d, T);
   const color = gymColor(d, c, T);
   const set = (patch) => mutate({ t: 'dayCheck', day: T, check: { sleep: 2, fatigue: false, sore: false, joint: 0, ...(c || {}), ...patch, at: nowIso() } });
+  const fine = () => { gymCheckOpen = false; mutate({ t: 'dayCheck', day: T, check: { sleep: 2, fatigue: false, sore: false, joint: 0, at: nowIso() } }); };
   const [label, note] = GYM_COLOR[color];
+  const open = gymCheckOpen || (c && color !== 'green'); // 黄・赤のときは、何がそうさせているかを見せる
   return h('div', { class: 'card gym-check', 'data-color': color },
-    h('div', { class: 'row' }, h('div', { class: 'chart-h', style: 'flex:1;margin:0' }, '今日の体調'),
-      h('button', { type: 'button', class: 'fg-all', onclick: () => mutate({ t: 'dayCheck', day: T, check: { sleep: 2, fatigue: false, sore: false, joint: 0, at: nowIso() } }) }, 'いつもどおり')),
-    h('div', { class: 'gym-q' }, h('span', null, '睡眠の感じ'), h('div', { class: 'dl-seg' }, GYM_SLEEP.map(([v, l]) =>
-      h('button', { type: 'button', class: c?.sleep === v ? 'on' : '', 'aria-pressed': String(c?.sleep === v), onclick: () => set({ sleep: v }) }, l)))),
-    h('label', { class: 'fs-opt gym-q' }, h('input', { type: 'checkbox', checked: c?.fatigue ? '' : null, 'data-k': 'gym-fatigue', onchange: (e) => set({ fatigue: e.target.checked }) }), '全身疲労がある'),
-    h('label', { class: 'fs-opt gym-q' }, h('input', { type: 'checkbox', checked: c?.sore ? '' : null, 'data-k': 'gym-sore', onchange: (e) => set({ sore: e.target.checked }) }), '筋肉痛が48時間以上残る'),
-    h('label', { class: 'fs-opt gym-q' }, '関節痛', h('select', { 'data-k': 'gym-joint', onchange: (e) => set({ joint: +e.target.value }) },
-      Array.from({ length: 11 }, (_, i) => h('option', { value: String(i), selected: (c?.joint ?? 0) === i ? '' : null }, `${i}/10`)))),
-    c && c.joint > 0 ? h('label', { class: 'fs-opt gym-q' }, '気になる部位', h('select', { 'data-k': 'gym-region', onchange: (e) => set({ region: e.target.value }) },
-      GYM_REGIONS.map((r) => h('option', { value: r, selected: c.region === r ? '' : null }, r)))) : null,
-    h('p', { class: 'gym-color', 'data-color': color }, h('b', null, label), `　${note}`));
+    h('div', { class: 'gym-check-top' }, h('b', null, '今日の体調'), h('span', { class: 'gym-check-state' }, c ? '確認済み' : '未確認')),
+    color === 'green' ? null : h('button', { type: 'button', class: 'btn-primary gym-ok', onclick: fine }, 'いつもどおり・痛みなし'),
+    c ? h('p', { class: 'gym-color', 'data-color': color }, h('b', null, label), `　${note}`) : null,
+    open ? h('div', { class: 'gym-check-form' },
+      h('div', { class: 'gym-q' }, h('span', null, '睡眠の感じ'), h('div', { class: 'dl-seg' }, GYM_SLEEP.map(([v, l]) =>
+        h('button', { type: 'button', class: c?.sleep === v ? 'on' : '', 'aria-pressed': String(c?.sleep === v), onclick: () => set({ sleep: v }) }, l)))),
+      h('label', { class: 'fs-opt gym-q' }, h('input', { type: 'checkbox', checked: c?.fatigue ? '' : null, 'data-k': 'gym-fatigue', onchange: (e) => set({ fatigue: e.target.checked }) }), '全身疲労がある'),
+      h('label', { class: 'fs-opt gym-q' }, h('input', { type: 'checkbox', checked: c?.sore ? '' : null, 'data-k': 'gym-sore', onchange: (e) => set({ sore: e.target.checked }) }), '筋肉痛が48時間以上残る'),
+      h('label', { class: 'fs-opt gym-q' }, '関節痛', h('select', { 'data-k': 'gym-joint', onchange: (e) => set({ joint: +e.target.value }) },
+        Array.from({ length: 11 }, (_, i) => h('option', { value: String(i), selected: (c?.joint ?? 0) === i ? '' : null }, `${i}/10`)))),
+      c && c.joint > 0 ? h('label', { class: 'fs-opt gym-q' }, '気になる部位', h('select', { 'data-k': 'gym-region', onchange: (e) => set({ region: e.target.value }) },
+        GYM_REGIONS.map((r) => h('option', { value: r, selected: c.region === r ? '' : null }, r)))) : null,
+      color === 'green' ? h('button', { type: 'button', class: 'link-btn gym-check-more', onclick: () => { gymCheckOpen = false; render(); } }, '閉じる') : null)
+      : h('button', { type: 'button', class: 'link-btn gym-check-more', onclick: () => { gymCheckOpen = true; render(); } }, c ? '体調を直す' : '気になることがある'));
 }
+const gymNo = (i) => String(i + 1).padStart(2, '0');
+let gymPick = null; // 今日だけ選んだ部位（順番どおりなら null）
+let gymLast = null; // 直前に記録したセット（取り消し用）
 function gymStartNodes(d, T) {
-  const cur = gymPick && GYMPLAN.days.some((x) => x.id === gymPick) ? gymPick : gymNextSplit(d);
+  const next = gymNextSplit(d);
+  const cur = gymPick && GYMPLAN.days.some((x) => x.id === gymPick) ? gymPick : next;
   const day = gymDay(cur);
   const menu = gymMenu(d, cur);
   const color = gymColor(d, todayCheck(d, T), T);
   const today = gymList(d).filter((s) => s.date === T);
+  const doneToday = today.filter(gymDone);
   const rest = today.find((s) => s.status === 'rest');
-  const sel = h('select', { 'data-k': 'gym-split', 'aria-label': '今日の部位', onchange: (e) => { gymPick = +e.target.value; render(); } },
-    GYMPLAN.days.map((x) => h('option', { value: String(x.id), selected: x.id === cur ? '' : null }, x.title)));
+  const sets = menu.reduce((n, m) => n + m.sets, 0);
+  const canStart = color !== 'unknown' && color !== 'red';
   return [
-    today.filter(gymDone).length ? h('div', { class: 'rt-done' }, icon('check'), `今日は${today.filter(gymDone).map((s) => gymDay(s.split).title).join('・')}を終えました`) : null,
+    doneToday.length ? h('div', { class: 'rt-done' }, icon('check'), `今日は${doneToday.map((s) => gymDay(s.split).title).join('・')}を終えました`) : null,
     rest ? h('div', { class: 'nudge' }, icon('sofa'), '今日は休養にしました。次回も同じ部位です',
       h('button', { class: 'link-btn', type: 'button', onclick: () => { mutate({ t: 'gymDel', id: rest.id }); toast('休養を取り消しました'); } }, '休養を取り消す')) : null,
-    h('div', { class: 'card gym-next' },
-      h('div', { class: 'row', style: 'gap:10px;flex-wrap:wrap' }, h('div', { style: 'flex:1;min-width:160px' }, h('div', { class: 'chart-h', style: 'margin:0' }, cur === gymNextSplit(d) ? '次の部位' : '選んだ部位'),
-        h('div', { class: 'gym-title' }, day.title), h('div', { class: 'hint', style: 'margin:0' }, day.subtitle)), h('label', { class: 'fs-opt' }, '部位を変える', sel)),
-      h('ol', { class: 'gym-menu' }, menu.map((m) => { const x = gymEx(m.ex); return h('li', null, h('span', null, x.name), h('span', { class: 'hint' }, `${m.sets}セット・${x.low}〜${x.high}回`)); })),
-      h('div', { class: 'row', style: 'gap:14px;flex-wrap:wrap;margin-top:6px' }, h('span', { class: 'hint', style: 'margin:0' }, `${menu.reduce((s, m) => s + m.sets, 0)}セット・目安 ${gymMinutes(menu)} 分`),
-        h('button', { class: 'link-btn', type: 'button', onclick: () => openGymMenu(cur, null) }, '今日のメニューを編集'))),
-    gymCheckCard(d, T),
-    h('div', { class: 'row gym-start', style: 'gap:10px;flex-wrap:wrap' },
-      h('button', { class: 'btn-primary', type: 'button', disabled: color === 'unknown' || color === 'red' ? '' : null, onclick: () => { gymStart(d, cur, todayCheck(d, T)); gymPick = null; } },
-        color === 'unknown' ? '体調を確かめると始められます' : color === 'red' ? '今日は始めません' : `${day.title}を始める`),
-      h('button', { type: 'button', onclick: () => startFlex(`warm${cur}`) }, `準備運動（約 ${flexMinutes(`warm${cur}`)} 分）`),
-      rest ? null : h('button', { type: 'button', onclick: () => { gymSave({ id: uid(), split: cur, date: T, startedAt: nowIso(), endedAt: nowIso(), status: 'rest', items: [] }); toast('休養にしました。次回も同じ部位です'); } }, '休養日にする')),
-    h('p', { class: 'hint' }, `${GYMPLAN.effortGuide} 休憩の目安は主な種目 3 分・そのほか 2 分（タイマーは使いません）`),
+    h('div', { class: 'gym-next' },
+      h('h2', { class: 'gym-title gym-title-lg' }, day.title),
+      h('div', { class: 'gym-parts', role: 'group', 'aria-label': '部位' }, GYMPLAN.days.map((x) =>
+        h('button', { type: 'button', class: x.id === cur ? 'on' : '', 'aria-pressed': String(x.id === cur), 'aria-label': x.title, 'data-split': String(x.id),
+          onclick: () => { gymPick = x.id === next ? null : x.id; render(); } }, x.title.split('・')[0]))),
+      h('p', { class: 'hint gym-sub' }, cur === next ? day.subtitle : `${day.subtitle}。順番では次は${gymDay(next).title}です`),
+      gymCheckCard(d, T),
+      h('div', { class: 'gym-sec-h' }, h('b', null, '今日のメニュー'), h('span', { class: 'hint' }, `${menu.length}種目`)),
+      h('p', { class: 'hint gym-menu-note' }, `${sets}セット・目安 ${gymMinutes(menu)} 分。${GYMPLAN.effortGuide}`),
+      h('ol', { class: 'gym-menu' }, menu.map((m, i) => { const x = gymEx(m.ex); return h('li', null, h('span', { class: 'gym-menu-n' }, gymNo(i)),
+        h('span', { class: 'gym-menu-t' }, h('b', null, x.name), h('small', null, `${m.sets}セット × ${x.low}〜${x.high}回`))); })),
+      h('div', { class: 'gym-sub-acts' },
+        h('button', { type: 'button', onclick: () => openGymMenu(cur, null) }, '今日のメニューを編集'),
+        h('button', { type: 'button', onclick: () => startFlex(`warm${cur}`) }, `準備運動（約 ${flexMinutes(`warm${cur}`)} 分）`),
+        rest ? null : h('button', { type: 'button', onclick: () => { gymSave({ id: uid(), split: cur, date: T, startedAt: nowIso(), endedAt: nowIso(), status: 'rest', items: [] }); toast('休養にしました。次回も同じ部位です'); } }, '休養日にする'))),
+    h('div', { class: 'gym-start' },
+      canStart ? null : h('p', { class: 'hint gym-start-note' }, color === 'red' ? '関節痛がある日は始めません' : '今日の体調を確認してから始めましょう'),
+      h('button', { class: 'btn-primary gym-go', type: 'button', disabled: canStart ? null : '',
+        onclick: () => { gymPick = null; gymCheckOpen = false; gymStart(d, cur, todayCheck(d, T)); } }, 'トレーニングを始める')),
+    h('p', { class: 'hint gym-guide' }, '休憩の目安は主な種目 3 分・そのほか 2 分（タイマーは使いません）'),
   ];
 }
-let gymPick = null;
-let gymLast = null; // 直前に記録したセット（取り消し用）
+// 記録中：1 種目ずつ大きく見せる（FORME と同じ）。ほかの種目へは「種目を選ぶ」から
+const gymItemDone = (i) => !!i.pain || gymSetsOf(i).length >= i.planned;
+function gymCurIdx(s) {
+  const k = s.items.findIndex((i) => i.ex === gymOpen);
+  if (k >= 0) return k;
+  const o = s.items.findIndex((i) => !gymItemDone(i));
+  return o >= 0 ? o : Math.max(0, s.items.length - 1);
+}
+// idx のあとで、まだ終えていない種目（なければ前に戻って探す。どれも終えていれば -1）
+function gymNextIdx(s, idx) {
+  for (let k = 1; k < s.items.length; k++) {
+    const j = (idx + k) % s.items.length;
+    if (!gymItemDone(s.items[j])) return j;
+  }
+  return -1;
+}
+const gymShowOpen = () => requestAnimationFrame(() => window.scrollTo(0, 0));
+const gymGo = (s, j) => { gymOpen = s.items[j].ex; render(); gymShowOpen(); };
+// 見出しの右：リスタート（ほかの画面へ移っても、記録中のまま続きから再開できる）
+const gymLiveBar = (s) => h('button', { type: 'button', class: 'gym-pill', onclick: () => openGymRestart(s) }, 'リスタート');
 function gymSessionNodes(d, s) {
-  const day = gymDay(s.split);
-  const total = s.items.reduce((n, i) => n + i.planned, 0);
-  const done = s.items.reduce((n, i) => n + gymSetsOf(i).length, 0);
-  const cur = gymOpen && s.items.some((i) => i.ex === gymOpen) ? gymOpen : (s.items.find((i) => !i.pain && gymSetsOf(i).length < i.planned) || s.items[0])?.ex;
-  const last = gymLast && gymLast.sid === s.id ? gymLast : null;
+  const n = s.items.length;
+  const exDone = s.items.filter(gymItemDone).length;
+  const idx = gymCurIdx(s);
   return [
-    h('div', { class: 'gym-head' }, h('div', null, h('div', { class: 'gym-title' }, day.title), h('div', { class: 'hint', style: 'margin:0' },
-      `${done}/${total} セット・${fmtTime(s.startedAt)} 開始${s.color === 'yellow' ? '・軽くする日' : ''}`)),
+    h('div', { class: 'gym-bar2' },
+      h('button', { type: 'button', class: 'link-btn', onclick: () => openGymPicker(s, idx) }, icon('list'), `種目を選ぶ · ${exDone} / ${n}`),
       h('span', { class: 'sp' }),
-      h('button', { class: 'link-btn', type: 'button', onclick: () => openGymMenu(s.split, s) }, 'メニューを編集'),
-      h('button', { class: 'link-btn', type: 'button', onclick: () => openGymRestart(s) }, 'リスタート')),
-    h('div', { class: 'meter' }, h('div', { class: 'fill', style: `width:${total ? done / total * 100 : 0}%` })),
-    last ? h('div', { class: 'gym-last', role: 'status' }, `直前の記録：${last.name} ${last.n}セット目 ${fmtKg(last.w)} × ${last.r}回`,
-      h('button', { class: 'link-btn', type: 'button', onclick: () => gymUndo(d, s, last) }, '取り消す')) : null,
-    ...s.items.map((it, i) => gymItemCard(d, s, it, i, it.ex === cur)),
-    h('div', { class: 'row', style: 'gap:10px;margin-top:14px;flex-wrap:wrap' },
-      h('button', { class: 'btn-primary', type: 'button', onclick: () => gymFinish(s, 'done') }, done ? '筋トレを終える' : '記録せずに終える')),
+      h('button', { type: 'button', class: 'link-btn', onclick: () => openGymEnd(s) }, '終了')),
+    h('div', { class: 'meter gym-meter', role: 'progressbar', 'aria-label': '今日の種目の進み具合', 'aria-valuemin': '0', 'aria-valuemax': String(n), 'aria-valuenow': String(exDone) },
+      h('div', { class: 'fill', style: `width:${n ? (exDone / n) * 100 : 0}%` })),
+    gymCurrent(d, s, idx),
   ];
 }
 const fmtTime = (iso) => { const t = new Date(iso); return isNaN(t) ? '' : `${t.getHours()}:${pad(t.getMinutes())}`; };
-const gymShowOpen = () => requestAnimationFrame(() => document.querySelector('.gym-ex.open')?.scrollIntoView({ block: 'start', behavior: reduceMotion() ? 'auto' : 'smooth' }));
-function gymItemCard(d, s, it, idx, open) {
-  const x = gymEx(it.ex);
+const gymEffortShort = (e) => GYM_EFFORT.find(([v]) => v === e)?.[1].split('（')[0] || '';
+const gymBenchShort = (c) => (c ? GYM_BENCH.find(([v]) => v === c)?.[1] || '' : '');
+// 選ぶ欄（FORME のメニューのように、文字だけ＋右に ⌄）
+const gymSelect = (sel) => h('div', { class: 'gym-selbox' }, sel, icon('down'));
+function gymCurrent(d, s, idx) {
+  const it = s.items[idx];
+  const x = it && gymEx(it.ex);
   if (!x) return null;
   const sets = gymSetsOf(it);
   const left = Math.max(0, it.planned - sets.length);
   const prev = gymHistory(d, x.id, it.planned, it.cond, s.id).all.find((hh) => hh.sets.length);
   const eq = ckObj(gymState(d).equip[x.id]);
-  const head = h('button', { type: 'button', class: 'gym-ex-h', 'aria-expanded': String(open), onclick: () => { gymOpen = open ? '__none' : x.id; render(); } },
-    h('span', { class: 'gym-ex-n' }, `${idx + 1}`), h('span', { class: 'gym-ex-t' }, h('b', null, x.name), h('small', null, `${sets.length}/${it.planned} セット${it.pain ? '・痛みで中止' : ''}`)),
-    sets.length >= it.planned && !it.pain ? icon('check') : null);
-  if (!open) return h('div', { class: 'card gym-ex' + (sets.length >= it.planned ? ' done' : '') + (it.pain ? ' pain' : ''), 'data-ex': x.id }, head);
-  const lastSet = sets[sets.length - 1];
-  const w0 = lastSet ? lastSet.w : it.load > 0 || (it.load === 0 && x.step === 0) ? it.load : null;
-  const r0 = lastSet ? lastSet.r : Math.max(x.low, Math.ceil((it.target || x.low * it.planned) / Math.max(1, it.planned)));
-  const wIn = h('input', { type: 'text', inputmode: 'decimal', value: w0 == null ? '' : g1(w0), 'data-k': 'gym-w', 'aria-label': `${x.name}の重量（kg）`, autocomplete: 'off' });
-  const rIn = h('input', { type: 'text', inputmode: 'numeric', value: String(r0), 'data-k': 'gym-r', 'aria-label': `${x.name}の回数`, autocomplete: 'off' });
-  const eIn = h('select', { 'data-k': 'gym-e', 'aria-label': 'きつさ（任意）' }, h('option', { value: '' }, 'きつさ（任意）'), GYM_EFFORT.map(([v, l]) => h('option', { value: v }, l)));
-  const cIn = x.id === 'bench_press' ? h('select', { 'data-k': 'gym-c', 'aria-label': '実施条件' }, GYM_BENCH.map(([v, l]) => h('option', { value: v, selected: (it.cond ?? 'chest') === v ? '' : null }, l))) : null;
-  const err = h('p', { class: 'hint ev-err', hidden: true });
-  const record = () => {
-    const w = numIn(wIn.value), r = Math.round(numIn(rIn.value));
-    if (!Number.isFinite(w) || w < 0 || w > 500) { err.textContent = '重量を kg の数字で入れてください'; err.hidden = false; return; }
-    if (!Number.isFinite(r) || r < 0 || r > 100) { err.textContent = '回数を入れてください'; err.hidden = false; return; }
-    const set = { w, r, at: nowIso(), ...(eIn.value ? { e: eIn.value } : {}), ...(cIn ? { c: cIn.value } : {}) };
-    const items = s.items.map((y, j) => (j === idx ? { ...y, sets: [...gymSetsOf(y), set], planned: Math.max(y.planned, gymSetsOf(y).length + 1) } : y));
-    // 画面を描き直す前に、直前の記録と次に開く種目を決めておく
-    gymLast = { sid: s.id, idx, name: x.name, n: sets.length + 1, w, r };
-    const moved = sets.length + 1 >= it.planned;
-    if (moved) gymOpen = (items.find((y, j) => j > idx && !y.pain && gymSetsOf(y).length < y.planned) || {}).ex || x.id;
-    haptic();
-    gymSave({ ...s, items });
-    if (moved) gymShowOpen();
-  };
-  for (const inp of [wIn, rIn]) {
-    inp.addEventListener('focus', () => inp.select());
-    inp.addEventListener('keydown', (e) => { if (e.key === 'Enter' && !e.isComposing && e.keyCode !== 229) { e.preventDefault(); record(); } });
-  }
+  const last = gymLast && gymLast.sid === s.id && gymLast.idx === idx ? gymLast : null;
+  const nextIdx = gymNextIdx(s, idx);
   const patchItem = (patch) => gymSave({ ...s, items: s.items.map((y, j) => (j === idx ? { ...y, ...patch } : y)) });
-  return h('div', { class: 'card gym-ex open' + (it.pain ? ' pain' : ''), 'data-ex': x.id }, head,
-    h('div', { class: 'gym-target' }, h('b', null, `目安 ${it.load > 0 || x.step === 0 ? fmtKg(it.load) : '重量を決める'}・合計 ${it.target} 回`), h('span', { class: 'hint' }, it.reason || '')),
-    prev ? h('div', { class: 'hint gym-prev' }, `前回（${fmtShort(prev.date)}）：${prev.sets.map((y) => `${g1(y.w)}kg×${y.r}`).join('、')}${prev.effort ? `（${GYM_EFFORT.find(([v]) => v === prev.effort)[1].split('（')[0]}）` : ''}${prev.pain ? '・痛み' : ''}`) : null,
-    it.pain ? h('p', { class: 'ck-warn' }, `痛みで中止（${fmtTime(it.pain.at)}・${it.pain.region || ''}）。痛みが残る間はこの種目を行いません`) : null,
-    sets.length ? h('ol', { class: 'gym-sets' }, sets.map((y, j) => h('li', null, `${g1(y.w)} kg × ${y.r} 回`, y.e ? h('small', { class: 'hint' }, ` ${GYM_EFFORT.find(([v]) => v === y.e)[1].split('（')[0]}`) : null,
-      y.c ? h('small', { class: 'hint' }, ` ${GYM_BENCH.find(([v]) => v === y.c)?.[1] || ''}`) : null,
-      h('button', { class: 'link-btn', type: 'button', 'aria-label': `${j + 1}セット目を直す`, onclick: () => openGymSet(s, idx, j) }, '直す')))) : null,
-    !it.pain && left > 0 ? h('div', { class: 'gym-input' },
-      h('div', { class: 'gym-row' }, h('label', { class: 'ev-field' }, `${sets.length + 1}セット目の重量（kg）`, wIn), h('label', { class: 'ev-field' }, '回数', rIn)),
-      h('div', { class: 'gym-row' }, eIn, cIn),
+  let editor = null;
+  if (!it.pain && left > 0) {
+    const step = gymStep(d, x) || 2.5; // 自重の種目は、足す重さを 2.5 kg ずつ
+    const lastSet = sets[sets.length - 1];
+    const w0 = lastSet ? lastSet.w : it.load > 0 || (it.load === 0 && x.step === 0) ? it.load : null;
+    const r0 = lastSet ? lastSet.r : Math.max(x.low, Math.ceil((it.target || x.low * it.planned) / Math.max(1, it.planned)));
+    const wIn = h('input', { type: 'text', class: 'gym-big', inputmode: 'decimal', value: w0 == null ? '' : g1(w0), placeholder: '重量を入力', 'data-k': 'gym-w', 'aria-label': `${x.name}の重量（kg）`, autocomplete: 'off' });
+    const rIn = h('input', { type: 'text', class: 'gym-big', inputmode: 'numeric', value: String(r0), 'data-k': 'gym-r', 'aria-label': `${x.name}の回数`, autocomplete: 'off' });
+    const eIn = h('select', { 'data-k': 'gym-e', 'aria-label': 'きつさ（任意）' }, h('option', { value: '' }, '記録しない'), GYM_EFFORT.map(([v, l]) => h('option', { value: v }, l)));
+    const cIn = x.id === 'bench_press' ? h('select', { 'data-k': 'gym-c', 'aria-label': '実施条件' }, GYM_BENCH.map(([v, l]) => h('option', { value: v, selected: (it.cond ?? 'chest') === v ? '' : null }, l))) : null;
+    const err = h('p', { class: 'hint ev-err', hidden: true });
+    // −・＋：空のときは、目安の重量（なければ 0）・下限の回数から
+    const bump = (inp, delta, max, isW) => {
+      const v = numIn(inp.value);
+      const base = Number.isFinite(v) ? v : isW ? Math.max(0, it.load || 0) : x.low;
+      const nv = Math.min(max, Math.max(0, Math.round((base + delta) * 100) / 100));
+      inp.value = isW ? g1(nv) : String(Math.round(nv));
+      err.hidden = true;
+    };
+    const record = () => {
+      const w = numIn(wIn.value), r = Math.round(numIn(rIn.value));
+      if (!Number.isFinite(w) || w < 0 || w > 500) { err.textContent = '重量を kg の数字で入れてください'; err.hidden = false; return; }
+      if (!Number.isFinite(r) || r < 0 || r > 100) { err.textContent = '回数を入れてください'; err.hidden = false; return; }
+      const set = { w, r, at: nowIso(), ...(eIn.value ? { e: eIn.value } : {}), ...(cIn ? { c: cIn.value } : {}) };
+      const items = s.items.map((y, j) => (j === idx ? { ...y, sets: [...gymSetsOf(y), set], planned: Math.max(y.planned, gymSetsOf(y).length + 1) } : y));
+      gymLast = { sid: s.id, idx, name: x.name, n: sets.length + 1, w, r };
+      gymOpen = x.id; // 予定のセットを終えても、この種目にとどまる（「次の種目へ」で進む）
+      haptic();
+      gymSave({ ...s, items });
+    };
+    for (const inp of [wIn, rIn]) {
+      inp.addEventListener('focus', () => inp.select());
+      inp.addEventListener('keydown', (e) => { if (e.key === 'Enter' && !e.isComposing && e.keyCode !== 229) { e.preventDefault(); record(); } });
+    }
+    editor = h('div', { class: 'card gym-setcard' },
+      h('div', { class: 'gym-setno' }, `セット ${sets.length + 1} / ${it.planned}`),
+      h('div', { class: 'gym-lab' }, '重量'),
+      h('div', { class: 'gym-wstep' },
+        h('button', { type: 'button', class: 'gym-stepbtn', 'aria-label': `重量を ${g1(step)} kg 減らす`, onclick: () => bump(wIn, -step, 500, true) }, icon('minus')),
+        h('div', { class: 'gym-bignum' }, wIn, h('span', { class: 'gym-unit' }, 'kg')),
+        h('button', { type: 'button', class: 'gym-stepbtn', 'aria-label': `重量を ${g1(step)} kg 増やす`, onclick: () => bump(wIn, step, 500, true) }, icon('plus'))),
+      h('p', { class: 'hint gym-loadnote' }, x.load),
+      h('div', { class: 'gym-div' }),
+      h('div', { class: 'gym-rstep' },
+        h('div', { class: 'gym-bignum' }, rIn, h('span', { class: 'gym-unit' }, '回')),
+        h('div', { class: 'gym-seg2' },
+          h('button', { type: 'button', 'aria-label': '回数を 1 減らす', onclick: () => bump(rIn, -1, 100, false) }, icon('minus')),
+          h('button', { type: 'button', 'aria-label': '回数を 1 増やす', onclick: () => bump(rIn, 1, 100, false) }, icon('plus')))),
+      h('p', { class: 'hint gym-repnote' }, `目安 ${x.low}〜${x.high}回 · あと2〜3回できる余裕`),
+      h('div', { class: 'gym-sels' },
+        h('label', { class: 'gym-sel' }, h('span', null, 'きつさ（任意）'), gymSelect(eIn)),
+        cIn ? h('label', { class: 'gym-sel' }, h('span', null, '実施条件'), gymSelect(cIn)) : null),
       err,
-      h('button', { class: 'btn-primary gym-rec', type: 'button', onclick: record }, `${sets.length + 1}セット目を記録`)) : null,
-    !it.pain && left === 0 ? h('p', { class: 'hint' }, '予定のセットを終えました') : null,
-    h('div', { class: 'row gym-acts', style: 'gap:14px;flex-wrap:wrap;margin-top:8px' },
-      it.pain ? null : h('button', { class: 'link-btn', type: 'button', onclick: () => patchItem({ planned: it.planned + 1 }) }, 'セットを追加'),
-      !it.pain && left > 0 && it.planned > Math.max(1, sets.length) ? h('button', { class: 'link-btn', type: 'button', onclick: () => patchItem({ planned: it.planned - 1 }) }, '未記録を1つ減らす') : null,
-      it.pain ? null : h('button', { class: 'link-btn gym-pain', type: 'button', onclick: () => openGymPain(s, idx) }, '痛みで中止')),
-    h('details', { class: 'gym-more' }, h('summary', null, 'フォームと器具の設定'),
+      h('button', { class: 'btn-primary gym-rec', type: 'button', onclick: record }, `${sets.length + 1}セット目を記録`),
+      h('p', { class: 'hint gym-recnote' }, '実際に行った重量・回数で記録します'));
+  }
+  // 今日のセット（行を押すと直せる）
+  const table = sets.length ? h('div', { class: 'card gym-sets-card' },
+    h('div', { class: 'gym-sets-h' }, h('b', null, '今日のセット'), h('span', { class: 'hint' }, `${sets.length}/${it.planned} 記録済み`)),
+    h('div', { class: 'gym-tbl' },
+      h('div', { class: 'gym-tr gym-th', 'aria-hidden': 'true' }, h('span', null, 'セット'), h('span', null, '重量 kg'), h('span', null, '回数'), h('span', null, 'きつさ'), h('span')),
+      sets.map((y, j) => h('button', { type: 'button', class: 'gym-tr', 'aria-label': `${j + 1}セット目を直す（${g1(y.w)} kg × ${y.r}回）`, onclick: () => openGymSet(s, idx, j) },
+        h('span', null, String(j + 1)), h('span', null, g1(y.w)), h('span', null, String(y.r)),
+        h('span', null, [gymEffortShort(y.e), gymBenchShort(y.c)].filter(Boolean).join('・') || '—'),
+        h('span', { class: 'gym-tr-fix' }, '直す')))),
+    h('p', { class: 'hint gym-tbl-note' }, '行を押すと直せます')) : null;
+  // 予定のセットを終えたら：セットを足すか、次の種目へ（自動では進まない）
+  const doneBox = !it.pain && left === 0 ? h('div', { class: 'gym-done-box' },
+    h('button', { type: 'button', class: 'gym-addset', onclick: () => patchItem({ planned: it.planned + 1 }) }, icon('plus'), 'セットを追加'),
+    nextIdx >= 0 ? h('button', { type: 'button', class: 'btn-primary gym-nextex', onclick: () => gymGo(s, nextIdx) }, '次の種目へ', h('small', null, gymEx(s.items[nextIdx].ex)?.name || ''))
+      : h('div', { class: 'card gym-fin' }, icon('checkCircle'), h('b', null, '今日のメニューを終えました'), h('p', { class: 'hint' }, 'おつかれさまでした。記録を確かめて、終えましょう'),
+        h('button', { type: 'button', class: 'btn-primary gym-nextex', onclick: () => gymFinish(s, 'done') }, '筋トレを終える'))) : null;
+  return h('div', { class: 'gym-cur' + (it.pain ? ' pain' : ''), 'data-ex': x.id },
+    h('h2', { class: 'gym-cur-t' }, x.name),
+    h('div', { class: 'gym-cur-eq' }, eq.note ? `${x.equipment}・${eq.note}` : x.equipment),
+    h('div', { class: 'gym-prev' }, prev ? `前回 ${fmtShort(prev.date)}：${prev.sets.map((y) => `${g1(y.w)}kg×${y.r}`).join('、')}${prev.effort ? `（${gymEffortShort(prev.effort)}）` : ''}${prev.pain ? '・痛み' : ''}` : '前回の記録はまだありません'),
+    it.load > 0 || x.step === 0 || !sets.length ? h('div', { class: 'gym-target' }, h('b', null, `今日の目安 ${it.load > 0 || x.step === 0 ? fmtKg(it.load) : '重量を決める'}・合計 ${it.target} 回`), it.reason && !sets.length ? h('span', null, it.reason) : null) : null,
+    it.pain ? h('p', { class: 'ck-warn' }, `痛みで中止（${fmtTime(it.pain.at)}・${it.pain.region || ''}）。痛みが残る間はこの種目を行いません`) : null,
+    last ? h('div', { class: 'gym-last', role: 'status' }, `直前の記録：${last.n}セット目 ${fmtKg(last.w)} × ${last.r}回`,
+      h('button', { class: 'link-btn', type: 'button', onclick: () => gymUndo(d, s, last) }, '取り消す')) : null,
+    editor, table, doneBox,
+    h('div', { class: 'gym-foot' },
+      it.pain ? null : h('button', { class: 'link-btn gym-pain', type: 'button', onclick: () => openGymPain(s, idx) }, '痛みで中止'),
+      h('span', { class: 'sp' }),
+      h('button', { class: 'link-btn', type: 'button', onclick: () => openGymMore(d, s, idx) }, icon('more'), 'その他の操作')));
+}
+// 種目を選ぶ：今日の種目と進み具合。押すとその種目へ
+function openGymPicker(s, idx) {
+  openSheet(h('div', { class: 'gym-pick' }, sheetHead('今日の種目'),
+    h('button', { type: 'button', class: 'link-btn gym-pick-edit', onclick: () => { closeSheet(); openGymMenu(s.split, s); } }, '種目の追加・並び替え・セット数'),
+    s.items.map((it, i) => {
+      const x = gymEx(it.ex), n = gymSetsOf(it).length;
+      return h('button', { type: 'button', class: 'gym-pick-row' + (i === idx ? ' on' : ''), 'data-ex': it.ex, 'aria-current': i === idx ? 'true' : null,
+        onclick: () => { closeSheet(); gymGo(s, i); } },
+        h('span', { class: 'gym-menu-n' }, gymNo(i)),
+        h('span', { class: 'gym-menu-t' }, h('b', null, x?.name || it.ex), h('small', null, it.pain ? '痛みで中止' : n >= it.planned ? `完了・${n} セット` : `${n}/${it.planned} セット`)),
+        gymItemDone(it) && !it.pain ? icon('checkCircle') : null);
+    })), { kind: 'gympick', label: '今日の種目' });
+}
+// 終了：途中でも終えられる（記録したセットは残る）
+function openGymEnd(s) {
+  const done = s.items.reduce((n, i) => n + gymSetsOf(i).length, 0);
+  const left = s.items.reduce((n, i) => n + (i.pain ? 0 : Math.max(0, i.planned - gymSetsOf(i).length)), 0);
+  const end = () => {
+    closeSheet();
+    if (done) return gymFinish(s, 'done');
+    gymOpen = null; gymLast = null;
+    mutate({ t: 'gymDel', id: s.id });
+    toast('記録せずに終えました。次回も同じ部位です');
+  };
+  openSheet(h('div', { class: 'gym-end' }, sheetHead('筋トレを終える'),
+    h('p', { class: 'hint' }, done ? `記録した ${done} セットは残ります。${left ? `残りの ${left} セットは行わずに終えます。` : ''}途中でも終えられます` : 'まだセットを記録していません。終えると、次回も同じ部位から始めます'),
+    h('div', { class: 'dlg-foot' },
+      h('button', { type: 'button', onclick: closeSheet }, '続ける'),
+      h('button', { class: 'btn-primary', type: 'button', onclick: end }, done ? 'ここまでを記録して終える' : '記録せずに終える'))), { kind: 'gymend', label: '筋トレを終える' });
+}
+// その他の操作：セットの増減・あとに回す・フォームと器具の設定
+function openGymMore(d, s, idx) {
+  const it = s.items[idx], x = gymEx(it.ex), sets = gymSetsOf(it);
+  const left = Math.max(0, it.planned - sets.length);
+  const eq = ckObj(gymState(d).equip[x.id]);
+  const nextIdx = gymNextIdx(s, idx);
+  const patch = (p) => gymSave({ ...s, items: s.items.map((y, j) => (j === idx ? { ...y, ...p } : y)) });
+  const act = (label, sub, fn) => h('button', { type: 'button', class: 'gym-more-row', onclick: () => { closeSheet(); fn(); } }, h('span', null, label), sub ? h('small', null, sub) : null);
+  openSheet(h('div', { class: 'gym-more' }, sheetHead(x.name),
+    it.pain ? null : act('セットを追加', `予定 ${it.planned} セット → ${it.planned + 1} セット`, () => { patch({ planned: it.planned + 1 }); toast('セットを追加しました'); }),
+    !it.pain && left > 0 && it.planned > Math.max(1, sets.length) ? act('未記録のセットを1つ減らす', `予定 ${it.planned} セット → ${it.planned - 1} セット`, () => patch({ planned: it.planned - 1 })) : null,
+    !it.pain && left > 0 && nextIdx >= 0 ? act('あとに回す', '器具が空いていないとき。この種目は残したまま、次の種目へ', () => gymGo(s, nextIdx)) : null,
+    h('div', { class: 'gym-more-eq' }, h('b', null, 'フォームと器具'),
       h('p', { class: 'hint' }, `${x.equipment}。${x.note}`), h('p', { class: 'hint' }, `重量の数え方：${x.load}`),
-      h('div', { class: 'row', style: 'gap:8px;flex-wrap:wrap' }, h('label', { class: 'fs-opt' }, '刻み（kg）', h('input', { type: 'text', inputmode: 'decimal', value: g1(gymStep(d, x)), 'data-k': 'gym-step', style: 'width:80px',
-        onchange: (e) => { const v = numIn(e.target.value); if (v > 0 && v <= 50) { mutate({ t: 'gymEquip', ex: x.id, set: { step: v } }); toast(`${x.name}の刻みを ${g1(v)} kg にしました`); } } })),
+      h('div', { class: 'row', style: 'gap:8px;flex-wrap:wrap' },
+        h('label', { class: 'fs-opt' }, '刻み（kg）', h('input', { type: 'text', inputmode: 'decimal', value: g1(gymStep(d, x)), 'data-k': 'gym-step', style: 'width:80px',
+          onchange: (e) => { const v = numIn(e.target.value); if (v > 0 && v <= 50) { mutate({ t: 'gymEquip', ex: x.id, set: { step: v } }); toast(`${x.name}の刻みを ${g1(v)} kg にしました`); } } })),
         h('input', { type: 'text', value: eq.note || '', placeholder: '器具のメモ（座面の高さなど）', 'aria-label': '器具のメモ', 'data-k': 'gym-enote', style: 'flex:1;min-width:160px',
-          onchange: (e) => mutate({ t: 'gymEquip', ex: x.id, set: { note: e.target.value.trim() } }) }))));
+          onchange: (e) => mutate({ t: 'gymEquip', ex: x.id, set: { note: e.target.value.trim() } }) })))), { kind: 'gymmore', label: 'その他の操作' });
 }
 function gymUndo(d, s, last) {
   const items = s.items.map((y, j) => (j === last.idx ? { ...y, sets: gymSetsOf(y).slice(0, -1) } : y));
