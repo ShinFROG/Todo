@@ -478,6 +478,67 @@
   .stk-ed .stk-unit { width: 22%; flex: none; }
   .stk-ed select { width: auto; flex: none; }
   .stk-row.zero .stk-name, .stk-row.zero .stk-n { color: var(--muted); }
+  /* 料理 */
+  .cook-tabs { margin: 10px 0 6px; }
+  .ck-card { display: flex; flex-direction: column; gap: 2px; width: 100%; text-align: left; border: 1px solid var(--line); border-radius: 14px; background: var(--card); padding: 12px 14px; margin-top: 10px; }
+  .ck-card.off { opacity: .6; }
+  .ck-meal { font-size: 12px; color: var(--muted); font-weight: 700; }
+  .ck-title { font-size: 17px; font-weight: 700; }
+  .ck-meta { display: flex; flex-wrap: wrap; gap: 4px 12px; font-size: 13px; color: var(--muted); }
+  .ck-st { color: var(--accent); font-weight: 600; }
+  .ck-badge { display: inline-block; font-size: 12px; padding: 2px 9px; border-radius: 999px; background: var(--sunk); color: var(--muted); }
+  .ck-badge.draft { background: color-mix(in srgb, var(--warn) 18%, transparent); color: var(--warn); font-weight: 700; }
+  .ck-badge.now { background: var(--accent); color: var(--accent-ink); }
+  .ck-today-h { display: flex; align-items: baseline; gap: 10px; margin-top: 6px; font-size: 16px; }
+  .ck-stats { margin-top: 16px; grid-template-columns: repeat(3, minmax(0, 1fr)); }
+  .ck-settings { margin-top: 4px; }
+  .ck-settings input[type=date] { width: auto; min-height: 36px; padding: 4px 8px; font-size: 14px; }
+  .ck-day { margin-top: 14px; }
+  .ck-day-h { display: flex; align-items: baseline; gap: 8px; font-weight: 700; }
+  .ck-row { display: flex; align-items: center; gap: 8px; padding: 8px 0; border-top: 1px solid var(--line); }
+  .ck-row.off .ck-t b { color: var(--muted); }
+  .ck-ml { font-size: 12px; color: var(--muted); font-weight: 700; flex: none; }
+  .ck-t { flex: 1; min-width: 0; display: flex; flex-direction: column; text-align: left; background: none; border: 0; padding: 0; color: var(--text); }
+  .ck-t small { font-size: 12px; color: var(--muted); }
+  .ck-row select { width: auto; min-height: 36px; padding: 4px 6px; font-size: 14px; flex: none; }
+  .ck-swap-list { display: flex; flex-direction: column; }
+  .ck-swap-item { display: flex; gap: 10px; align-items: baseline; text-align: left; padding: 10px 4px; border: 0; border-top: 1px solid var(--line); background: none; color: var(--text); }
+  .ck-search input { width: 100%; }
+  .ck-list { margin-top: 4px; }
+  .ck-shop-sum { display: flex; flex-wrap: wrap; align-items: baseline; gap: 4px 12px; margin: 12px 0 6px; }
+  .ck-aisle { padding-top: 10px; }
+  .ck-shop-row { display: flex; align-items: center; gap: 10px; padding: 8px 0; border-top: 1px solid var(--line); flex-wrap: wrap; }
+  .ck-shop-row:first-of-type { border-top: 0; }
+  .ck-shop-row.done .ck-name b { color: var(--muted); text-decoration: line-through; }
+  .ck-name { flex: 1 1 140px; min-width: 0; }
+  .ck-note { display: block; font-size: 12px; }
+  .ck-warn { color: var(--warn); }
+  .ck-q { text-align: right; font-variant-numeric: tabular-nums; display: flex; flex-direction: column; }
+  .ck-q small { font-size: 11px; }
+  .ck-acts { display: flex; gap: 6px; }
+  .ck-toggle { border: 1px solid var(--line); border-radius: 999px; padding: 4px 12px; min-height: 36px; font-size: 13px; background: var(--card); color: var(--text); }
+  .ck-toggle[aria-pressed="true"] { background: var(--accent); border-color: var(--accent); color: var(--accent-ink); }
+  .ck-pantry summary { cursor: pointer; font-weight: 600; }
+  .ck-pantry-list { display: flex; flex-wrap: wrap; gap: 8px 14px; margin-top: 8px; }
+  .ck-draft { margin-top: 18px; }
+  .rcp-badges { display: flex; flex-wrap: wrap; gap: 6px; }
+  .rcp-skill { margin: 8px 0 4px; font-weight: 600; }
+  .rcp-sv select { width: auto; min-height: 36px; padding: 4px 8px; }
+  .rcp h4 { margin: 16px 0 6px; font-size: 15px; }
+  .rcp-ing { list-style: none; margin: 0; padding: 0; }
+  .rcp-ing li { display: flex; justify-content: space-between; gap: 10px; padding: 7px 0; border-top: 1px solid var(--line); }
+  .rcp-q { text-align: right; display: flex; flex-direction: column; font-variant-numeric: tabular-nums; }
+  .rcp-q small { font-size: 11px; }
+  .rcp-steps { margin: 0; padding: 0; list-style: none; counter-reset: st; }
+  .rcp-steps li { padding: 8px 0; border-top: 1px solid var(--line); }
+  .rcp-steps label { display: flex; gap: 10px; align-items: flex-start; }
+  .rcp-steps input { margin-top: 4px; width: 20px; height: 20px; flex: none; }
+  .rcp-steps label:has(input:checked) b { color: var(--muted); text-decoration: line-through; }
+  .rcp-sm { display: block; font-size: 12px; margin: 2px 0 0; }
+  .rcp-cue { display: block; font-size: 13px; color: var(--muted); }
+  .rcp-ul { margin: 0; padding-left: 20px; font-size: 14px; }
+  .rcp textarea { margin-top: 10px; }
+  .rcp-src { margin-top: 14px; font-size: 13px; }
   .fd-sum { margin-top: 10px; }
   .fd-sum .meter { height: 8px; }
   .meter.over .fill { background: var(--warn); }
@@ -960,7 +1021,7 @@ const API = 'https://api.github.com';
 const KEY = {
   token: 'todo.token', repo: 'todo.repo', path: 'todo.path',
   cache: 'todo.cache', pending: 'todo.pending', timer: 'todo.timer', view: 'todo.view',
-  accent: 'todo.accent', sound: 'todo.sound', cal: 'todo.cal', tip: 'todo.tip', planPrev: 'todo.planPrev', portal: 'todo.portal', portalMode: 'todo.portalMode', calMode: 'todo.calMode', matrixMode: 'todo.matrixMode', news: 'todo.news', mail: 'todo.mail', mailKey: 'todo.mailKey', newsCat: 'todo.newsCat', newsMode: 'todo.newsMode',
+  accent: 'todo.accent', sound: 'todo.sound', cal: 'todo.cal', tip: 'todo.tip', planPrev: 'todo.planPrev', portal: 'todo.portal', portalMode: 'todo.portalMode', calMode: 'todo.calMode', matrixMode: 'todo.matrixMode', news: 'todo.news', mail: 'todo.mail', mailKey: 'todo.mailKey', newsCat: 'todo.newsCat', newsMode: 'todo.newsMode', cook: 'todo.cook',
 };
 const $ = (id) => document.getElementById(id);
 
@@ -1035,6 +1096,7 @@ const ICONS = {
   calendar: '<rect x="3" y="5" width="18" height="16" rx="2"/><path d="M3 10h18M8 3v4M16 3v4"/>',
   list: '<path d="M8 6h13M8 12h13M8 18h13M3.5 6h.01M3.5 12h.01M3.5 18h.01"/>',
   box: '<path d="M3 7h18v4H3z"/><path d="M5 11v9h14v-9M10 15h4"/>',
+  bowl: '<path d="M3 11h18c0 5-4 9-9 9s-9-4-9-9z"/><path d="M8 7c0-1.2 1-1.6 1-3M12 7c0-1.2 1-1.6 1-3M16 7c0-1.2 1-1.6 1-3"/>',
   grid: '<rect x="3" y="3" width="8" height="8" rx="1.5"/><rect x="13" y="3" width="8" height="8" rx="1.5"/><rect x="3" y="13" width="8" height="8" rx="1.5"/><rect x="13" y="13" width="8" height="8" rx="1.5"/>',
   review: '<path d="M4 12a8 8 0 1 0 2.5-5.8"/><path d="M4 4v5h5"/>',
   check: '<path d="M5 12.5l4.5 4.5L19 7.5"/>',
@@ -1487,6 +1549,48 @@ function applyOp(d, op) {
       if (x && Number.isFinite(op.count) && op.count >= 0) x.count = op.count;
       break;
     }
+    case 'cookMeta': // 料理：開始日・人数・朝食
+      d.cook = { ...ckObj(d.cook), ...op.set };
+      break;
+    case 'cookSlot': { // 献立の枠：料理（r）・作る/保留/外食（m）
+      const c = d.cook = ckObj(d.cook);
+      c.slots = ckObj(c.slots);
+      c.slots[op.key] = { ...ckObj(c.slots[op.key]), ...op.set };
+      break;
+    }
+    case 'cookProgress': { // 作った日（date と on）、再現できる・もう一度練習・メモ（set）
+      const c = d.cook = ckObj(d.cook);
+      c.progress = ckObj(c.progress);
+      const pr = { dates: [], mastered: false, practice: false, note: '', ...ckObj(c.progress[op.id]) };
+      if (op.date) { const set = new Set(Array.isArray(pr.dates) ? pr.dates : []); if (op.on) set.add(op.date); else set.delete(op.date); pr.dates = [...set].sort(); }
+      if (op.set) Object.assign(pr, op.set);
+      if (!pr.dates.length) pr.mastered = false;
+      c.progress[op.id] = pr;
+      break;
+    }
+    case 'cookPantry': { // 基本セットの「家にある」
+      const c = d.cook = ckObj(d.cook);
+      c.pantry = ckObj(c.pantry);
+      if (op.on) c.pantry[op.name] = true; else delete c.pantry[op.name];
+      break;
+    }
+    case 'cookShop': { // 買い物のチェック（期間ごと）。value が null なら消す
+      const c = d.cook = ckObj(d.cook);
+      c.shop = ckObj(c.shop);
+      const per = { ...ckObj(c.shop[op.period]) };
+      if (op.value) per[op.key] = op.value; else delete per[op.key];
+      if (Object.keys(per).length) c.shop[op.period] = per; else delete c.shop[op.period];
+      break;
+    }
+    case 'cookExtra': { // 追加の買い物
+      const c = d.cook = ckObj(d.cook);
+      let list = Array.isArray(c.extra) ? c.extra : [];
+      if (op.add) list = [...list.filter((x) => x.id !== op.add.id), op.add];
+      if (op.del) list = list.filter((x) => x.id !== op.del);
+      if (op.done) list = list.map((x) => (x.id === op.done ? { ...x, done: !!op.on } : x));
+      c.extra = list;
+      break;
+    }
     case 'weight': // 体重（kg）。null で消す
       d.weightLog = d.weightLog && typeof d.weightLog === 'object' && !Array.isArray(d.weightLog) ? d.weightLog : {};
       if (Number.isFinite(op.kg) && op.kg > 0) d.weightLog[op.day] = op.kg; else delete d.weightLog[op.day];
@@ -1494,7 +1598,7 @@ function applyOp(d, op) {
   }
   return d;
 }
-const OP_LABEL = { add: '追加', patch: '更新', del: '削除', complete: '完了', focus: '集中記録', restore: '元に戻す', renameProject: 'プロジェクト名変更', meta: '設定', routineSeed: 'ルーティンを用意', routineSet: 'ルーティンを編集', routineToggle: 'ルーティン', foodSet: 'いつもの食べ物を編集', foodToggle: '食事', foodExtra: '食事', weight: '体重', stockSet: 'ストックを編集', stockCount: 'ストック' };
+const OP_LABEL = { add: '追加', patch: '更新', del: '削除', complete: '完了', focus: '集中記録', restore: '元に戻す', renameProject: 'プロジェクト名変更', meta: '設定', routineSeed: 'ルーティンを用意', routineSet: 'ルーティンを編集', routineToggle: 'ルーティン', foodSet: 'いつもの食べ物を編集', foodToggle: '食事', foodExtra: '食事', weight: '体重', stockSet: 'ストックを編集', stockCount: 'ストック', cookMeta: '料理の設定', cookSlot: '献立', cookProgress: '料理の記録', cookPantry: '基本セット', cookShop: '買い物', cookExtra: '買い物' };
 function commitMessage(ops) {
   return ops.length === 1 ? `todo: ${OP_LABEL[ops[0].t] || '更新'}` : `todo: ${ops.length} 件の変更`;
 }
@@ -1851,9 +1955,11 @@ function navModel(d, T) {
     { v: { type: 'matrix' }, label: 'マトリクス', ic: 'grid' },
     { v: { type: 'review' }, label: '週次レビュー', ic: 'review', count: !last || daysBetween(last, T) >= 7 ? '●' : null, alert: true },
     { v: { type: 'logbook' }, label: '完了ログ', ic: 'checkCircle' },
-    { v: { type: 'body' }, label: '食事・体重', ic: 'bolt' },
-    { v: { type: 'stock' }, label: 'ストック', ic: 'folder' },
     { action: () => openRoutines(), label: 'ルーティンを編集', ic: 'checklist' },
+    { sec: 'くらし' },
+    { v: { type: 'body' }, label: '食事・体重', ic: 'bolt' },
+    { v: { type: 'cook' }, label: '料理', ic: 'bowl' },
+    { v: { type: 'stock' }, label: 'ストック', ic: 'folder' },
   ];
   const projects = new Map();
   for (const t of act) if (t.project) projects.set(t.project, (projects.get(t.project) || 0) + 1);
@@ -2217,6 +2323,11 @@ function renderMain(d, T, model) {
       title = '食事・体重';
       const day = foodDay();
       nodes.push(foodSection(d, T), bodyCard(d, day), nutrientCard(d, day), weightCard(d, day), kcalCard(d, day), foodStreakCard(d, day));
+      break;
+    }
+    case 'cook': {
+      title = '料理'; sub = '30日60品（全品未試作・時間と分量は目安）';
+      nodes.push(...cookNodes(d, T));
       break;
     }
     case 'stock': {
@@ -3055,6 +3166,408 @@ function openStocks() {
     if (key) s.querySelector(`[data-f="${CSS.escape(key)}"]`)?.focus();
   } else openSheet(h('div', { id: 'stkEditor' }, body()), { kind: 'stocks', label: 'ストック' });
 }
+/* =========================================================================
+ * 料理（cooking60 の 30 日 60 品）：今日の献立・30 日の献立・レシピ・買い物・作った記録
+ * レシピと献立は非公開のデータ用リポジトリの cooking.json（HDD の cooking60 から build_cooking.py で作る）を読むだけ。
+ * 開始日・人数・朝食・献立の入れ替え・作った記録・買い物のチェックは todos.json の cook に置く（どの端末でも同じ）。
+ * 全品が未試作の教材草稿なので、その表示を消さない。材料の集計と目安量は cooking60 の core.mjs・measures.mjs と同じ決まり
+ * ========================================================================= */
+let COOK = { days: [], recipes: [], byId: new Map(), status: '', state: 'none', fetchedAt: 0 };
+let cookTab = 'today';
+const cookFilter = { q: '', form: '', time: '', progress: '' };
+const cookView = { plan: 'week', shop: 'today', remaining: false };
+const COOK_MODES = [['cook', '作る'], ['hold', '保留'], ['eatout', '外食']];
+const COOK_BREAKFAST = [['none', '含めない'], ['toast', 'パン・ヨーグルト・バナナ'], ['rice', 'ご飯・納豆']];
+const COOK_STATUS = ['未着手', '作った', '再現できる', 'もう一度練習'];
+const PANTRY_BASICS = ['しょうゆ', 'サラダ油', '塩', '砂糖', 'こしょう', 'ケチャップ', '酒', '片栗粉', 'みりん', 'ごま油', 'みそ', '酢'];
+const pantryStateOf = (name) => (name === '片栗粉' ? '乾燥' : '製品');
+const BREAKFAST_ITEMS = {
+  toast: [{ name: '食パン', quantity: 1, unit: '枚', state: '焼成済み', aisle: '米・麺・パン' }, { name: 'ヨーグルト', quantity: 100, unit: 'g', state: '製品', aisle: '卵・乳' }, { name: 'バナナ', quantity: 1, unit: '本', state: '生', aisle: '野菜' }],
+  rice: [{ name: 'ご飯', quantity: 150, unit: 'g', state: '炊飯済み', aisle: '米・麺・パン' }, { name: '納豆', quantity: 1, unit: 'パック', state: '製品', aisle: '豆・加工品' }],
+};
+function setCook(data, state) {
+  const okR = (r) => r && typeof r.id === 'string' && typeof r.title === 'string' && Array.isArray(r.ingredients) && Array.isArray(r.steps);
+  const recipes = Array.isArray(data?.recipes) ? data.recipes.filter(okR) : [];
+  COOK = { ...COOK, days: Array.isArray(data?.days) ? data.days.filter((x) => x && Number.isInteger(x.day)) : [], recipes,
+    byId: new Map(recipes.map((r) => [r.id, r])), status: String(data?.status || ''), builtAt: data?.builtAt || null, state };
+}
+async function fetchCooking(force) {
+  if (!cfg || (!force && COOK.fetchedAt && Date.now() - COOK.fetchedAt < 6 * 3600000)) return;
+  COOK.fetchedAt = Date.now();
+  const key = cfgKey();
+  try {
+    const data = await readSide('cooking.json');
+    if (!cfg || cfgKey() !== key) return;
+    setCook(data, 'ok');
+    saveJSON(KEY.cook, { key, data });
+  } catch (e) {
+    if (e.status !== 404) { console.warn('cooking:', explain(e)); if (COOK.state !== 'ok') { COOK.state = 'error'; render(); } return; }
+    setCook(null, 'none');
+    store.del(KEY.cook);
+  }
+  if (!cfg || cfgKey() !== key) return;
+  if (view.type === 'cook') render();
+}
+const ckObj = (v) => (v && typeof v === 'object' && !Array.isArray(v) ? v : {});
+function cookState(d) {
+  const c = ckObj(d.cook);
+  return {
+    start: YMD_ONLY.test(c.start || '') ? c.start : null,
+    servings: [1, 2, 3, 4].includes(c.servings) ? c.servings : 1,
+    breakfast: COOK_BREAKFAST.some(([v]) => v === c.breakfast) ? c.breakfast : 'none',
+    slots: ckObj(c.slots), progress: ckObj(c.progress), pantry: ckObj(c.pantry), shop: ckObj(c.shop),
+    extra: Array.isArray(c.extra) ? c.extra.filter((x) => x && typeof x.id === 'string' && typeof x.name === 'string') : [],
+  };
+}
+// 30 日 × 昼夜の 60 枠（入れ替え・作る/保留/外食を反映）
+function cookSlots(d) {
+  const s = cookState(d);
+  return COOK.days.flatMap((x) => ['lunch', 'dinner'].map((meal) => {
+    const key = `${x.day}-${meal}`;
+    const o = ckObj(s.slots[key]);
+    return { key, day: x.day, meal, recipeId: COOK.byId.has(o.r) ? o.r : x[meal], mode: COOK_MODES.some(([v]) => v === o.m) ? o.m : 'cook' };
+  }));
+}
+function cookProg(d, id) {
+  const p = ckObj(cookState(d).progress[id]);
+  const dates = Array.isArray(p.dates) ? [...new Set(p.dates.filter((x) => YMD_ONLY.test(x)))].sort() : [];
+  return { dates, mastered: dates.length > 0 && p.mastered === true, practice: p.practice === true, note: typeof p.note === 'string' ? p.note : '' };
+}
+const cookStatus = (p) => (p.mastered ? '再現できる' : p.practice ? 'もう一度練習' : p.dates.length ? '作った' : '未着手');
+const cookDayN = (d, T) => { const s = cookState(d); return s.start ? daysBetween(s.start, T) + 1 : null; };
+const cookDateOf = (start, day) => ymd(addDays(parseYmd(start), day - 1));
+const mealLabel = (m) => (m === 'lunch' ? '昼' : '夜');
+const cookQty = (n) => (n == null ? '適量' : Number(n.toFixed(2)).toLocaleString('ja-JP'));
+const ckClean = (v) => String(v ?? '').normalize('NFKC').trim().replace(/\s+/g, ' ');
+
+/* ---------- 目安量（cooking60 の measures.mjs と同じ表。g 表記を正とし、個数・計量スプーンは目安として添える） ---------- */
+const MEASURE_COUNTS = {
+  '玉ねぎ': [200, '個', '生', '1個200g'], 'にんじん': [150, '本', '生', '1本150g'], '長ねぎ': [100, '本', '生', '1本100g'], 'キャベツ': [50, '枚', '生', '葉1枚50g'],
+  'きゅうり': [100, '本', '生', '1本100g'], '小松菜': [300, '束', '生', '1束300g'], 'しょうが': [12, 'かけ', '生', '1かけ12g'], 'トマト': [200, '個', '生', '1個200g'],
+  'ニラ': [100, '束', '生', '1束100g'], 'にんにく': [8, 'かけ', '生', '1かけ8g'], '白菜': [100, '枚', '生', '葉1枚100g'], 'パプリカ': [150, '個', '生', '1個150g'],
+  'ピーマン': [35, '個', '生', '1個35g'], 'ブロッコリー': [15, '房', '生', '小房1個15g'], 'もやし': [200, '袋', '生', '200g入りの場合'], 'レタス': [30, '枚', '生', '葉1枚30g'],
+  'じゃがいも': [150, '個', '生', '1個150g'], '長いも': [500, '本', '生', '1本500g'], 'しめじ': [100, 'パック', '生', '100g入りの場合'], 'しいたけ': [15, '個', '生', '軸込み1個15g'],
+  'たけのこ水煮': [200, '個', '水煮', '水煮1個200g'], '木綿豆腐': [300, '丁', '冷蔵', '1丁300gの場合'], '厚揚げ': [135, '枚', '冷蔵', '1枚135gの場合'], '油揚げ': [30, '枚', '加熱済み', '1枚30gの場合'],
+  'ご飯': [150, '杯', '炊飯済み', '茶碗1杯150g'], '米': [150, '合', '生', '精白米1合150g'], '鶏もも肉': [250, '枚', '生', '1枚250gの場合'], '鶏むね肉': [250, '枚', '生', '1枚250gの場合'],
+  '鶏ささみ': [40, '本', '生', '1本40gの場合'], 'ハム': [15, '枚', '加熱済み', '薄切り1枚15gの場合'], 'ソーセージ': [17, '本', '加熱済み', 'ウインナー1本17gの場合'], '生鮭': [100, '切れ', '生', '1切れ100gの場合'],
+  'サバ': [80, '切れ', '生', '1切れ80gの場合'], 'タラ': [100, '切れ', '生', '1切れ100gの場合'], 'うどん': [200, '玉', 'ゆで', 'ゆで麺1玉200gの場合'], '焼きそば麺': [150, '玉', '蒸し', '蒸し麺1玉150gの場合'],
+};
+const MEASURE_SPOONS = {
+  '砂糖': [3, '製品', '上白糖'], '塩': [6, '製品', '食塩'], 'みそ': [6, '製品', ''], 'バター': [4, '製品', ''], '粉チーズ': [2, '製品', ''], '白いりごま': [3, '製品', ''],
+  'マヨネーズ': [4, '製品', ''], 'ケチャップ': [5, '製品', ''], 'カレー粉': [2, '製品', ''], '薄力粉': [3, '乾燥', ''], '片栗粉': [3, '乾燥', ''], 'ベーキングパウダー': [4, '乾燥', ''], 'パン粉': [1, '乾燥', '乾燥パン粉'],
+};
+const MEASURE_FRACTIONS = [[1, 20], [1, 16], [1, 15], [1, 12], [1, 10], [1, 8], [1, 6], [1, 5], [1, 4], [1, 3], [3, 8], [2, 5], [1, 2], [3, 5], [2, 3], [3, 4], [4, 5], [5, 6], [7, 8], [1, 1]];
+function measureFraction(v) {
+  if (v >= 10) return String(Math.round(v));
+  if (v >= 1) { const q = Math.round(v * 4); const w = Math.floor(q / 4); const r = ['', '1/4', '1/2', '3/4'][q % 4]; return r ? `${w}と${r}` : String(w); }
+  const [n, dn] = MEASURE_FRACTIONS.reduce((b, c) => (Math.abs(c[0] / c[1] - v) < Math.abs(b[0] / b[1] - v) ? c : b));
+  if (Math.abs(n / dn - v) / v > 0.15) return '';
+  return dn === 1 ? '1' : `${n}/${dn}`;
+}
+function measureCount(q, [g, unit, , basis]) { const a = measureFraction(q / g); return a ? `約${a}${unit}（${basis}${basis.endsWith('場合') ? '' : '目安'}）` : ''; }
+function measureHint(ing, q = ing?.quantity) {
+  if (!ing || ing.unit !== 'g' || !Number.isFinite(q) || q <= 0) return '';
+  const { name, state } = ing;
+  const notes = [ing.note, ...(Array.isArray(ing.notes) ? ing.notes : [])].filter((x) => typeof x === 'string').join(' ');
+  if (name === 'キャベツ' && state === '生' && /包める|肉だね/.test(notes)) return '包める大きな葉を肉だねの個数分';
+  if (name === 'キャベツ' && state === '生' && q >= 300) return measureCount(q, [1200, '玉', state, '1玉1.2kg']);
+  if (name === '白菜' && state === '生' && q >= 500) return measureCount(q, [2000, '玉', state, '1玉2kg']);
+  if (name === 'レタス' && state === '生' && q >= 200) return measureCount(q, [400, '玉', state, '1玉400g']);
+  if (name === '大根' && state === '生') { if (q >= 500) return measureCount(q, [1000, '本', state, '1本1kg']); const l = Math.round(q / 25 * 2) / 2; return l > 0 ? `輪切り約${l}cm（厚さ1cm25g目安）` : ''; }
+  if (name === 'ごぼう' && state === '生') { if (q >= 150) return measureCount(q, [150, '本', state, '1本150g']); const l = Math.round(q / 2); return l > 0 ? `約${l}cm（10cm20g目安）` : ''; }
+  if (name === 'バジル' && state === '生') return measureCount(q, [0.5, '枚', state, '2枚1g']);
+  if (name === '米' && state === '生' && /無洗米/.test(notes)) return measureCount(q, [160, '合', '生', '無洗米1合160g']);
+  if (name === 'しいたけ' && state === '生' && /軸を取った|軸を除いた/.test(notes)) return measureCount(q, [10, '枚', state, '軸なし1枚10g']);
+  const m = Object.hasOwn(MEASURE_COUNTS, name) ? MEASURE_COUNTS[name] : null;
+  if (m && state === m[2]) return measureCount(q, m);
+  const sp = Object.hasOwn(MEASURE_SPOONS, name) ? MEASURE_SPOONS[name] : null;
+  if (!sp || state !== sp[1]) return '';
+  if (name === '砂糖' && /グラニュー|ざらめ|三温糖|きび|黒糖/.test(notes)) return '';
+  if (name === '塩' && /粗塩|あら塩|ほんじお|岩塩/.test(notes)) return '';
+  const [tg, , kind] = sp;
+  const tbl = q >= tg * 3;
+  const grams = tg * (tbl ? 3 : 1);
+  const a = measureFraction(q / grams);
+  if (!a || q < tg / 8) return '';
+  const unit = tbl ? '大さじ' : '小さじ';
+  return `${unit}約${a}（${kind ? `${kind}・` : ''}${unit}1杯${grams}g目安）`;
+}
+// 手順の文の分量（確認済みの語句だけ）を人数に合わせる
+function cookScaleText(value, r, servings) {
+  const text = String(value ?? '');
+  const entries = Array.isArray(r.scales) ? r.scales.filter((x) => x && typeof x.text === 'string' && x.text) : [];
+  if (!entries.length) return text;
+  const factor = servings / (r.baseServings || 1);
+  const map = new Map(entries.map((x) => [x.text, x]));
+  const pattern = [...map.keys()].sort((a, b) => b.length - a.length).map((t) => t.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')).join('|');
+  return text.replace(new RegExp(`(?<![\\d.])(?:${pattern})`, 'g'), (t) => { const x = map.get(t); return (x.prefix ?? '') + cookQty(x.quantity * factor) + x.unit; });
+}
+
+/* ---------- 買い物（献立と人数から材料を集計。名前と下ごしらえの状態が違うものは別に数える） ---------- */
+function canonUnit(u) {
+  const n = ckClean(u);
+  if (n === '大さじ') return ['ml', 15];
+  if (n === '小さじ') return ['ml', 5];
+  if (['ml', 'mL', 'ミリリットル'].includes(n)) return ['ml', 1];
+  if (n === 'kg') return ['g', 1000];
+  return [n, 1];
+}
+function cookShopRange(d, T) {
+  const n = cookDayN(d, T);
+  const today = Math.min(30, Math.max(1, n || 1));
+  const r = { today: [today, today], three: [today, Math.min(30, today + 2)], week: [today, Math.min(30, today + 6)], all: [1, 30] }[cookView.shop] || [today, today];
+  return r;
+}
+function cookShopRows(d, from, to) {
+  const s = cookState(d);
+  const period = `${s.start}|${from}|${to}|${s.servings}|${s.breakfast}`;
+  const rows = new Map();
+  const add = (ing, mult, rid, extraNote = '') => {
+    const name = ckClean(ing.name);
+    if (!name || name === '水') return;
+    const state = ckClean(ing.state);
+    const [unit, factor] = canonUnit(ing.unit);
+    const opt = ing.quantity == null;
+    const q = opt ? null : Math.round(ing.quantity * mult * factor * 1e6) / 1e6;
+    const key = JSON.stringify([name, state, unit, opt ? 'optional' : 'measured']);
+    if (!rows.has(key)) rows.set(key, { key, name, state, unit, quantity: opt ? null : 0, aisle: ckClean(ing.aisle) || 'その他', notes: [], recipes: [] });
+    const row = rows.get(key);
+    if (q != null) row.quantity = Math.round((row.quantity + q) * 1e6) / 1e6;
+    for (const n of [ckClean(ing.note), extraNote]) if (n && !row.notes.includes(n)) row.notes.push(n);
+    if (rid && !row.recipes.includes(rid)) row.recipes.push(rid);
+  };
+  for (const x of cookSlots(d).filter((y) => y.day >= from && y.day <= to && y.mode === 'cook')) {
+    const r = COOK.byId.get(x.recipeId);
+    if (r) for (const ing of r.ingredients) add(ing, s.servings / (r.baseServings || 1), r.id);
+  }
+  const nDays = to - from + 1;
+  for (const ing of BREAKFAST_ITEMS[s.breakfast] || []) add(ing, nDays * s.servings, null, `朝食 ${nDays} 日分を含む`);
+  const checks = ckObj(s.shop[period]);
+  return [...rows.values()].map((row) => {
+    const c = checks[row.key];
+    const covers = !!c && c.k !== 'needed' && (c.q == null || row.quantity == null ? c.q === row.quantity : c.q >= row.quantity);
+    const basic = s.pantry[row.name] === true && PANTRY_BASICS.includes(row.name) && pantryStateOf(row.name) === row.state;
+    const check = c?.k === 'needed' ? null : covers ? c.k : !c && basic ? 'pantry' : null;
+    return { ...row, period, basic, check, review: !!c && c.k !== 'needed' && !covers };
+  }).sort((a, b) => a.aisle.localeCompare(b.aisle, 'ja') || a.name.localeCompare(b.name, 'ja') || a.state.localeCompare(b.state, 'ja'));
+}
+function setShopCheck(row, kind, on) {
+  const value = on ? { k: kind, q: row.quantity } : row.basic ? { k: 'needed', q: row.quantity } : null;
+  mutate({ t: 'cookShop', period: row.period, key: row.key, value });
+}
+
+/* ---------- 画面 ---------- */
+function cookNodes(d, T) {
+  if (COOK.state !== 'ok') {
+    fetchCooking(COOK.state !== 'none');
+    return [h('div', { class: 'card' }, COOK.state === 'none' ? 'まだ料理のデータがありません。データ用リポジトリに cooking.json が置かれると、ここに出ます。'
+      : COOK.state === 'error' ? '料理のデータを読み込めませんでした。通信を確かめて、もう一度開いてください。' : '料理のデータを読み込んでいます…')];
+  }
+  const tabs = h('div', { class: 'dl-seg cook-tabs', role: 'tablist', 'aria-label': '料理の画面' }, [['today', '今日'], ['plan', '献立'], ['recipes', 'レシピ'], ['shop', '買い物']].map(([k, l]) =>
+    h('button', { type: 'button', role: 'tab', class: cookTab === k ? 'on' : '', 'aria-selected': String(cookTab === k), 'data-ck': k, onclick: () => { cookTab = k; render(); } }, l)));
+  const body = { today: cookTodayNodes, plan: cookPlanNodes, recipes: cookRecipeNodes, shop: cookShopNodes }[cookTab] || cookTodayNodes;
+  return [tabs, ...body(d, T), h('p', { class: 'hint ck-draft' }, `${COOK.status || '全品が未試作'}。実際に作るときは、火の通りと味を確かめてください`)];
+}
+function cookStats(d) {
+  const ps = COOK.recipes.map((r) => cookProg(d, r.id));
+  const n = (f) => ps.filter(f).length;
+  return h('div', { class: 'stats ck-stats' },
+    h('div', { class: 'stat' }, h('b', null, `${n((p) => p.dates.length > 0)}`), h('span', null, `作った料理 / ${COOK.recipes.length}`)),
+    h('div', { class: 'stat' }, h('b', null, `${n((p) => p.mastered)}`), h('span', null, '再現できる')),
+    h('div', { class: 'stat' }, h('b', null, `${n((p) => p.practice)}`), h('span', null, 'もう一度練習')));
+}
+function cookCard(d, slot) {
+  const r = COOK.byId.get(slot.recipeId);
+  if (!r) return null;
+  const p = cookProg(d, r.id);
+  return h('button', { class: 'ck-card' + (slot.mode !== 'cook' ? ' off' : ''), type: 'button', 'data-rid': r.id, onclick: () => openRecipe(r.id) },
+    h('span', { class: 'ck-meal' }, `${mealLabel(slot.meal)}ごはん${slot.mode !== 'cook' ? `・${COOK_MODES.find(([v]) => v === slot.mode)[1]}` : ''}`),
+    h('span', { class: 'ck-title' }, r.title),
+    h('span', { class: 'ck-meta' }, h('span', null, r.skill), h('span', null, `目安 ${r.estimatedTotalMinutes} 分`), h('span', { class: 'ck-st' }, cookStatus(p))));
+}
+function cookStartCard(T) {
+  const inp = h('input', { type: 'date', value: T, 'data-k': 'ck-start', 'aria-label': '1日目の日付' });
+  return h('div', { class: 'card ck-start' }, h('b', null, '30日の献立を始める日を決めます'),
+    h('p', { class: 'hint' }, '1日目から順に、昼と夜にひとつずつ。開始日はあとで「献立」から変えられます'),
+    h('div', { class: 'row', style: 'margin-top:10px;gap:10px' }, inp,
+      h('button', { class: 'btn-primary', type: 'button', onclick: () => { if (YMD_ONLY.test(inp.value)) { mutate({ t: 'cookMeta', set: { start: inp.value } }); toast(`${fmtShort(inp.value)} を 1 日目にしました`); } } }, 'この日から始める')));
+}
+function cookTodayNodes(d, T) {
+  const s = cookState(d);
+  if (!s.start) return [cookStartCard(T), cookStats(d)];
+  const n = cookDayN(d, T);
+  const day = Math.min(30, Math.max(1, n));
+  const head = n < 1 ? `${fmtShort(s.start)} から始めます（1日目の献立）` : n > 30 ? '30日を終えました（30日目の献立）' : `${day}日目 / 30日`;
+  return [h('div', { class: 'ck-today-h' }, h('b', null, head), h('span', { class: 'hint' }, fmtShort(cookDateOf(s.start, day)))),
+    ...cookSlots(d).filter((x) => x.day === day).map((x) => cookCard(d, x)),
+    h('div', { class: 'row', style: 'margin-top:12px;gap:14px;flex-wrap:wrap' },
+      h('button', { class: 'link-btn', type: 'button', onclick: () => { cookTab = 'shop'; cookView.shop = 'today'; render(); } }, '今日の買い物'),
+      h('button', { class: 'link-btn', type: 'button', onclick: () => { cookTab = 'shop'; cookView.shop = 'week'; render(); } }, '7日分の買い物'),
+      h('button', { class: 'link-btn', type: 'button', onclick: () => { cookTab = 'plan'; render(); } }, '献立を見る')),
+    cookStats(d)];
+}
+function cookSettings(d) {
+  const s = cookState(d);
+  const sel = (label, key, opts, cur, fmt = (x) => x) => h('label', { class: 'fs-opt' }, label,
+    h('select', { 'data-k': 'ck-' + key, onchange: (e) => mutate({ t: 'cookMeta', set: { [key]: key === 'servings' ? +e.target.value : e.target.value } }) },
+      opts.map(([v, l]) => h('option', { value: String(v), selected: String(cur) === String(v) ? '' : null }, fmt(l)))));
+  return h('div', { class: 'fs-opts ck-settings' },
+    h('label', { class: 'fs-opt' }, '開始日', h('input', { type: 'date', value: s.start || '', 'data-k': 'ck-startDate', onchange: (e) => { if (YMD_ONLY.test(e.target.value)) mutate({ t: 'cookMeta', set: { start: e.target.value } }); } })),
+    sel('人数', 'servings', [1, 2, 3, 4].map((x) => [x, `${x}人分`]), s.servings),
+    sel('毎日の朝食', 'breakfast', COOK_BREAKFAST, s.breakfast));
+}
+function cookPlanNodes(d, T) {
+  const s = cookState(d);
+  if (!s.start) return [cookStartCard(T)];
+  const n = cookDayN(d, T);
+  const today = Math.min(30, Math.max(1, n));
+  const from = cookView.plan === 'all' ? 1 : today, to = cookView.plan === 'all' ? 30 : Math.min(30, today + 6);
+  const slots = cookSlots(d);
+  const seg = h('div', { class: 'dl-seg' }, [['week', `この7日（${from}〜${Math.min(30, today + 6)}日目）`], ['all', '30日すべて']].map(([k, l]) =>
+    h('button', { type: 'button', class: cookView.plan === k ? 'on' : '', onclick: () => { cookView.plan = k; render(); } }, l)));
+  const days = [];
+  for (let day = from; day <= to; day++) {
+    const k = cookDateOf(s.start, day);
+    days.push(h('div', { class: 'ck-day', 'data-day': day },
+      h('div', { class: 'ck-day-h' }, `${day}日目`, h('span', { class: 'hint' }, fmtShort(k)), day === n ? h('span', { class: 'ck-badge now' }, '今日') : null),
+      slots.filter((x) => x.day === day).map((x) => {
+        const r = COOK.byId.get(x.recipeId);
+        return h('div', { class: 'ck-row' + (x.mode !== 'cook' ? ' off' : ''), 'data-key': x.key },
+          h('span', { class: 'ck-ml' }, mealLabel(x.meal)),
+          h('button', { class: 'ck-t', type: 'button', onclick: () => openRecipe(r.id) }, h('b', null, r.title), h('small', null, `目安 ${r.estimatedTotalMinutes} 分・${cookStatus(cookProg(d, r.id))}`)),
+          h('select', { 'aria-label': `${day}日目の${mealLabel(x.meal)}の予定`, 'data-mode': x.key, onchange: (e) => mutate({ t: 'cookSlot', key: x.key, set: { m: e.target.value } }) },
+            COOK_MODES.map(([v, l]) => h('option', { value: v, selected: x.mode === v ? '' : null }, l))),
+          h('button', { class: 'link-btn', type: 'button', 'aria-label': `${day}日目の${mealLabel(x.meal)}を入れ替える`, onclick: () => openCookSwap(x) }, '入替'));
+      })));
+  }
+  return [cookSettings(d), seg, ...days];
+}
+// 献立の 2 枠の料理を入れ替える（60 種類は保たれる）。元に戻せる
+function openCookSwap(a) {
+  const slots = cookSlots(DATA).filter((x) => x.key !== a.key);
+  const ra = COOK.byId.get(a.recipeId);
+  openSheet(h('div', { class: 'ck-swap' }, sheetHead(`${a.day}日目の${mealLabel(a.meal)}と入れ替える`),
+    h('p', { class: 'hint', style: 'margin-top:-4px' }, `いまの料理：${ra?.title || ''}。選んだ枠の料理と交換します`),
+    h('div', { class: 'ck-swap-list' }, slots.map((b) => h('button', { type: 'button', class: 'ck-swap-item', 'data-key': b.key, onclick: () => {
+      const ops = [{ t: 'cookSlot', key: a.key, set: { r: b.recipeId } }, { t: 'cookSlot', key: b.key, set: { r: a.recipeId } }];
+      mutate(ops);
+      closeSheet();
+      toast(`${a.day}日目${mealLabel(a.meal)}と${b.day}日目${mealLabel(b.meal)}を入れ替えました`, [{ t: 'cookSlot', key: a.key, set: { r: a.recipeId } }, { t: 'cookSlot', key: b.key, set: { r: b.recipeId } }]);
+    } }, h('span', { class: 'ck-ml' }, `${b.day}日目${mealLabel(b.meal)}`), COOK.byId.get(b.recipeId)?.title || '')))), { kind: 'ckswap', label: '献立の入れ替え' });
+}
+function cookRecipeNodes(d) {
+  const forms = [...new Set(COOK.recipes.map((r) => r.mealForm))];
+  const q = cookFilter.q.trim().normalize('NFKC').toLowerCase();
+  const list = COOK.recipes.filter((r) => (!q || [r.title, ...r.ingredients.map((i) => i.name)].join(' ').normalize('NFKC').toLowerCase().includes(q))
+    && (!cookFilter.form || r.mealForm === cookFilter.form) && (!cookFilter.time || r.estimatedTotalMinutes <= +cookFilter.time)
+    && (!cookFilter.progress || cookStatus(cookProg(d, r.id)) === cookFilter.progress));
+  const search = h('input', { type: 'search', placeholder: '料理名・材料（例：鶏肉、卵、うどん）', value: cookFilter.q, 'aria-label': '料理名・材料で探す', 'data-k': 'ck-q',
+    oninput: (e) => { cookFilter.q = e.target.value; const pos = e.target.selectionStart; render(); const el = document.querySelector('[data-k="ck-q"]'); if (el) { el.focus(); el.setSelectionRange(pos, pos); } } });
+  const sel = (key, label, opts) => h('label', { class: 'fs-opt' }, label, h('select', { 'data-k': 'ck-f-' + key, onchange: (e) => { cookFilter[key] = e.target.value; render(); } },
+    opts.map(([v, l]) => h('option', { value: v, selected: cookFilter[key] === v ? '' : null }, l))));
+  return [h('div', { class: 'ck-search' }, search),
+    h('div', { class: 'fs-opts' }, sel('種類', 'form', [['', 'すべて'], ...forms.map((f) => [f, f])]), sel('時間', 'time', [['', 'すべて'], ['30', '30分以内'], ['15', '15分以内']]), sel('記録', 'progress', [['', 'すべて'], ...COOK_STATUS.map((x) => [x, x])])),
+    h('p', { class: 'hint', role: 'status' }, `${list.length} 品 / 全 ${COOK.recipes.length} 品（時間は目安）`),
+    h('div', { class: 'ck-list' }, list.map((r) => h('button', { class: 'ck-card', type: 'button', 'data-rid': r.id, onclick: () => openRecipe(r.id) },
+      h('span', { class: 'ck-meal' }, `${r.mealForm}・${r.difficulty || ''}`), h('span', { class: 'ck-title' }, r.title),
+      h('span', { class: 'ck-meta' }, h('span', null, r.skill), h('span', null, `目安 ${r.estimatedTotalMinutes} 分`), h('span', { class: 'ck-st' }, cookStatus(cookProg(d, r.id)))))))];
+}
+function cookShopNodes(d, T) {
+  const s = cookState(d);
+  if (!s.start) return [cookStartCard(T)];
+  const [from, to] = cookShopRange(d, T);
+  const rows = cookShopRows(d, from, to);
+  const ready = rows.filter((r) => r.check).length;
+  const seg = h('div', { class: 'dl-seg' }, [['today', '今日'], ['three', '3日分'], ['week', '7日分'], ['all', '30日すべて']].map(([k, l]) =>
+    h('button', { type: 'button', class: cookView.shop === k ? 'on' : '', 'data-range': k, onclick: () => { cookView.shop = k; render(); } }, l)));
+  const shown = cookView.remaining ? rows.filter((r) => !r.check) : rows;
+  const aisles = [...new Set(shown.map((r) => r.aisle))];
+  const toggle = (row, kind, label) => h('button', { type: 'button', class: 'ck-toggle', 'aria-pressed': String(row.check === kind), 'data-kind': kind,
+    'aria-label': `${row.name}${kind === 'bought' ? 'を買った' : 'が家にある'}`, onclick: () => setShopCheck(row, kind, row.check !== kind) }, label);
+  const groups = aisles.map((a) => h('div', { class: 'card ck-aisle' }, h('div', { class: 'chart-h' }, a),
+    shown.filter((r) => r.aisle === a).map((r) => {
+      const hint = measureHint({ name: r.name, state: r.state, unit: r.unit, notes: r.notes }, r.quantity);
+      return h('div', { class: 'ck-shop-row' + (r.check ? ' done' : ''), 'data-key': r.key },
+        h('div', { class: 'ck-name' }, h('b', null, r.name), r.state ? h('small', null, ` ${r.state}`) : null,
+          r.notes.length ? h('small', { class: 'hint ck-note' }, r.notes.join(' / ')) : null,
+          r.check === 'pantry' && r.basic && !ckObj(s.shop[r.period])[r.key] ? h('small', { class: 'hint ck-note' }, '基本セット（家にある）') : null,
+          r.review ? h('small', { class: 'ck-note ck-warn' }, '必要な量が変わりました。もう一度確かめてください') : null),
+        h('div', { class: 'ck-q' }, h('b', null, cookQty(r.quantity) + (r.quantity == null ? '' : r.unit)), hint ? h('small', { class: 'hint' }, hint) : null),
+        h('div', { class: 'ck-acts' }, toggle(r, 'bought', '買った'), toggle(r, 'pantry', '家にある')));
+    })));
+  const extraIn = h('input', { type: 'text', placeholder: '例：台所用スポンジ', 'aria-label': '追加の買い物', 'data-k': 'ck-extra', autocomplete: 'off', maxlength: '100' });
+  const addExtra = () => { const name = extraIn.value.trim(); if (!name) return; mutate({ t: 'cookExtra', add: { id: uid(), name, done: false } }); extraIn.value = ''; };
+  extraIn.addEventListener('keydown', (e) => { if (e.key === 'Enter' && !e.isComposing && e.keyCode !== 229) { e.preventDefault(); addExtra(); } });
+  return [cookSettings(d), seg,
+    h('div', { class: 'ck-shop-sum' }, h('b', null, `あと ${rows.length - ready} 材料`), h('span', { class: 'hint' }, `${from === to ? `${from}日目` : `${from}〜${to}日目`}・${s.servings}人分・${ready} / ${rows.length} 用意済み`),
+      h('span', { class: 'sp' }),
+      h('button', { class: 'link-btn', type: 'button', onclick: () => { cookView.remaining = !cookView.remaining; render(); } }, cookView.remaining ? 'すべて表示' : 'まだ買うものだけ')),
+    h('div', { class: 'meter' }, h('div', { class: 'fill', style: `width:${rows.length ? ready / rows.length * 100 : 0}%` })),
+    rows.length ? null : h('p', { class: 'hint' }, 'この期間に作る予定はありません'),
+    cookView.remaining && rows.length && !shown.length ? h('p', { class: 'hint' }, '買うものはありません。すべて用意できました') : null,
+    ...groups,
+    h('div', { class: 'card' }, h('div', { class: 'chart-h' }, '追加の買い物（どの期間にも出ます）'),
+      h('div', { class: 'row', style: 'gap:8px' }, extraIn, h('button', { type: 'button', onclick: addExtra }, '追加')),
+      s.extra.map((x) => h('div', { class: 'ck-shop-row' + (x.done ? ' done' : '') },
+        h('label', { class: 'ck-name' }, h('input', { type: 'checkbox', checked: x.done ? '' : null, onchange: (e) => mutate({ t: 'cookExtra', done: x.id, on: e.target.checked }) }), ` ${x.name}`),
+        h('button', { class: 'icon-btn', type: 'button', 'aria-label': `${x.name}を消す`, onclick: () => mutate({ t: 'cookExtra', del: x.id }) }, icon('trash'))))),
+    h('details', { class: 'card ck-pantry' }, h('summary', null, `基本セット（家にある ${PANTRY_BASICS.filter((x) => s.pantry[x] === true).length} / ${PANTRY_BASICS.length}）`),
+      h('p', { class: 'hint' }, 'いつも家にある調味料に印を付けると、どの買い物リストでも「家にある」になります。足りないときは、そのリストで外せます'),
+      h('div', { class: 'ck-pantry-list' }, PANTRY_BASICS.map((x) => h('label', { class: 'fs-opt' },
+        h('input', { type: 'checkbox', checked: s.pantry[x] === true ? '' : null, onchange: (e) => mutate({ t: 'cookPantry', name: x, on: e.target.checked }) }), x)))),
+    h('p', { class: 'hint' }, '個数・計量スプーンは目安です。調理には g 表記を優先してください。炊いたご飯と生米、乾麺とゆで麺は別に数えます')];
+}
+// レシピ（人数を変えると材料と手順の分量が変わる）。手順のチェックはこの画面の中だけ
+function openRecipe(id, servings) {
+  const r = COOK.byId.get(id);
+  if (!r) return;
+  const sv = servings || cookState(DATA).servings;
+  const T = todayYmd();
+  const m = sv / (r.baseServings || 1);
+  const tx = (v) => cookScaleText(v, r, sv);
+  const p = cookProg(DATA, id);
+  const dateIn = h('input', { type: 'date', value: T, 'data-k': 'ck-date', 'aria-label': '作った日' });
+  const note = h('textarea', { rows: '3', maxlength: '1000', 'data-k': 'ck-note', placeholder: '次に作るときのメモ（火を少し弱める、など）', 'aria-label': 'メモ' }, p.note);
+  note.addEventListener('change', () => { mutate({ t: 'cookProgress', id, set: { note: note.value.slice(0, 1000) } }); toast('メモを保存しました'); });
+  const reopen = () => { if (sheetKind === 'recipe' && !$('sheet').hidden) { const top = $('sheet').scrollTop; openRecipe(id, sv); $('sheet').scrollTop = top; } };
+  const list = (title, items) => (items && items.length ? [h('h4', null, title), h('ul', { class: 'rcp-ul' }, items.map((x) => h('li', null, tx(x))))] : []);
+  openSheet(h('div', { class: 'rcp', 'data-rid': id },
+    sheetHead(r.title),
+    h('div', { class: 'rcp-badges' }, h('span', { class: 'ck-badge draft' }, '未試作'), h('span', { class: 'ck-badge' }, `目安 ${r.estimatedTotalMinutes} 分（作業 ${r.estimatedActiveMinutes} 分）`),
+      r.difficulty ? h('span', { class: 'ck-badge' }, r.difficulty) : null, h('span', { class: 'ck-badge' }, r.mealForm), h('span', { class: 'ck-badge' }, cookStatus(p))),
+    h('p', { class: 'rcp-skill' }, `覚えること：${r.skill}`),
+    h('label', { class: 'fs-opt rcp-sv' }, '人数', h('select', { 'data-k': 'ck-sv', onchange: (e) => { const top = $('sheet').scrollTop; openRecipe(id, +e.target.value); $('sheet').scrollTop = top; } },
+      [1, 2, 3, 4].map((x) => h('option', { value: String(x), selected: x === sv ? '' : null }, `${x}人分`)))),
+    r.prepNote ? h('p', { class: 'hint' }, tx(r.prepNote)) : null,
+    h('h4', null, `材料（${sv}人分）`),
+    h('ul', { class: 'rcp-ing' }, r.ingredients.map((i) => {
+      const q = i.quantity == null ? null : i.quantity * m;
+      const hint = measureHint(i, q);
+      return h('li', null, h('span', null, i.name, i.note ? h('small', { class: 'hint' }, ` ${tx(i.note)}`) : null),
+        h('span', { class: 'rcp-q' }, h('b', null, cookQty(q) + (q == null ? '' : i.unit)), hint ? h('small', { class: 'hint' }, hint) : null));
+    })),
+    h('p', { class: 'hint' }, `使う道具：${r.equipment.map(tx).join('・')}`),
+    h('h4', null, '作り方'),
+    h('ol', { class: 'rcp-steps' }, r.steps.map((st, i) => h('li', null, h('label', null, h('input', { type: 'checkbox', 'aria-label': `手順 ${i + 1} を済みにする` }),
+      h('span', null, h('b', null, tx(st.instruction)), h('small', { class: 'hint rcp-sm' }, [st.heat, st.durationMinutes ? `目安 ${st.durationMinutes} 分` : ''].filter(Boolean).join('・')),
+        st.cue ? h('small', { class: 'rcp-cue' }, `目印：${tx(st.cue)}`) : null))))),
+    ...list('上手に作るコツ', r.tips), ...list('置き換え', r.substitutions), ...list('食品の扱い（安全のために）', r.safetyNotes),
+    h('h4', null, '作った記録'),
+    h('div', { class: 'row', style: 'gap:8px;flex-wrap:wrap' }, dateIn, h('button', { class: 'btn-primary', type: 'button', onclick: () => {
+      if (!YMD_ONLY.test(dateIn.value)) return;
+      mutate({ t: 'cookProgress', id, date: dateIn.value, on: true }); toast(`${fmtShort(dateIn.value)} に作った記録を付けました`); reopen();
+    } }, '作った日を記録')),
+    p.dates.length ? h('div', { class: 'fchips', style: 'margin-top:8px' }, p.dates.map((x) => h('button', { type: 'button', class: 'fchip', 'aria-label': `${fmtShort(x)} の記録を消す`,
+      onclick: () => { mutate({ t: 'cookProgress', id, date: x, on: false }); reopen(); } }, h('span', { class: 'fc-name' }, fmtShort(x)), ' ×'))) : null,
+    h('div', { class: 'row', style: 'gap:16px;margin-top:8px;flex-wrap:wrap' },
+      h('label', { class: 'fs-opt' }, h('input', { type: 'checkbox', checked: p.mastered ? '' : null, disabled: p.dates.length ? null : '', onchange: (e) => { mutate({ t: 'cookProgress', id, set: { mastered: e.target.checked } }); reopen(); } }), '再現できる'),
+      h('label', { class: 'fs-opt' }, h('input', { type: 'checkbox', checked: p.practice ? '' : null, onchange: (e) => { mutate({ t: 'cookProgress', id, set: { practice: e.target.checked } }); reopen(); } }), 'もう一度練習')),
+    note,
+    h('details', { class: 'rcp-src' }, h('summary', null, '参考にした情報'), h('p', { class: 'hint' }, (r.validation && r.validation.note) || '未試作のレシピ草稿です'),
+      h('ul', { class: 'rcp-ul' }, (r.sources || []).filter((x) => x && /^https?:\/\//.test(x.url || '')).map((x) => h('li', null, h('a', { href: x.url, target: '_blank', rel: 'noopener noreferrer' }, x.label || x.url)))))),
+  { kind: 'recipe', label: r.title });
+}
+
 function openRoutines() { openSheet(h('div', { id: 'rtEditor' }, routineEditorBody()), { kind: 'routines', label: 'ルーティンの編集' }); }
 function refreshRoutines(focusKey) {
   if (sheetKind !== 'routines') return;
@@ -3969,6 +4482,7 @@ async function fetchCalendar() {
   fetchNews();
   fetchMail();
   fetchMailbox();
+  fetchCooking();
   const key = cfgKey();
   try {
     const data = await readSide('calendar.json');
@@ -5492,6 +6006,8 @@ async function showApp() {
   if (mailCache && mailCache.key === cfgKey()) setMail(mailCache.data, 'ok');
   const newsCache = loadJSON(KEY.news, null);
   if (newsCache && newsCache.key === cfgKey()) setNews(newsCache.data, 'ok');
+  const cookCache = loadJSON(KEY.cook, null);
+  if (cookCache && cookCache.key === cfgKey()) setCook(cookCache.data, 'ok');
   render();
   tick();
   setSync('loading');
