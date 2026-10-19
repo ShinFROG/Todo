@@ -588,6 +588,31 @@
   .gym-hist-row:first-of-type { border-top: 0; }
   .gym-hist-d { min-width: 72px; color: var(--muted); font-size: 13px; font-variant-numeric: tabular-nums; }
   .gym-hist-ex { padding: 8px 0; border-top: 1px solid var(--line); }
+  /* 案内つきタイマー */
+  .gt-in { display: flex; flex-direction: column; align-items: center; text-align: center; }
+  .gt .sheet-title { align-self: stretch; text-align: left; }
+  .gt-sub { margin: 0; color: var(--muted); font-size: 13px; }
+  .gt-title { font-size: 22px; font-weight: 800; margin-top: 8px; }
+  .gt-text { margin: 4px 0 0; font-size: 15px; min-height: 2.6em; max-width: 30em; }
+  .gt .gt-ring { width: min(56vw, 210px); margin-top: 8px; }
+  .gt[data-kind="contract"] .fm-ring .val, .gt[data-kind="hold"] .fm-ring .val { stroke: #7c4dcc; }
+  .gt[data-kind="relax"] .fm-ring .val { stroke: var(--ok); }
+  .gt[data-kind="prepare"] .fm-ring .val, .gt[data-kind="switch"] .fm-ring .val { stroke: #2aa7c9; }
+  .gt-next { margin: 6px 0 0; }
+  .gt-btns { display: flex; flex-direction: column; align-items: center; gap: 12px; margin: 12px 0 4px; width: 100%; }
+  .gt-btns .btn-primary { min-width: 220px; min-height: 52px; font-size: 17px; border-radius: 999px; }
+  .gt-done { display: flex; flex-direction: column; align-items: center; gap: 6px; margin: 20px 0 8px; font-size: 18px; }
+  .goal40 .gym-title { margin-top: 4px; }
+  /* 柔軟性 */
+  .flex-list { margin: 8px 0 0; }
+  .flex-move { padding: 0; overflow: hidden; }
+  .flex-move .flex-body { margin: 0 14px 12px; }
+  .flex-steps { margin: 0; padding-left: 22px; font-size: 15px; }
+  .flex-steps li { padding: 3px 0; }
+  .flex-src { display: flex; flex-wrap: wrap; gap: 4px 12px; align-items: baseline; margin-top: 8px; font-size: 14px; }
+  .flex-tests { display: flex; flex-direction: column; gap: 6px; margin-top: 8px; }
+  .flex-test-row { display: grid; grid-template-columns: minmax(0, 1fr) auto auto; gap: 4px 12px; align-items: baseline; font-size: 14px; font-variant-numeric: tabular-nums; }
+  .flex-up { color: var(--ok); font-weight: 600; }
   .fd-sum { margin-top: 10px; }
   .fd-sum .meter { height: 8px; }
   .meter.over .fill { background: var(--warn); }
@@ -1145,6 +1170,7 @@ const ICONS = {
   calendar: '<rect x="3" y="5" width="18" height="16" rx="2"/><path d="M3 10h18M8 3v4M16 3v4"/>',
   list: '<path d="M8 6h13M8 12h13M8 18h13M3.5 6h.01M3.5 12h.01M3.5 18h.01"/>',
   box: '<path d="M3 7h18v4H3z"/><path d="M5 11v9h14v-9M10 15h4"/>',
+  wave: '<path d="M3 12c3-6 6 6 9 0s6 6 9 0"/><path d="M3 18c3-6 6 6 9 0s6 6 9 0" opacity=".45"/>',
   dumbbell: '<path d="M6.5 6v12M17.5 6v12M3.5 9v6M20.5 9v6M6.5 12h11"/>',
   bowl: '<path d="M3 11h18c0 5-4 9-9 9s-9-4-9-9z"/><path d="M8 7c0-1.2 1-1.6 1-3M12 7c0-1.2 1-1.6 1-3M16 7c0-1.2 1-1.6 1-3"/>',
   grid: '<rect x="3" y="3" width="8" height="8" rx="1.5"/><rect x="13" y="3" width="8" height="8" rx="1.5"/><rect x="3" y="13" width="8" height="8" rx="1.5"/><rect x="13" y="13" width="8" height="8" rx="1.5"/>',
@@ -1665,6 +1691,62 @@ function applyOp(d, op) {
       g.equip[op.ex] = { ...ckObj(g.equip[op.ex]), ...op.set };
       break;
     }
+    case 'dayCheck': // その日の体調（筋トレとランで共有）
+      d.checks = { ...ckObj(d.checks), [op.day]: op.check };
+      break;
+    case 'pelvic': { // 骨盤底筋の記録（日ごと）
+      const pv = d.pelvic = ckObj(d.pelvic);
+      pv.logs = { ...ckObj(pv.logs), [op.day]: op.log };
+      break;
+    }
+    case 'pelvicStage': { // 骨盤底筋の段階と、その段階を始めた日
+      const pv = d.pelvic = ckObj(d.pelvic);
+      pv.stage = op.stage;
+      pv.start = op.start;
+      break;
+    }
+    case 'cardioLog': { // ラン・水泳の記録。null で消す
+      const c = d.cardio = ckObj(d.cardio);
+      c.logs = ckObj(c.logs);
+      if (op.log) c.logs[op.id] = op.log; else delete c.logs[op.id];
+      break;
+    }
+    case 'cardioSet': // ラン・水泳の開始日と段階
+      d.cardio = { ...ckObj(d.cardio), ...op.set };
+      break;
+    case 'lifeNote': { // 生活メモ。null で消す
+      const l = d.life = ckObj(d.life);
+      l.notes = ckObj(l.notes);
+      if (op.note) l.notes[op.id] = op.note; else delete l.notes[op.id];
+      break;
+    }
+    case 'bodyLog': { // 体脂肪率・腹囲（日ごと）。null で消す
+      d.bodyLog = ckObj(d.bodyLog);
+      if (op.set) d.bodyLog[op.day] = op.set; else delete d.bodyLog[op.day];
+      break;
+    }
+    case 'goal40': { // 40 歳の目標を保存（前の目標も残す）
+      const g = d.goal40 = ckObj(d.goal40);
+      const list = Array.isArray(g.saved) ? g.saved : [];
+      if (op.add && !list.some((x) => x.at === op.add.at)) g.saved = [...list, op.add];
+      if (op.date) g.date = op.date;
+      break;
+    }
+    case 'flexLog': { // 柔軟性：その日に行ったもの（daily・split・warm1〜4）
+      const f = d.flex = ckObj(d.flex);
+      f.logs = ckObj(f.logs);
+      f.logs[op.day] = { ...ckObj(f.logs[op.day]), ...op.set };
+      break;
+    }
+    case 'flexTest': { // 柔軟性のテスト（日ごと）。null で消す
+      const f = d.flex = ckObj(d.flex);
+      f.tests = ckObj(f.tests);
+      if (op.test) f.tests[op.day] = op.test; else delete f.tests[op.day];
+      break;
+    }
+    case 'weekNote': // 週の振り返りのひとこと
+      d.weekNotes = { ...ckObj(d.weekNotes), [op.week]: op.text };
+      break;
     case 'weight': // 体重（kg）。null で消す
       d.weightLog = d.weightLog && typeof d.weightLog === 'object' && !Array.isArray(d.weightLog) ? d.weightLog : {};
       if (Number.isFinite(op.kg) && op.kg > 0) d.weightLog[op.day] = op.kg; else delete d.weightLog[op.day];
@@ -1672,7 +1754,7 @@ function applyOp(d, op) {
   }
   return d;
 }
-const OP_LABEL = { add: '追加', patch: '更新', del: '削除', complete: '完了', focus: '集中記録', restore: '元に戻す', renameProject: 'プロジェクト名変更', meta: '設定', routineSeed: 'ルーティンを用意', routineSet: 'ルーティンを編集', routineToggle: 'ルーティン', foodSet: 'いつもの食べ物を編集', foodToggle: '食事', foodExtra: '食事', weight: '体重', stockSet: 'ストックを編集', stockCount: 'ストック', cookMeta: '料理の設定', cookSlot: '献立', cookProgress: '料理の記録', cookPantry: '基本セット', cookShop: '買い物', cookExtra: '買い物', gymSave: '筋トレ', gymDel: '筋トレ', gymTemplate: '筋トレのメニュー', gymEquip: '器具の設定' };
+const OP_LABEL = { add: '追加', patch: '更新', del: '削除', complete: '完了', focus: '集中記録', restore: '元に戻す', renameProject: 'プロジェクト名変更', meta: '設定', routineSeed: 'ルーティンを用意', routineSet: 'ルーティンを編集', routineToggle: 'ルーティン', foodSet: 'いつもの食べ物を編集', foodToggle: '食事', foodExtra: '食事', weight: '体重', stockSet: 'ストックを編集', stockCount: 'ストック', cookMeta: '料理の設定', cookSlot: '献立', cookProgress: '料理の記録', cookPantry: '基本セット', cookShop: '買い物', cookExtra: '買い物', gymSave: '筋トレ', gymDel: '筋トレ', gymTemplate: '筋トレのメニュー', gymEquip: '器具の設定', dayCheck: '体調', pelvic: '骨盤底筋', pelvicStage: '骨盤底筋', cardioLog: 'ラン・水泳', cardioSet: 'ラン・水泳', lifeNote: '生活メモ', bodyLog: '体脂肪率・腹囲', goal40: '40歳の目標', weekNote: '週の振り返り', flexLog: '柔軟性', flexTest: '柔軟性のテスト' };
 function commitMessage(ops) {
   return ops.length === 1 ? `todo: ${OP_LABEL[ops[0].t] || '更新'}` : `todo: ${ops.length} 件の変更`;
 }
@@ -2032,6 +2114,7 @@ function navModel(d, T) {
     { action: () => openRoutines(), label: 'ルーティンを編集', ic: 'checklist' },
     { sec: 'くらし' },
     { v: { type: 'gym' }, label: '筋トレ', ic: 'dumbbell' },
+    { v: { type: 'move' }, label: '動き', ic: 'wave' },
     { v: { type: 'body' }, label: '食事・体重', ic: 'bolt' },
     { v: { type: 'cook' }, label: '料理', ic: 'bowl' },
     { v: { type: 'stock' }, label: 'ストック', ic: 'folder' },
@@ -2397,7 +2480,14 @@ function renderMain(d, T, model) {
     case 'body': {
       title = '食事・体重';
       const day = foodDay();
-      nodes.push(foodSection(d, T), bodyCard(d, day), nutrientCard(d, day), weightCard(d, day), kcalCard(d, day), foodStreakCard(d, day));
+      nodes.push(foodSection(d, T), goalCard(d, day), bodyCard(d, day), nutrientCard(d, day), weightCard(d, day), kcalCard(d, day), weekReviewCard(d, day), foodStreakCard(d, day), lifeCard(d));
+      break;
+    }
+    case 'move': {
+      title = '動き'; sub = '柔軟性・骨盤底筋・ラン/水泳';
+      nodes.push(h('div', { class: 'dl-seg cook-tabs', role: 'tablist', 'aria-label': '動きの画面' }, [['flex', '柔軟性'], ['pelvic', '骨盤底筋'], ['cardio', 'ラン・水泳']].map(([k, l]) =>
+        h('button', { type: 'button', role: 'tab', class: moveTab === k ? 'on' : '', 'aria-selected': String(moveTab === k), 'data-mv': k, onclick: () => { moveTab = k; render(); } }, l))));
+      nodes.push(...({ flex: flexNodes, pelvic: pelvicNodes, cardio: cardioNodes }[moveTab] || flexNodes)(d, routineDay()));
       break;
     }
     case 'gym': {
@@ -2500,7 +2590,7 @@ const DEFAULT_ROUTINES = [
   { id: 'r-top3', emoji: '🎯', title: '今日の 3 つを決める', part: 'morning', note: '最重要のタスクを 3 つだけ選ぶ' },
   { id: 'r-papers', emoji: '📚', title: '論文チェック', part: 'day', note: '新着論文に目を通す' },
   { id: 'r-workout', emoji: '💪', title: '筋トレ', part: 'day', note: '1 日 1 回まで' },
-  { id: 'r-stretch', emoji: '🤸', title: '柔軟', part: 'night', note: '入浴後に 10 分' },
+  { id: 'r-stretch', emoji: '🤸', title: '柔軟', part: 'night', note: '入浴後に 10 分', guide: 'flex' },
   { id: 'r-reflect', emoji: '🌙', title: '1 日の振り返り', part: 'night', note: 'よかったこと・学び・明日の一手' },
 ];
 const SUGGESTED_ROUTINES = [
@@ -2576,7 +2666,8 @@ function routineSection(d, T) {
         'aria-label': r.title + (r.note ? `（${r.note}）` : ''), onclick: () => toggleRoutine(r.id),
       }, h('span', { class: 'rt-emo', 'aria-hidden': 'true' }, r.emoji || '✓'), h('span', { class: 'rt-t' }, r.title),
         h('span', { class: 'rt-s' }, streak >= 2 ? `🔥 ${streak}日` : '')),
-      routineTimer(r) ? h('button', { class: 'rt-timer', type: 'button', 'aria-label': `${r.title}のタイマー`, title: 'タイマー（1 枚ずつ時間を計る）', onclick: () => openRoutineTimer(r.id) }, icon('play')) : null,
+      routineTimer(r) ? h('button', { class: 'rt-timer', type: 'button', 'aria-label': `${r.title}のタイマー`, title: 'タイマー（1 枚ずつ時間を計る）', onclick: () => openRoutineTimer(r.id) }, icon('play'))
+        : r.guide === 'flex' ? h('button', { class: 'rt-timer', type: 'button', 'aria-label': `${r.title}のタイマー`, title: '毎日の柔軟を案内つきで', onclick: () => startFlex('daily', { routineId: r.id }) }, icon('play')) : null,
       r.link ? h('a', { class: 'rt-link', href: r.link, target: '_blank', rel: 'noopener noreferrer', 'aria-label': `${r.title} を開く`, title: '開く' }, icon('arrow')) : null);
   })));
 }
@@ -2968,16 +3059,22 @@ function openWeight(day) {
   const cur = (DATA.weightLog || {})[day];
   const last = latestWeight(DATA, ymd(addDays(parseYmd(day), -1)));
   const inp = fxNum('wt', '体重（kg）', { value: cur != null ? g1(cur) : last ? g1(last.kg) : '' });
+  const bl = ckObj(ckObj(DATA.bodyLog)[day]);
+  const fat = fxNum('wt-fat', '体脂肪率（%）', { value: bl.fat ?? '' }), waist = fxNum('wt-waist', '腹囲（cm）', { value: bl.waist ?? '' });
   formSheet(`体重（${fmtShort(day)}）`, '記録', 'wt', [
     h('label', { class: 'ev-field' }, 'kg', inp),
+    h('div', { class: 'ev-times' }, h('label', { class: 'ev-field' }, '体脂肪率 %（任意）', fat), h('label', { class: 'ev-field' }, '腹囲 cm（任意）', waist)),
     last ? h('p', { class: 'hint' }, `前回 ${fmtShort(last.k)}：${g1(last.kg)} kg`) : null,
     cur != null ? h('button', { class: 'link-btn', type: 'button', style: 'margin-top:12px', onclick: () => {
       mutate({ t: 'weight', day, kg: null }); closeSheet(); toast('この日の体重を消しました', { t: 'weight', day, kg: cur });
     } }, 'この日の記録を消す') : null,
   ].filter(Boolean), (fail) => {
-    const kg = numIn(inp.value);
+    const kg = numIn(inp.value), f = numIn(fat.value), w = numIn(waist.value);
     if (!(kg >= 20 && kg <= 300)) return fail('体重を kg の数字で入れてください（例：69.2）');
-    mutate({ t: 'weight', day, kg: Math.round(kg * 10) / 10 });
+    if (Number.isNaN(f) || Number.isNaN(w) || (f != null && !(f > 2 && f < 70)) || (w != null && !(w > 40 && w < 200))) return fail('体脂肪率は %、腹囲は cm の数字で入れてください');
+    const ops = [{ t: 'weight', day, kg: Math.round(kg * 10) / 10 }];
+    if (f != null || w != null || bl.fat != null || bl.waist != null) ops.push({ t: 'bodyLog', day, set: f == null && w == null ? null : { ...(f != null ? { fat: f } : {}), ...(w != null ? { waist: w } : {}) } });
+    mutate(ops);
     closeSheet();
     toast(`体重 ${g1(kg)} kg を記録しました`);
   });
@@ -3663,7 +3760,6 @@ const GYM_EFFORT = [['easy', '余裕あり（あと4回以上）'], ['right', '�
 const GYM_BENCH = [['chest', '胸まで'], ['lift', '挙上のみ'], ['mixed', '条件混在'], ['', '条件未設定']];
 const GYM_REGIONS = ['上半身', '脚・腰', '体幹', '骨盤底', '全身・不明'];
 const GYM_SLEEP = [[1, '不足'], [2, '普通'], [3, '良い']];
-let gymCheck = null; // 開始前の体調（開始で記録に残す）
 let gymTodayMenu = null; // 開始前に「今日だけ」変えたメニュー { split, list }（この端末だけ）
 let gymOpen = null; // 開いている種目（実施中）
 function setGymPlan(data, state) {
@@ -3808,7 +3904,6 @@ function gymStart(d, split, check, restartOf) {
     return { ex: x.id, planned: r.sets, load: r.load, target: r.target, reason: r.reason, ...(cond !== undefined ? { cond } : {}), sets: [] };
   });
   gymOpen = items[0]?.ex || null;
-  gymCheck = null;
   gymTodayMenu = null;
   gymLast = null;
   gymSave({ id, split, date: T, startedAt: nowIso(), endedAt: null, status: 'active', check, color, items, ...(restartOf ? { restartOf } : {}) });
@@ -3826,13 +3921,13 @@ function gymNodes(d, T) {
   return [...(act ? gymSessionNodes(d, act) : gymStartNodes(d, T)), gymHistoryCard(d)];
 }
 function gymCheckCard(d, T) {
-  const c = gymCheck;
+  const c = todayCheck(d, T);
   const color = gymColor(d, c, T);
-  const set = (patch) => { gymCheck = { sleep: 2, fatigue: false, sore: false, joint: 0, ...(gymCheck || {}), ...patch }; render(); };
+  const set = (patch) => mutate({ t: 'dayCheck', day: T, check: { sleep: 2, fatigue: false, sore: false, joint: 0, ...(c || {}), ...patch, at: nowIso() } });
   const [label, note] = GYM_COLOR[color];
   return h('div', { class: 'card gym-check', 'data-color': color },
     h('div', { class: 'row' }, h('div', { class: 'chart-h', style: 'flex:1;margin:0' }, '今日の体調'),
-      h('button', { type: 'button', class: 'fg-all', onclick: () => { gymCheck = { sleep: 2, fatigue: false, sore: false, joint: 0 }; render(); } }, 'いつもどおり')),
+      h('button', { type: 'button', class: 'fg-all', onclick: () => mutate({ t: 'dayCheck', day: T, check: { sleep: 2, fatigue: false, sore: false, joint: 0, at: nowIso() } }) }, 'いつもどおり')),
     h('div', { class: 'gym-q' }, h('span', null, '睡眠の感じ'), h('div', { class: 'dl-seg' }, GYM_SLEEP.map(([v, l]) =>
       h('button', { type: 'button', class: c?.sleep === v ? 'on' : '', 'aria-pressed': String(c?.sleep === v), onclick: () => set({ sleep: v }) }, l)))),
     h('label', { class: 'fs-opt gym-q' }, h('input', { type: 'checkbox', checked: c?.fatigue ? '' : null, 'data-k': 'gym-fatigue', onchange: (e) => set({ fatigue: e.target.checked }) }), '全身疲労がある'),
@@ -3847,7 +3942,7 @@ function gymStartNodes(d, T) {
   const cur = gymPick && GYMPLAN.days.some((x) => x.id === gymPick) ? gymPick : gymNextSplit(d);
   const day = gymDay(cur);
   const menu = gymMenu(d, cur);
-  const color = gymColor(d, gymCheck, T);
+  const color = gymColor(d, todayCheck(d, T), T);
   const today = gymList(d).filter((s) => s.date === T);
   const rest = today.find((s) => s.status === 'rest');
   const sel = h('select', { 'data-k': 'gym-split', 'aria-label': '今日の部位', onchange: (e) => { gymPick = +e.target.value; render(); } },
@@ -3864,8 +3959,9 @@ function gymStartNodes(d, T) {
         h('button', { class: 'link-btn', type: 'button', onclick: () => openGymMenu(cur, null) }, '今日のメニューを編集'))),
     gymCheckCard(d, T),
     h('div', { class: 'row gym-start', style: 'gap:10px;flex-wrap:wrap' },
-      h('button', { class: 'btn-primary', type: 'button', disabled: color === 'unknown' || color === 'red' ? '' : null, onclick: () => { gymStart(d, cur, gymCheck); gymPick = null; } },
+      h('button', { class: 'btn-primary', type: 'button', disabled: color === 'unknown' || color === 'red' ? '' : null, onclick: () => { gymStart(d, cur, todayCheck(d, T)); gymPick = null; } },
         color === 'unknown' ? '体調を確かめると始められます' : color === 'red' ? '今日は始めません' : `${day.title}を始める`),
+      h('button', { type: 'button', onclick: () => startFlex(`warm${cur}`) }, `準備運動（約 ${flexMinutes(`warm${cur}`)} 分）`),
       rest ? null : h('button', { type: 'button', onclick: () => { gymSave({ id: uid(), split: cur, date: T, startedAt: nowIso(), endedAt: nowIso(), status: 'rest', items: [] }); toast('休養にしました。次回も同じ部位です'); } }, '休養日にする')),
     h('p', { class: 'hint' }, `${GYMPLAN.effortGuide} 休憩の目安は主な種目 3 分・そのほか 2 分（タイマーは使いません）`),
   ];
@@ -4098,6 +4194,667 @@ function openGymSession(id) {
       it.pain ? h('div', { class: 'ck-warn' }, `痛み：${it.pain.region || ''} ${it.pain.note || ''}`) : null); }),
     s.status === 'rest' ? h('button', { class: 'link-btn', type: 'button', style: 'margin-top:10px', onclick: () => { mutate({ t: 'gymDel', id: s.id }); closeSheet(); toast('休養を取り消しました'); } }, 'この休養を取り消す') : null,
     h('div', { class: 'dlg-foot' }, h('button', { class: 'btn-primary', type: 'button', onclick: closeSheet }, '閉じる'))), { kind: 'gymsession', label: '筋トレの記録' });
+}
+
+/* =========================================================================
+ * 案内つきタイマー（骨盤底筋・ストレッチで使う）。手順を順に案内し、切り替わりで音と振動。計っている間は画面を消さない
+ * steps: [{ title, text, sec, kind: prepare / contract / relax / hold / switch }]
+ * ========================================================================= */
+let gt = null;
+function openGuidedTimer(o) {
+  stopGuidedTimer();
+  gt = { ...o, i: 0, phase: 'ready', endsAt: 0, left: (o.steps[0]?.sec || 0) * 1000, key: '', lock: null };
+  openSheet(h('div', { class: 'gt', id: 'gtBox' }), { kind: 'gt', label: o.title });
+  gt.iv = setInterval(gtTick, 200);
+  gtRender();
+}
+function stopGuidedTimer() {
+  if (!gt) return;
+  clearInterval(gt.iv);
+  const l = gt.lock;
+  gt.lock = null;
+  try { l?.release(); } catch {}
+  gt = null;
+}
+async function gtWake() {
+  const z = gt;
+  try {
+    if (!z || z.lock || !navigator.wakeLock || document.visibilityState !== 'visible') return;
+    const l = await navigator.wakeLock.request('screen');
+    if (gt !== z || z.phase === 'done') { l.release(); return; }
+    z.lock = l;
+  } catch {}
+}
+document.addEventListener('visibilitychange', () => { if (document.visibilityState === 'visible' && gt && gt.phase === 'run') { gt.lock = null; gtWake(); } });
+function gtCue(kind) {
+  try { navigator.vibrate?.(kind === 'contract' ? [120] : [60, 60, 60]); } catch {}
+  if (!audio || store.get(KEY.sound) === 'off') return;
+  try { if (kind === 'contract' || kind === 'hold') tone(988, 0, 0.18, 0.16); else tone(659, 0, 0.22, 0.14); } catch {}
+}
+function gtGo(i) {
+  const z = gt;
+  if (i >= z.steps.length) return gtFinish();
+  z.i = Math.max(0, i);
+  z.left = z.steps[z.i].sec * 1000;
+  if (z.phase === 'run') z.endsAt = Date.now() + z.left;
+  gtCue(z.steps[z.i].kind);
+  gtRender();
+}
+function gtFinish() {
+  const z = gt;
+  z.phase = 'done';
+  try { z.lock?.release(); } catch {}
+  z.lock = null;
+  beep();
+  gtRender();
+}
+function gtTick() {
+  if (!gt) return;
+  if (sheetKind !== 'gt' || $('sheet').hidden) return stopGuidedTimer();
+  if (gt.phase === 'run' && Date.now() >= gt.endsAt) gtGo(gt.i + 1);
+  else gtRender();
+}
+function gtRender() {
+  const box = $('gtBox');
+  const z = gt;
+  if (!box || !z) return;
+  const st = z.steps[Math.min(z.i, z.steps.length - 1)];
+  const left = z.phase === 'run' ? Math.max(0, z.endsAt - Date.now()) : z.left;
+  const key = `${z.phase}|${z.i}`;
+  if (z.key !== key) {
+    z.key = key;
+    const next = z.steps[z.i + 1];
+    const total = z.steps.reduce((s, x) => s + x.sec, 0);
+    const btn = (label, fn, cls = 'btn-primary') => h('button', { type: 'button', class: `${cls} gt-btn`, onclick: fn }, label);
+    box.dataset.kind = z.phase === 'done' ? 'done' : st.kind;
+    box.replaceChildren(h('div', { class: 'gt-in' },
+      sheetHead(z.title),
+      z.phase === 'done' ? h('div', { class: 'gt-done' }, h('b', null, 'おつかれさまでした'), z.doneText ? h('p', { class: 'hint' }, z.doneText) : null,
+        h('div', { class: 'gt-btns' }, z.onDone ? btn(z.doneLabel || '記録する', () => { const f = z.onDone; stopGuidedTimer(); closeSheet(); f(); }) : null, btn('閉じる', closeSheet, z.onDone ? 'link-btn' : 'btn-primary')))
+        : [
+          h('p', { class: 'gt-sub' }, `${z.i + 1} / ${z.steps.length}${z.sub ? `・${z.sub}` : ''}${z.phase === 'ready' ? `・全体 約 ${Math.ceil(total / 60)} 分` : ''}`),
+          h('div', { class: 'gt-title' }, st.title),
+          h('p', { class: 'gt-text' }, st.text || ''),
+          h('div', { class: 'fm-ring gt-ring' }, ringSvg(1, 220, 10), h('div', { class: 'fm-time gt-time' })),
+          next ? h('p', { class: 'hint gt-next' }, `次：${next.title}`) : null,
+          h('div', { class: 'gt-btns' },
+            z.phase === 'ready' ? btn('始める', () => { unlockAudio(); z.phase = 'run'; z.endsAt = Date.now() + z.left; gtWake(); gtCue(st.kind); z.key = ''; gtRender(); })
+              : z.phase === 'run' ? btn('一時停止', () => { z.left = Math.max(0, z.endsAt - Date.now()); z.phase = 'paused'; gtRender(); }, 'btn-primary')
+                : btn('再開', () => { z.phase = 'run'; z.endsAt = Date.now() + z.left; gtWake(); gtRender(); }),
+            h('div', { class: 'row', style: 'gap:18px;justify-content:center' },
+              h('button', { type: 'button', class: 'link-btn', disabled: z.i === 0 ? '' : null, onclick: () => gtGo(z.i - 1) }, '前へ'),
+              h('button', { type: 'button', class: 'link-btn', onclick: () => gtGo(z.i + 1) }, '次へ'),
+              h('button', { type: 'button', class: 'link-btn', onclick: () => gtFinish() }, 'ここで終える'))),
+        ]));
+  }
+  if (z.phase === 'done') return;
+  const s = Math.ceil(left / 1000);
+  const t = box.querySelector('.gt-time');
+  if (t) t.textContent = s >= 60 ? `${Math.floor(s / 60)}:${pad(s % 60)}` : String(s);
+  const v = box.querySelector('.val');
+  if (v) v.style.strokeDashoffset = String(+v.dataset.c * (1 - left / Math.max(1, st.sec * 1000)));
+}
+
+/* =========================================================================
+ * 骨盤底筋（FORME と同じ 4 段階。仰向け・座位・立位で、ゆっくり 6 回とすばやく 3 回）
+ * 最短日数がたち、「狙った筋肉だけを締められた・毎回完全に緩められた・痛み 0」の日がそろうと次の段階へ。
+ * 記録は todos.json の pelvic（stage・stageStart・logs）。排尿中の練習はしない。改善を保証するものではない
+ * ========================================================================= */
+const PELVIC_STAGES = [
+  { stage: 1, title: '感覚をつかむ', hold: 3, rest: 6, slow: 6, quick: 3, minDays: 14, okDays: 10 },
+  { stage: 2, title: '5秒保持', hold: 5, rest: 5, slow: 6, quick: 3, minDays: 14, okDays: 10 },
+  { stage: 3, title: '7秒保持', hold: 7, rest: 7, slow: 6, quick: 3, minDays: 28, okDays: 20 },
+  { stage: 4, title: '10秒保持', hold: 10, rest: 10, slow: 6, quick: 3, minDays: 28, okDays: 20 },
+];
+const PELVIC_POSITIONS = [['仰向け', 'pelvic_supine'], ['座位', 'pelvic_seated'], ['立位', 'pelvic_standing']];
+function pelvicState(d) {
+  const p = ckObj(d.pelvic);
+  const stage = [1, 2, 3, 4].includes(p.stage) ? p.stage : 1;
+  return { stage, start: YMD_ONLY.test(p.start || '') ? p.start : null, logs: ckObj(p.logs) };
+}
+function pelvicSteps(st) {
+  const steps = [{ title: '準備', text: '腹式呼吸を5回。吸う息で会陰部まで力を抜く', sec: 30, kind: 'prepare' }];
+  for (const [pos] of PELVIC_POSITIONS) {
+    steps.push({ title: pos, text: '腹・尻・内ももの力を抜き、自然に呼吸する', sec: 10, kind: 'prepare' });
+    for (let i = 1; i <= st.slow; i++) {
+      steps.push({ title: `ゆっくり ${i}/${st.slow}`, text: '尿とガスを同時にこらえる感覚で、内側へ締めて持ち上げる。息は止めない', sec: st.hold, kind: 'contract' });
+      steps.push({ title: '完全に緩める', text: '力が 0 になるまで待つ。次を急がない', sec: st.rest, kind: 'relax' });
+    }
+    for (let i = 1; i <= st.quick; i++) {
+      steps.push({ title: `すばやく ${i}/${st.quick}`, text: '1秒だけ締めて持ち上げる', sec: 1, kind: 'contract' });
+      steps.push({ title: '完全に緩める', text: '3秒かけて脱力を確かめる', sec: 3, kind: 'relax' });
+    }
+  }
+  steps.push({ title: '終了', text: '腹式呼吸を5回。骨盤底を押し下げず、自然に緩める', sec: 30, kind: 'relax' });
+  return steps;
+}
+const pelvicOk = (l) => l && l.completed && l.technique && l.relaxed && l.pain === 0;
+function pelvicProgress(d, T) {
+  const s = pelvicState(d);
+  const st = PELVIC_STAGES[s.stage - 1];
+  const start = s.start || T;
+  const days = daysBetween(start, T);
+  const ok = Object.entries(s.logs).filter(([k, l]) => k >= start && pelvicOk(l)).length;
+  return { ...s, st, start, days, ok };
+}
+function pelvicNodes(d, T) {
+  const pr = pelvicProgress(d, T);
+  const st = pr.st;
+  const today = pr.logs[T];
+  const steps = pelvicSteps(st);
+  const mins = Math.ceil(steps.reduce((a, x) => a + x.sec, 0) / 60);
+  return [
+    h('div', { class: 'card' },
+      h('div', { class: 'chart-h' }, `段階 ${st.stage} / 4・${st.title}`),
+      h('div', { class: 'gym-title' }, `${st.hold}秒締めて ${st.rest}秒緩める`),
+      h('p', { class: 'hint', style: 'margin:4px 0 0' }, `仰向け・座位・立位で、ゆっくり ${st.slow} 回とすばやく ${st.quick} 回。約 ${mins} 分`),
+      st.stage < 4 ? [h('div', { class: 'meter', style: 'margin-top:12px' }, h('div', { class: 'fill', style: `width:${Math.min(100, pr.ok / st.okDays * 100)}%` })),
+        h('p', { class: 'hint' }, `条件を満たした日 ${pr.ok} / ${st.okDays} 日・この段階 ${pr.days} 日目（最短 ${st.minDays} 日）。痛み 0・狙った筋肉だけを締められた・毎回完全に緩められた日を数えます`)]
+        : h('p', { class: 'hint' }, `最後の段階です。条件を満たした日 ${pr.ok} 日`),
+      today ? h('div', { class: 'rt-done', style: 'margin-top:10px' }, icon('check'), `今日は記録済み${pelvicOk(today) ? '' : '（段階には数えない日）'}`) : null,
+      h('div', { class: 'row', style: 'gap:10px;margin-top:12px;flex-wrap:wrap' },
+        h('button', { class: 'btn-primary', type: 'button', onclick: () => openGuidedTimer({ title: '骨盤底筋', sub: `段階 ${st.stage}`, steps, doneLabel: '終わったあとの確認', doneText: '3 つの姿勢を終えました。続けて、今日の感覚を記録します', onDone: () => openPelvicCheck(T) }) }, today ? 'もう一度行う' : '始める'),
+        h('button', { type: 'button', onclick: () => openPelvicCheck(T) }, 'タイマーを使わずに記録'))),
+    h('div', { class: 'card' }, h('div', { class: 'chart-h' }, 'やり方'),
+      h('ul', { class: 'rcp-ul' }, ['尿とガスを同時にこらえるように、内側へ軽く締めて持ち上げる。お尻・腹・内ももに力を入れない', '息を止めない。締めたあとは毎回、力が 0 になるまで完全に緩める', '排尿中に止める練習はしない'].map((x) => h('li', null, x))),
+      h('p', { class: 'hint' }, '痛み、排尿のしづらさ、緩めにくさがあれば中止して相談してください。改善を保証するものではありません'),
+      flexSourceLinks(['nhs', 'niddk', 'pelvicVideo'])),
+    pelvicHistory(d),
+  ];
+}
+function openPelvicCheck(T) {
+  const s = pelvicState(DATA);
+  const cur = ckObj(s.logs[T]);
+  const box = (k, label, on) => h('label', { class: 'fs-opt gym-q' }, h('input', { type: 'checkbox', 'data-k': 'pv-' + k, checked: on ? '' : null }), label);
+  const el = { completed: box('completed', '3 つの姿勢を最後まで行えた', cur.completed ?? true), technique: box('technique', '狙った筋肉だけを締められた', cur.technique), relaxed: box('relaxed', '毎回、完全に緩められた', cur.relaxed) };
+  const pain = h('select', { 'data-k': 'pv-pain', 'aria-label': '痛み' }, Array.from({ length: 11 }, (_, i) => h('option', { value: String(i), selected: (cur.pain ?? 0) === i ? '' : null }, `${i}/10`)));
+  const note = fxInput('pv-note', { value: cur.note || '', placeholder: '気になったこと（任意）', 'aria-label': 'メモ' });
+  formSheet(`骨盤底筋の記録（${fmtShort(T)}）`, '記録', 'pelvic', [
+    el.completed, el.technique, el.relaxed,
+    h('label', { class: 'fs-opt gym-q' }, '痛み', pain), h('label', { class: 'ev-field' }, 'メモ', note),
+    h('p', { class: 'hint' }, '痛みがあった日は段階に数えません。次回は中止し、続くときは専門家に相談してください'),
+  ], () => {
+    const log = { completed: el.completed.querySelector('input').checked, technique: el.technique.querySelector('input').checked, relaxed: el.relaxed.querySelector('input').checked, pain: +pain.value, note: note.value.trim(), stage: s.stage, at: nowIso() };
+    const ops = [{ t: 'pelvic', day: T, log }];
+    if (!s.start) ops.push({ t: 'pelvicStage', stage: s.stage, start: T });
+    // 条件を満たした日がそろったら次の段階へ
+    const pr = pelvicProgress({ ...DATA, pelvic: { ...ckObj(DATA.pelvic), start: s.start || T, logs: { ...s.logs, [T]: log } } }, T);
+    let up = false;
+    if (pelvicOk(log) && pr.stage < 4 && pr.days >= pr.st.minDays && pr.ok >= pr.st.okDays) { ops.push({ t: 'pelvicStage', stage: pr.stage + 1, start: T }); up = true; }
+    mutate(ops);
+    closeSheet();
+    toast(up ? `段階 ${pr.stage + 1}（${PELVIC_STAGES[pr.stage].title}）へ進みました` : '記録しました');
+    if (up) celebrate();
+  });
+}
+function pelvicHistory(d) {
+  const logs = Object.entries(pelvicState(d).logs).sort((a, b) => cmp(b[0], a[0])).slice(0, 14);
+  if (!logs.length) return null;
+  return h('div', { class: 'card' }, h('div', { class: 'chart-h' }, '記録（新しい順）'),
+    logs.map(([k, l]) => h('div', { class: 'gym-hist-row', style: 'cursor:default' }, h('span', { class: 'gym-hist-d' }, fmtShort(k)), h('b', null, `段階 ${l.stage || ''}`),
+      h('span', { class: 'hint', style: 'margin:0' }, pelvicOk(l) ? '条件を満たした日' : [l.completed ? null : '途中まで', l.technique ? null : '感覚があいまい', l.relaxed ? null : '緩めにくい', l.pain ? `痛み ${l.pain}/10` : null].filter(Boolean).join('・')))));
+}
+/* =========================================================================
+ * ラン・水泳（FORME と同じ 12 週の段階）。開始日から 7 日ごとの 1・3・6 日目が有酸素の日
+ * 段階を上げる条件：その週の 1・3・6 日目すべてで、会話できる強度・運動中と翌朝の痛み 2 以下・目標の時間（12 週目の 6 日目は 10 km）
+ * 記録は todos.json の cardio（start・stage・swimStage・logs）
+ * ========================================================================= */
+const RUN_PLAN = [[20, 20, 25], [20, 25, 30], [25, 25, 35], [20, 20, 30], [25, 30, 40], [30, 35, 45], [30, 35, 50], [25, 25, 40], [30, 40, 55], [35, 45, 60], [30, 35, 70], [20, 20, null]];
+const CARDIO_KINDS = [['run', 'ラン'], ['swim', '水泳'], ['walk', 'ウォーキング']];
+const clampInt = (v, lo, hi, def) => (Number.isInteger(v) && v >= lo && v <= hi ? v : def);
+function cardioState(d) {
+  const c = ckObj(d.cardio);
+  return { start: YMD_ONLY.test(c.start || '') ? c.start : null, stage: clampInt(c.stage, 1, 12, 1), swimStage: clampInt(c.swimStage, 1, 12, 1), logs: ckObj(c.logs) };
+}
+const cardioDayOf = (start, T) => ((daysBetween(start, T) % 7) + 7) % 7 + 1;
+const runTarget = (day, week) => { const p = RUN_PLAN[week - 1]; return day === 1 ? p[0] : day === 3 ? p[1] : day === 6 ? p[2] : null; };
+const cardioLogs = (d) => Object.entries(cardioState(d).logs).map(([id, l]) => ({ id, ...l })).filter((l) => YMD_ONLY.test(l.day || '')).sort((a, b) => cmp(a.day, b.day) || cmp(a.at || '', b.at || ''));
+function runQualifies(l) {
+  if (![1, 3, 6].includes(l.planDay) || !l.talk || l.pain > 2 || !Number.isInteger(l.morning) || l.morning > 2) return false;
+  if (l.stage === 12 && l.planDay === 6) return (l.km || 0) >= 10;
+  const t = runTarget(l.planDay, l.stage);
+  return t != null && l.min >= t;
+}
+// その日の体調（筋トレとランで共有。todos.json の checks）
+const todayCheck = (d, T) => { const c = ckObj(d.checks)[T]; return c && [1, 2, 3].includes(c.sleep) ? c : null; };
+function cardioAdvice(d, kind, T) {
+  const cs = cardioState(d);
+  if (!cs.start) return { title: '開始日を決めると、今日の目安を出します', detail: '' };
+  const day = cardioDayOf(cs.start, T);
+  if (![1, 3, 6].includes(day)) return { title: '今日は有酸素の休養日', detail: '軽い散歩は任意。ラン・水泳をしたら記録できます', day };
+  const check = todayCheck(d, T);
+  if (!check) return { title: '先に今日の体調を確かめる', detail: '未確認のまま負荷を決めません', day, needCheck: true };
+  if (check.joint > 0) return { title: '症状の確認を優先', detail: '痛みのある運動は中止。水泳に替えれば安全とは判断しません', day, red: true };
+  const own = cardioLogs(d).filter((l) => l.kind === kind);
+  const last = own[own.length - 1];
+  const returning = last && daysBetween(last.day, T) > 14;
+  const light = check.sore || check.fatigue || check.sleep === 1 || returning;
+  if (kind === 'swim') {
+    const safe = own.filter((l) => l.talk && l.pain === 0 && l.morning === 0);
+    if (!safe.length) return { title: '水泳は泳力の確認から', detail: '監視員のいる場所で、楽に泳げる範囲を休みながら。初回は実際の時間と翌朝の状態を記録します', day, light };
+    const base = safe[0].min;
+    const m = light ? Math.min(10, base) : Math.min(30, Math.max(5, base) + (cs.swimStage - 1) * 2);
+    return { title: `水泳 約 ${m} 分（休憩込み）`, detail: '楽〜普通の強さ。休みながら泳ぎ、息止めや過換気はしない', day, light, min: m };
+  }
+  const base = runTarget(day, cs.stage);
+  if (cs.stage === 12 && day === 6 && !light) return { title: '10 km（無理のない範囲で）', detail: '距離が分からないと達成にしません。痛み・息苦しさ・体調の悪化があれば中止', day, km: 10 };
+  const m = light ? Math.min(20, base ?? 20) : (base ?? 20);
+  return { title: `楽なラン ${m} 分`, detail: light ? '疲労・中断のあとなので短く。今回は段階を上げる判定に含めません' : '会話できる強さで。寝る時間を優先します', day, light, min: m };
+}
+function cardioNodes(d, T) {
+  const cs = cardioState(d);
+  if (!cs.start) {
+    const inp = h('input', { type: 'date', value: T, 'data-k': 'cd-start', 'aria-label': '開始日' });
+    return [h('div', { class: 'card' }, h('b', null, 'ラン・水泳の 12 週を始める日を決めます'),
+      h('p', { class: 'hint' }, '開始日から 7 日ごとの 1・3・6 日目が有酸素の日です（ランは会話できる楽な強さで、最後の週に 10 km）'),
+      h('div', { class: 'row', style: 'gap:10px;margin-top:10px' }, inp, h('button', { class: 'btn-primary', type: 'button', onclick: () => { if (YMD_ONLY.test(inp.value)) mutate({ t: 'cardioSet', set: { start: inp.value } }); } }, 'この日から始める')))];
+  }
+  const day = cardioDayOf(cs.start, T);
+  const run = cardioAdvice(d, 'run', T), swim = cardioAdvice(d, 'swim', T);
+  const plan = RUN_PLAN[cs.stage - 1];
+  return [
+    run.needCheck ? gymCheckCard(d, T) : null,
+    h('div', { class: 'card' }, h('div', { class: 'chart-h' }, `ラン ${cs.stage} 週目・今日は ${day} 日目（7 日ごと）`),
+      h('div', { class: 'gym-title' }, run.title), run.detail ? h('p', { class: 'hint', style: 'margin:4px 0 0' }, run.detail) : null,
+      h('p', { class: 'hint' }, `この週の目安：1 日目 ${plan[0]} 分・3 日目 ${plan[1]} 分・6 日目 ${plan[2] == null ? '10 km' : `${plan[2]} 分`}`),
+      h('div', { class: 'row', style: 'gap:10px;margin-top:10px;flex-wrap:wrap' },
+        h('button', { class: 'btn-primary', type: 'button', onclick: () => openCardioLog(T, 'run', null, run) }, 'ランを記録'),
+        h('button', { type: 'button', onclick: () => openCardioLog(T, 'swim', null, swim) }, '水泳を記録'),
+        h('button', { type: 'button', onclick: () => openCardioLog(T, 'walk', null, null) }, 'ウォーキング'))),
+    h('div', { class: 'card' }, h('div', { class: 'chart-h' }, '水泳'), h('div', null, h('b', null, swim.title)), swim.detail ? h('p', { class: 'hint', style: 'margin:4px 0 0' }, swim.detail) : null),
+    cardioHistory(d, T),
+    h('p', { class: 'hint' }, '胸痛・めまい・強い息苦しさがあれば中止。翌朝の痛みは次の日に記録すると、段階の判定に使えます'),
+  ];
+}
+function openCardioLog(T, kind, id, adv) {
+  const cs = cardioState(DATA);
+  const cur = id ? cs.logs[id] : {};
+  const day = fxInput('cd-day', { type: 'date', value: cur.day || T, 'aria-label': '日付' });
+  const min = fxNum('cd-min', '時間（分）', { inputmode: 'numeric', value: cur.min ?? (adv?.min || '') });
+  const km = fxNum('cd-km', '距離（km）', { value: cur.km ?? '' });
+  const talk = h('input', { type: 'checkbox', 'data-k': 'cd-talk', checked: (cur.talk ?? true) ? '' : null });
+  const sel = (k, label, v) => h('select', { 'data-k': k, 'aria-label': label }, h('option', { value: '' }, 'まだ'), Array.from({ length: 11 }, (_, i) => h('option', { value: String(i), selected: v === i ? '' : null }, `${i}/10`)));
+  const pain = sel('cd-pain', '運動中の痛み', cur.pain ?? 0);
+  const morning = sel('cd-morning', '翌朝の痛み', cur.morning ?? null);
+  const note = fxInput('cd-note', { value: cur.note || '', placeholder: 'メモ（任意）', 'aria-label': 'メモ' });
+  const label = CARDIO_KINDS.find(([v]) => v === kind)[1];
+  formSheet(`${label}の記録`, '保存', 'cardio', [
+    h('label', { class: 'ev-field' }, '日付', day),
+    h('div', { class: 'ev-times' }, h('label', { class: 'ev-field' }, '時間（分）', min), h('label', { class: 'ev-field' }, '距離（km・任意）', km)),
+    h('label', { class: 'fs-opt gym-q' }, talk, '会話できる強さだった'),
+    h('label', { class: 'fs-opt gym-q' }, '運動中の痛み', pain), h('label', { class: 'fs-opt gym-q' }, '翌朝の痛み', morning),
+    h('label', { class: 'ev-field' }, 'メモ', note),
+    id ? h('button', { class: 'link-btn', type: 'button', style: 'margin-top:12px;color:var(--danger)', onclick: () => { mutate({ t: 'cardioLog', id, log: null }); closeSheet(); toast('記録を消しました', { t: 'cardioLog', id, log: cur }); } }, 'この記録を消す') : null,
+  ].filter(Boolean), (fail) => {
+    const m = numIn(min.value), k = numIn(km.value);
+    if (!YMD_ONLY.test(day.value)) return fail('日付を入れてください');
+    if (!(m > 0 && m <= 600)) return fail('時間を分で入れてください');
+    if (Number.isNaN(k)) return fail('距離は数字で入れてください');
+    const planDay = cs.start ? cardioDayOf(cs.start, day.value) : null;
+    const log = { day: day.value, kind, min: m, km: k, talk: talk.checked, pain: pain.value === '' ? 0 : +pain.value, morning: morning.value === '' ? null : +morning.value,
+      note: note.value.trim(), planDay, stage: kind === 'swim' ? cs.swimStage : cs.stage, at: cur.at || nowIso() };
+    const nid = id || uid();
+    const ops = [{ t: 'cardioLog', id: nid, log }];
+    // 段階：その週（開始日から数えた週）の 1・3・6 日目すべてで条件を満たしたら次の週へ
+    let up = false;
+    if (kind === 'run' && cs.start && cs.stage < 12) {
+      const logs = [...cardioLogs(DATA).filter((x) => x.id !== nid), { id: nid, ...log }].filter((x) => x.kind === 'run' && x.stage === cs.stage && runQualifies(x));
+      if ([1, 3, 6].every((dd) => logs.some((x) => x.planDay === dd))) { ops.push({ t: 'cardioSet', set: { stage: cs.stage + 1 } }); up = true; }
+    }
+    if (kind === 'swim' && log.talk && log.pain === 0 && log.morning === 0 && cs.swimStage < 12 && adv?.min && m >= adv.min && !adv.light) { ops.push({ t: 'cardioSet', set: { swimStage: cs.swimStage + 1 } }); up = true; }
+    mutate(ops);
+    closeSheet();
+    toast(up ? (kind === 'swim' ? `水泳の段階を ${cs.swimStage + 1} に上げました` : `ランを ${cs.stage + 1} 週目へ進めました`) : '記録しました');
+  });
+}
+function cardioHistory(d) {
+  const list = cardioLogs(d).reverse().slice(0, 20);
+  if (!list.length) return null;
+  return h('div', { class: 'card gym-hist' }, h('div', { class: 'chart-h' }, '記録（新しい順・押すと直せます）'),
+    list.map((l) => h('button', { type: 'button', class: 'gym-hist-row', onclick: () => openCardioLog(l.day, l.kind, l.id, null) },
+      h('span', { class: 'gym-hist-d' }, fmtShort(l.day)), h('b', null, CARDIO_KINDS.find(([v]) => v === l.kind)?.[1] || ''),
+      h('span', { class: 'hint', style: 'margin:0' }, `${g1(l.min)} 分${l.km ? `・${g1(l.km)} km` : ''}${l.kind === 'run' && runQualifies(l) ? '・条件を満たした' : ''}${l.morning == null ? '・翌朝の痛みはまだ' : ''}`))));
+}
+
+/* =========================================================================
+ * 生活メモ（必要なときだけ）・週の振り返り（からだ）
+ * ========================================================================= */
+const HUNGER = ['', '少ない', '普通', '強い'];
+function openLifeNote(id) {
+  const notes = ckObj(ckObj(DATA.life).notes);
+  const cur = id ? ckObj(notes[id]) : {};
+  const T = todayYmd();
+  const day = fxInput('ln-day', { type: 'date', value: cur.day || T, 'aria-label': '日付' });
+  const title = fxInput('ln-title', { value: cur.title || '生活メモ', 'aria-label': '見出し' });
+  const note = h('textarea', { rows: '3', 'data-k': 'ln-note', placeholder: '体調・受診内容・検査の単位や基準範囲など', 'aria-label': '内容' }, cur.note || '');
+  const caf = fxNum('ln-caf', 'カフェイン（mg/日）', { value: cur.caffeine ?? '' }), water = fxNum('ln-water', '水分（ml/日）', { value: cur.water ?? '' }), waist = fxNum('ln-waist', '腹囲（cm）', { value: cur.waist ?? '' });
+  const hunger = h('select', { 'data-k': 'ln-hunger', 'aria-label': '空腹感' }, HUNGER.map((x) => h('option', { value: x, selected: (cur.hunger || '') === x ? '' : null }, x || '—')));
+  formSheet('生活メモ', '保存', 'life', [
+    h('div', { class: 'ev-times' }, h('label', { class: 'ev-field' }, '日付', day), h('label', { class: 'ev-field' }, '見出し', title)),
+    h('label', { class: 'ev-field' }, '内容', note),
+    h('div', { class: 'ev-times' }, h('label', { class: 'ev-field' }, 'カフェイン mg', caf), h('label', { class: 'ev-field' }, '水分 ml', water), h('label', { class: 'ev-field' }, '腹囲 cm', waist)),
+    h('label', { class: 'fs-opt gym-q' }, '空腹感', hunger),
+    h('p', { class: 'hint' }, 'どれも任意です。アプリは診断しません'),
+    id ? h('button', { class: 'link-btn', type: 'button', style: 'margin-top:12px;color:var(--danger)', onclick: () => { mutate({ t: 'lifeNote', id, note: null }); closeSheet(); toast('メモを消しました', { t: 'lifeNote', id, note: cur }); } }, 'このメモを消す') : null,
+  ].filter(Boolean), (fail) => {
+    const v = { caffeine: numIn(caf.value), water: numIn(water.value), waist: numIn(waist.value) };
+    if (!YMD_ONLY.test(day.value)) return fail('日付を入れてください');
+    if (Object.values(v).some(Number.isNaN)) return fail('数字で入れてください');
+    mutate({ t: 'lifeNote', id: id || uid(), note: { day: day.value, title: title.value.trim() || '生活メモ', note: note.value.trim(), hunger: hunger.value || null, ...v, at: cur.at || nowIso() } });
+    closeSheet();
+    toast('メモを保存しました');
+  });
+}
+function lifeCard(d) {
+  const notes = Object.entries(ckObj(ckObj(d.life).notes)).map(([id, n]) => ({ id, ...n })).filter((n) => YMD_ONLY.test(n.day || '')).sort((a, b) => cmp(b.day, a.day)).slice(0, 10);
+  return h('div', { class: 'card' }, h('div', { class: 'row' }, h('div', { class: 'chart-h', style: 'flex:1;margin:0' }, '生活メモ'), h('button', { class: 'link-btn', type: 'button', onclick: () => openLifeNote(null) }, '追加')),
+    notes.length ? notes.map((n) => h('button', { type: 'button', class: 'gym-hist-row', onclick: () => openLifeNote(n.id) }, h('span', { class: 'gym-hist-d' }, fmtShort(n.day)), h('b', null, n.title),
+      h('span', { class: 'hint', style: 'margin:0' }, [n.waist != null ? `腹囲 ${g1(n.waist)} cm` : '', n.caffeine != null ? `カフェイン ${fmtN(n.caffeine)} mg` : '', n.water != null ? `水分 ${fmtN(n.water)} ml` : '', n.hunger ? `空腹感 ${n.hunger}` : ''].filter(Boolean).join('・')))) : h('p', { class: 'hint' }, '必要なときだけ。カフェイン・水分・腹囲・空腹感も残せます'));
+}
+// 直近 7 日の「からだ」の振り返り（数えるだけ。判定はしない）
+function weekReviewCard(d, T) {
+  const days = [];
+  for (let i = 6; i >= 0; i--) days.push(ymd(addDays(parseYmd(T), -i)));
+  const inW = (k) => k >= days[0] && k <= T;
+  const sess = gymList(d).filter((s) => inW(s.date));
+  const gymDays = new Set(sess.filter(gymDone).map((s) => s.date)).size;
+  const restDays = new Set(sess.filter((s) => s.status === 'rest').map((s) => s.date)).size;
+  const cardioDays = new Set(cardioLogs(d).filter((l) => inW(l.day)).map((l) => l.day)).size;
+  const foodsAll = days.filter((k) => { const list = foodsFor(d, k); const e = foodEntry(d, k); return list.length && list.every((x) => e.ids.includes(x.id)); }).length;
+  const weighed = days.filter((k) => Number.isFinite((d.weightLog || {})[k])).length;
+  const checked = days.filter((k) => todayCheck(d, k)).length;
+  const kcals = days.map((k) => foodTotals(d, k)).filter((t) => t.n).map((t) => t.kcal);
+  const ws = days.map((k) => (d.weightLog || {})[k]).filter(Number.isFinite);
+  const wk = ymd(mondayOf(parseYmd(T)));
+  const notes = ckObj(d.weekNotes);
+  const note = h('textarea', { rows: '2', 'data-k': 'wk-note', placeholder: 'この週のひとこと（任意）', 'aria-label': 'この週のひとこと' }, notes[wk] || '');
+  note.addEventListener('change', () => { mutate({ t: 'weekNote', week: wk, text: note.value.trim() }); toast('保存しました'); });
+  const stat = (v, l) => h('div', { class: 'stat' }, h('b', null, v), h('span', null, l));
+  return h('div', { class: 'card' }, h('div', { class: 'chart-h' }, `週の振り返り（${fmtShort(days[0])}〜${fmtShort(T)}）`),
+    h('div', { class: 'stats' }, stat(`${gymDays}日`, '筋トレ'), stat(`${restDays}日`, '休養'), stat(`${cardioDays}日`, '有酸素'), stat(`${checked}/7`, '体調を確認')),
+    h('div', { class: 'stats', style: 'margin-top:10px' }, stat(`${foodsAll}/7`, 'いつもの食事を全部'), stat(`${weighed}/7`, '体重を記録'),
+      stat(kcals.length ? fmtN(kcals.reduce((a, b) => a + b, 0) / kcals.length) : '—', '平均 kcal'), stat(ws.length >= 2 ? `${ws[ws.length - 1] - ws[0] >= 0 ? '+' : '−'}${g1(Math.abs(ws[ws.length - 1] - ws[0]))}` : '—', '体重の変化 kg')),
+    note);
+}
+
+/* =========================================================================
+ * 40 歳の目標（FORME 3.3 と同じ決まり）。到達日は 2035-07-31（FORME で確認済みの誕生日から）
+ * 長期の体脂肪率は 15〜18%（仮）。体重と体脂肪率がともに 30 日以内・測定日の差 14 日以内なら体重の範囲を出す
+ * （除脂肪量＝体重×(1−体脂肪率)、下限＝除脂肪量÷0.85、上限＝除脂肪量×1.05÷0.82）。12 週間は体脂肪率 18% 超なら現在〜2% 減、ほかは ±1%。
+ * 筋力は直近 90 日に 8 回以上できた重量：長期は約 20% 増（補助懸垂は補助を約 20% 減）を器具の刻みに丸める、12 週間は同じ重量で 1 回増。
+ * 仮目標は保存するまで記録しない。保存しても実績・処方は変えない。医学的な最適値や効果の保証ではない
+ * ========================================================================= */
+const GOAL40_DATE = '2035-07-31';
+function goalCurrent(d, T) {
+  const log = d.weightLog || {};
+  const last7 = [];
+  for (let i = 0; i < 7; i++) { const k = ymd(addDays(parseYmd(T), -i)); if (Number.isFinite(log[k])) last7.push(log[k]); }
+  const lw = latestWeight(d, T);
+  const w = last7.length >= 5 ? { kg: last7.reduce((a, b) => a + b, 0) / last7.length, k: T, avg: true } : lw ? { kg: lw.kg, k: lw.k } : null;
+  const bl = ckObj(d.bodyLog);
+  const fatK = Object.keys(bl).filter((k) => k <= T && Number.isFinite(bl[k]?.fat)).sort().pop();
+  const fat = fatK ? { pct: bl[fatK].fat, k: fatK } : null;
+  const waists = [...Object.entries(bl).filter(([k, v]) => k <= T && Number.isFinite(v?.waist)).map(([k, v]) => ({ k, cm: v.waist })),
+    ...Object.values(ckObj(ckObj(d.life).notes)).filter((n) => YMD_ONLY.test(n?.day || '') && n.day <= T && Number.isFinite(n.waist)).map((n) => ({ k: n.day, cm: n.waist }))].sort((a, b) => cmp(a.k, b.k));
+  const since = ymd(addDays(parseYmd(T), -90));
+  const lifts = new Map();
+  for (const s of gymList(d)) {
+    if (s.date < since || s.date > T || s.status === 'rest') continue;
+    for (const it of s.items) {
+      if (it.pain) continue;
+      const x = gymEx(it.ex);
+      if (!x) continue;
+      for (const y of gymSetsOf(it)) {
+        if (y.warm || y.r < 8) continue;
+        const cur = lifts.get(x.id);
+        const better = !cur || (x.id === 'assisted_chin' ? y.w < cur.w : y.w > cur.w) || (y.w === cur.w && y.r > cur.r);
+        if (better) lifts.set(x.id, { ex: x.id, name: x.name, w: y.w, r: y.r, k: s.date, step: gymStep(d, x) });
+      }
+    }
+  }
+  return { w, fat, waist: waists.pop() || null, lifts: [...lifts.values()] };
+}
+function goalDraft(cur, T) {
+  const roundStep = (v, step) => (step > 0 ? Math.round(v / step) * step : Math.round(v * 10) / 10);
+  const out = { fat: [15, 18], weight: null, w12: null, lifts: [] };
+  const w = cur.w, f = cur.fat;
+  if (w && f && daysBetween(w.k, T) <= 30 && daysBetween(f.k, T) <= 30 && Math.abs(daysBetween(w.k, f.k)) <= 14) {
+    const lbm = w.kg * (1 - f.pct / 100);
+    out.weight = [lbm / 0.85, lbm * 1.05 / 0.82].map((x) => Math.round(x * 10) / 10);
+  }
+  if (w) out.w12 = (f && f.pct > 18 ? [w.kg * 0.98, w.kg] : [w.kg * 0.99, w.kg * 1.01]).map((x) => Math.round(x * 10) / 10);
+  out.lifts = cur.lifts.map((l) => ({ ex: l.ex, name: l.name, now: l.w, nowR: l.r, long: l.ex === 'assisted_chin' ? Math.max(0, roundStep(l.w * 0.8, l.step)) : roundStep(l.w * 1.2, l.step), w12: l.w, r12: Math.min(30, l.r + 1) }));
+  return out;
+}
+function goalLeft(T, target) {
+  let a = parseYmd(T), b = parseYmd(target);
+  if (b <= a) return '到達日を過ぎました';
+  let y = b.getFullYear() - a.getFullYear(), m = b.getMonth() - a.getMonth(), dd = b.getDate() - a.getDate();
+  if (dd < 0) { m -= 1; dd += new Date(b.getFullYear(), b.getMonth(), 0).getDate(); }
+  if (m < 0) { y -= 1; m += 12; }
+  return `あと ${y} 年 ${m} か月 ${dd} 日`;
+}
+function goalCard(d, T) {
+  const g = ckObj(d.goal40);
+  const target = YMD_ONLY.test(g.date || '') ? g.date : GOAL40_DATE;
+  const saved = Array.isArray(g.saved) ? g.saved.filter((x) => x && x.at) : [];
+  const last = saved[saved.length - 1];
+  const cur = goalCurrent(d, T);
+  return h('div', { class: 'card goal40' },
+    h('div', { class: 'row' }, h('div', { class: 'chart-h', style: 'flex:1;margin:0' }, `40歳の目標（${fmtShort(target)}・${parseYmd(target).getFullYear()}年）`), h('button', { class: 'link-btn', type: 'button', onclick: () => openGoal40(T) }, last ? '見直す' : '確かめて保存')),
+    h('div', { class: 'gym-title' }, goalLeft(T, target)),
+    h('p', { class: 'hint', style: 'margin:4px 0 0' }, last ? `保存した目標（${fmtShort(localYmd(last.at))}）：体脂肪率 ${last.fat[0]}〜${last.fat[1]}%${last.weight ? `・体重 ${last.weight[0]}〜${last.weight[1]} kg` : ''}` : '仮目標（まだ保存していません）'),
+    h('div', { class: 'fd-line' }, h('span', null, '体重 ', h('b', null, cur.w ? `${g1(cur.w.kg)} kg` : '—'), cur.w?.avg ? '（7 日平均）' : ''), h('span', null, '体脂肪率 ', h('b', null, cur.fat ? `${g1(cur.fat.pct)}%` : '—')), h('span', null, '腹囲 ', h('b', null, cur.waist ? `${g1(cur.waist.cm)} cm` : '—'))));
+}
+function openGoal40(T) {
+  const g = ckObj(DATA.goal40);
+  const target = YMD_ONLY.test(g.date || '') ? g.date : GOAL40_DATE;
+  const cur = goalCurrent(DATA, T);
+  const saved = Array.isArray(g.saved) ? g.saved : [];
+  const draft = saved.length ? saved[saved.length - 1] : goalDraft(cur, T);
+  const n = (k, v, label) => fxNum(k, label, { value: v ?? '' });
+  const el = { fatLo: n('g-fat-lo', draft.fat?.[0], '体脂肪率の下限'), fatHi: n('g-fat-hi', draft.fat?.[1], '体脂肪率の上限'), wLo: n('g-w-lo', draft.weight?.[0], '体重の下限'), wHi: n('g-w-hi', draft.weight?.[1], '体重の上限'),
+    w12Lo: n('g-w12-lo', draft.w12?.[0], '12週の体重の下限'), w12Hi: n('g-w12-hi', draft.w12?.[1], '12週の体重の上限') };
+  const lifts = (draft.lifts || []).map((l) => ({ ...l, inLong: n('g-l-' + l.ex, l.long, `${l.name}の長期目標`) }));
+  const row = (label, a, b, unit) => h('div', { class: 'ev-times' }, h('label', { class: 'ev-field' }, `${label}（下限）`, a), h('span', { class: 'ev-dash' }, '〜'), h('label', { class: 'ev-field' }, `（上限 ${unit}）`, b));
+  formSheet('40歳の目標', '保存', 'goal40', [
+    h('p', { class: 'hint' }, `${fmtShort(target)} まで ${goalLeft(T, target).replace('あと ', '')}。いまの値から作った出発点で、医学的な最適値や達成の保証ではありません。保存しても記録やメニューは変わりません`),
+    h('div', { class: 'chart-h', style: 'margin-top:8px' }, '長期'), row('体脂肪率', el.fatLo, el.fatHi, '%'), row('体重', el.wLo, el.wHi, 'kg'),
+    !draft.weight ? h('p', { class: 'hint' }, '体重の範囲は、体重と体脂肪率を 14 日以内の差で測ると出せます（いまは手入力もできます）') : null,
+    h('div', { class: 'chart-h', style: 'margin-top:8px' }, '次の 12 週間'), row('体重', el.w12Lo, el.w12Hi, 'kg'),
+    lifts.length ? [h('div', { class: 'chart-h', style: 'margin-top:8px' }, '筋力（直近 90 日に 8 回以上できた重量から）'),
+      ...lifts.map((l) => h('div', { class: 'gym-edit-row row' }, h('span', { style: 'flex:1;min-width:0' }, l.name, h('small', { class: 'hint' }, ` いま ${g1(l.now)}kg×${l.nowR}・12 週 ${g1(l.w12)}kg×${l.r12}`)), h('label', { class: 'fs-opt' }, '長期 kg', l.inLong)))]
+      : h('p', { class: 'hint' }, '筋力の目標は、8 回以上できたセットの記録がたまると出ます'),
+  ].filter(Boolean), (fail) => {
+    const v = Object.fromEntries(Object.entries(el).map(([k, x]) => [k, numIn(x.value)]));
+    if (Object.values(v).some(Number.isNaN)) return fail('数字で入れてください');
+    const pair = (a, b) => (a != null && b != null ? [a, b] : null);
+    const goal = { at: nowIso(), fat: pair(v.fatLo, v.fatHi) || [15, 18], weight: pair(v.wLo, v.wHi), w12: pair(v.w12Lo, v.w12Hi),
+      lifts: lifts.map((l) => ({ ex: l.ex, name: l.name, now: l.now, nowR: l.nowR, long: numIn(l.inLong.value) ?? l.long, w12: l.w12, r12: l.r12 })) };
+    const prev = saved[saved.length - 1];
+    const same = prev && JSON.stringify({ ...prev, at: 0 }) === JSON.stringify({ ...goal, at: 0 });
+    if (!same) mutate({ t: 'goal40', add: goal });
+    closeSheet();
+    toast(same ? '前と同じ目標です（保存し直しは不要）' : '目標を保存しました');
+  });
+}
+
+/* =========================================================================
+ * 柔軟性（作り直し）：目的は ①開脚 ②全身の柔らかさ ③筋トレの動きやすさ
+ *  - 毎日の柔軟（約 10 分・入浴後）：静的ストレッチ。1 種目 30〜60 秒（左右はそれぞれ）。週 5 日以上で、1 つの筋肉に週 5 分以上
+ *  - 筋トレ前の準備（部位別・約 2〜4 分）：反動の小さい動的な動き。長い静的ストレッチは筋トレの前に行わない
+ *  - 開脚の強化（週 2 回・約 10 分）：コサック・横の脚上げ・開脚グッドモーニングと、縮めてから伸ばす（PNF）
+ *  - テスト（2 週に 1 回）：前屈・開脚の幅・前後開脚の高さ・足首・肩を測って記録し、最初からの変化を見る
+ * やり方は、短い手順と「伸びる場所」「よくある間違い」、信頼できる見本（理学療法士などの動画・解説）へのリンクで示す。
+ * 記録は todos.json の flex（logs・tests）
+ * ========================================================================= */
+let moveTab = 'flex';
+let flexOpen = null;
+const FLEX_SOURCES = {
+  nhs: { title: 'NHS Dynamic Health · 男性の骨盤底筋', url: 'https://dynamichealth.nhs.uk/help-and-advice/pelvic-health/pelvic-floor-exercises-for-men/' },
+  niddk: { title: 'NIDDK · Kegel Exercises', url: 'https://www.niddk.nih.gov/health-information/urologic-diseases/kegel-exercises' },
+  pelvicVideo: { title: 'Michelle Kenway · 男性の骨盤底（動画）', url: 'https://www.youtube.com/watch?v=MJ7EfGu03-0' },
+};
+// 種目：name・area（伸びる場所）・steps（手順）・miss（よくある間違い）・sec（保持の秒数）・sides（左右）・reps（回数で行う動き）・src（見本）
+const FLEX_MOVES = {
+  long_sit_fold: { name: '長座前屈', area: 'もも裏・ふくらはぎ', sec: 60, steps: ['床に座り、両脚を前へまっすぐ伸ばす（膝の裏は少し曲がってもよい）', '背中を丸めず、股関節から体を前へ倒す', 'もも裏が伸びて痛くないところで止め、息を吐きながら保つ'], miss: ['背中だけを丸めて手を伸ばす', '反動をつける'], src: [] },
+  kneel_hip: { name: '膝立ちの腸腰筋', area: '後ろ脚の股関節の前・もも前', sec: 45, sides: true, steps: ['片膝立ちになり、後ろ脚の膝の下にタオルを敷く', 'お尻を軽く締めて骨盤を後ろへ傾け、体を少し前へ移す', '後ろ脚と同じ側の腕を上げると、さらに伸びる'], miss: ['腰を反らせて前へ出る（腰が反るだけで股関節の前が伸びない）'], src: [] },
+  half_split: { name: 'ハーフスプリット', area: '前脚のもも裏（前後開脚の準備）', sec: 45, sides: true, steps: ['片膝立ちから前脚を伸ばし、かかとを床につけてつま先を天井へ', 'お尻を後ろへ引き、後ろ脚の膝の真上へ戻す', '背中をまっすぐ保ったまま前へ倒す（手は床かブロックへ）'], miss: ['背中を丸める', '前脚のつま先が外へ倒れる'], src: [] },
+  pancake: { name: '開脚前屈', area: '内もも・もも裏（横開脚の準備）', sec: 60, steps: ['座って、痛くない幅まで脚を左右に開く（膝のお皿は天井へ）', '背中をまっすぐ保ち、股関節から前へ倒す', '手を床について体重を支え、息を吐きながら保つ'], miss: ['膝が内側へ倒れる', '背中を丸めて頭だけを下げる'], src: [] },
+  frog: { name: 'フロッグ', area: '内もも', sec: 45, steps: ['四つ這いになり、膝を左右に少しずつ開く（膝の下にクッション）', 'すねは平行にし、足首は膝の真後ろに置く', '前腕をつき、お尻をゆっくり後ろへ引いて止める'], miss: ['股関節の前が詰まるほど深く入る', '膝が痛むのに続ける'], src: [] },
+  ninety: { name: '90/90', area: '前脚のお尻・股関節の外側', sec: 45, sides: true, steps: ['座って、前の脚と後ろの脚の膝をどちらも 90 度に曲げる', '背すじを伸ばし、前のすねの上へ胸を近づける', '反対側も同じように'], miss: ['背中を丸めて前に倒れるだけ', '膝に痛みが出るまで押し込む'], src: [] },
+  ankle_wall: { name: '壁で足首', area: 'ふくらはぎ・足首の前（しゃがみやすく）', sec: 30, sides: true, steps: ['壁に向かって立ち、片足を壁から少し離して前に置く', 'かかとを床につけたまま、膝を壁へ近づける', '膝をつま先の方向へまっすぐ出す'], miss: ['かかとが浮く', '膝が内側へ入る'], src: [] },
+  wall_pec: { name: '壁で胸', area: '胸・肩の前（ベンチ・頭上の動きやすさ）', sec: 30, sides: true, steps: ['壁の横に立ち、肘を肩の高さで曲げて前腕を壁につける', '壁側の足を一歩前に出し、体を壁と反対へゆっくり回す', '胸の前が伸びるところで保つ（肩の前が痛いときは肘を下げる）'], miss: ['肩をすくめる', '痛みがあるのに続ける'], src: [] },
+  // 筋トレ前の準備（動的）
+  arm_circle: { name: '腕回し', area: '肩まわり', sec: 30, reps: '前回し 15 秒・後ろ回し 15 秒', steps: ['腕を横に伸ばし、小さな円から大きな円へ', '肩をすくめず、ゆっくり回す'], miss: ['勢いで振り回す'], src: [] },
+  wall_slide: { name: '壁スライド', area: '肩甲骨・胸の上', sec: 40, reps: 'ゆっくり 10 回', steps: ['壁に背中と頭をつけて立つ', '腕を W の形にして壁につける', '腕を壁から離さずに上へ滑らせ、戻す'], miss: ['腰が壁から大きく離れる'], src: [] },
+  open_book: { name: '胸の回旋（オープンブック）', area: '背中の上（胸椎）・胸', sec: 30, sides: true, reps: '5 回', steps: ['横向きに寝て、膝を 90 度に曲げる', '両腕を前でそろえ、上の腕を天井から反対側の床へ開く', '目で手を追い、息を吐いてから戻す'], miss: ['膝が床から離れて腰だけがねじれる'], src: [] },
+  cat_cow: { name: 'キャット＆カウ', area: '背骨全体', sec: 40, reps: 'ゆっくり 8 回', steps: ['四つ這いで、手は肩の下、膝は股関節の下', '息を吐いて背中を丸め、吸って胸を前へ出す'], miss: ['首だけを大きく動かす'], src: [] },
+  dead_hang: { name: 'ぶら下がり', area: '広背筋・肩', sec: 20, steps: ['バーを肩幅で握り、足を床から離す（足を着けたままでもよい）', '肩の力を少し抜いて体を長くする', '痛みやしびれがあれば降りる'], miss: ['握力が尽きるまで続ける'], src: [] },
+  leg_swing: { name: 'レッグスイング', area: '股関節（前後・左右）', sec: 40, sides: true, reps: '前後 10 回・左右 10 回', steps: ['壁や柱に手をつき、片脚で立つ', '反対の脚を前後に振ってから、左右に振る', '小さな振りから少しずつ大きく'], miss: ['腰ごと大きく振る'], src: [] },
+  cossack_bw: { name: '自重コサック', area: '内もも・お尻', sec: 60, reps: '左右に 5 回ずつ', steps: ['足を大きく横に開いて立つ', '片側の膝を曲げてお尻を落とし、反対の脚は伸ばしてつま先を上へ', '届く深さで左右に移る'], miss: ['曲げた膝が内側へ入る', 'かかとが浮く'], src: [] },
+  squat_pause: { name: 'しゃがんで止める', area: '股関節・足首', sec: 40, reps: '下で 3 秒止めて 5 回', steps: ['足は肩幅、つま先は少し外', 'かかとをつけたまま深くしゃがむ', '下で 3 秒止めてから立つ'], miss: ['かかとが浮く', '膝が内側へ入る'], src: [] },
+  ankle_rock: { name: '足首の前後', area: '足首', sec: 30, sides: true, reps: '10 回', steps: ['片膝立ちになり、前脚のかかとを床につける', '膝をつま先の方向へゆっくり前に出し、戻す'], miss: ['かかとが浮く'], src: [] },
+  // 開脚の強化（週 2 回）
+  cossack_slow: { name: 'コサックスクワット（ゆっくり）', area: '内もも・お尻（深い位置の筋力）', sec: 60, reps: '左右 6 回ずつ。下りに 3 秒', steps: ['自重コサックと同じ形で、下りる動きに 3 秒かける', '一番深いところで 1 秒止める', '慣れたら軽いダンベルを胸の前に持つ'], miss: ['反動で立ち上がる'], src: [] },
+  side_raise: { name: '横向きの脚上げ', area: 'お尻の横（脚を開く筋力）', sec: 45, sides: true, reps: 'ゆっくり 10 回', steps: ['横向きに寝て、下の脚は軽く曲げる', '上の脚を伸ばしたまま、つま先を前に向けて上げる', '上で 1 秒止めて、ゆっくり下ろす'], miss: ['体が後ろへ倒れる', 'つま先が天井を向く'], src: [] },
+  pancake_gm: { name: '開脚グッドモーニング', area: 'もも裏・内もも（伸ばした位置の筋力）', sec: 45, reps: 'ゆっくり 8 回', steps: ['足を大きく開いて立ち、手を胸の前で組む', '背中をまっすぐ保ち、股関節から前へ倒す', 'もも裏が伸びたところから、お尻を締めて戻る'], miss: ['背中を丸める'], src: [] },
+};
+// 縮めてから伸ばす（PNF）：伸ばして 20 秒 → 30〜50% の力で床を押す 5 秒 → 力を抜いてもう少し深く 20 秒 を 2 回
+const PNF = (name, side) => [
+  { title: `${name}（${side}）伸ばす`, text: '痛くないところまで伸ばして保つ', sec: 20, kind: 'hold' },
+  { title: '床を押す（30〜50% の力）', text: '前脚のかかとで床を押すように力を入れる。息は止めない', sec: 5, kind: 'contract' },
+  { title: '力を抜いて少し深く', text: '息を吐きながら、少しだけ深く入って保つ', sec: 20, kind: 'hold' },
+  { title: '床を押す（30〜50% の力）', text: 'もう一度、軽く押す', sec: 5, kind: 'contract' },
+  { title: '力を抜いて少し深く', text: '痛みのない範囲で保つ', sec: 20, kind: 'hold' },
+];
+const FLEX_PLANS = {
+  daily: { title: '毎日の柔軟', sub: '入浴後・寝る前', moves: ['long_sit_fold', 'kneel_hip', 'half_split', 'pancake', 'frog', 'ninety', 'ankle_wall', 'wall_pec'] },
+  split: { title: '開脚の強化', sub: '週 2 回・筋トレのあとか休養日', moves: ['cossack_slow', 'side_raise', 'pancake_gm'], pnf: true },
+  warm1: { title: '筋トレ前の準備（胸・三頭）', moves: ['arm_circle', 'wall_slide', 'open_book'] },
+  warm2: { title: '筋トレ前の準備（背中・二頭）', moves: ['cat_cow', 'open_book', 'dead_hang'] },
+  warm3: { title: '筋トレ前の準備（脚）', moves: ['ankle_rock', 'leg_swing', 'cossack_bw', 'squat_pause'] },
+  warm4: { title: '筋トレ前の準備（肩）', moves: ['arm_circle', 'wall_slide', 'dead_hang'] },
+};
+function flexSteps(planId) {
+  const pl = FLEX_PLANS[planId];
+  const steps = [{ title: '準備', text: `${pl.title}。最初は ${FLEX_MOVES[pl.moves[0]].name} の形を作ります`, sec: 10, kind: 'prepare' }];
+  pl.moves.forEach((id, i) => {
+    const m = FLEX_MOVES[id];
+    const text = [m.reps, m.steps[m.steps.length - 1]].filter(Boolean).join('。');
+    const one = (side) => ({ title: `${m.name}${side ? `（${side}）` : ''}`, text: `${m.area}。${text}`, sec: m.sec, kind: 'hold', move: id });
+    if (m.sides) steps.push(one('右'), { title: '反対側へ', text: `${m.name}（左）の形を作る`, sec: 5, kind: 'switch' }, one('左'));
+    else steps.push(one(''));
+    const next = pl.moves[i + 1];
+    if (next) steps.push({ title: '次へ', text: `${FLEX_MOVES[next].name}の形を作る`, sec: 8, kind: 'switch' });
+  });
+  if (pl.pnf) steps.push({ title: '次へ', text: 'ハーフスプリットの形を作る（縮めてから伸ばす）', sec: 8, kind: 'switch' }, ...PNF('ハーフスプリット', '右'), { title: '反対側へ', text: 'ハーフスプリット（左）の形を作る', sec: 8, kind: 'switch' }, ...PNF('ハーフスプリット', '左'));
+  return steps;
+}
+const flexMinutes = (planId) => Math.ceil(flexSteps(planId).reduce((s, x) => s + x.sec, 0) / 60);
+const flexState = (d) => { const f = ckObj(d.flex); return { logs: ckObj(f.logs), tests: ckObj(f.tests) }; };
+function startFlex(planId, opts = {}) {
+  const T = routineDay();
+  openGuidedTimer({ title: FLEX_PLANS[planId].title, sub: FLEX_PLANS[planId].sub || '', steps: flexSteps(planId), doneLabel: '記録する',
+    doneText: '痛みはありませんでしたか。痛みが出た動きは、次回は浅くするか外してください',
+    onDone: () => {
+      const cur = ckObj(flexState(DATA).logs[T]);
+      const ops = [{ t: 'flexLog', day: T, set: { [planId]: true, at: nowIso() } }];
+      if (opts.routineId && !routineDone(DATA, T).has(opts.routineId)) ops.push({ t: 'routineToggle', day: T, id: opts.routineId, on: true });
+      mutate(ops);
+      toast(`${FLEX_PLANS[planId].title}を記録しました`);
+      if (opts.routineId) playDone();
+      void cur;
+    } });
+}
+function flexSourceLinks(ids) {
+  const list = ids.map((x) => (typeof x === 'string' ? FLEX_SOURCES[x] : x)).filter((x) => x && /^https?:\/\//.test(x.url));
+  if (!list.length) return null;
+  return h('div', { class: 'flex-src' }, h('span', { class: 'hint', style: 'margin:0' }, '見本：'), list.map((x) => h('a', { href: x.url, target: '_blank', rel: 'noopener noreferrer' }, x.title)));
+}
+function flexMoveCard(id) {
+  const m = FLEX_MOVES[id];
+  const open = flexOpen === id;
+  return h('div', { class: 'card flex-move' + (open ? ' open' : ''), 'data-move': id },
+    h('button', { type: 'button', class: 'gym-ex-h', 'aria-expanded': String(open), onclick: () => { flexOpen = open ? null : id; render(); } },
+      h('span', { class: 'gym-ex-t' }, h('b', null, m.name), h('small', null, `${m.area}・${m.reps || `${m.sec} 秒${m.sides ? '（左右）' : ''}`}`))),
+    open ? h('div', { class: 'flex-body' },
+      h('ol', { class: 'flex-steps' }, m.steps.map((x) => h('li', null, x))),
+      m.miss?.length ? h('p', { class: 'hint' }, `よくある間違い：${m.miss.join('／')}`) : null,
+      flexSourceLinks(m.src || []) || h('p', { class: 'hint' }, '見本の動画は準備中です')) : null);
+}
+function flexNodes(d, T) {
+  const fs = flexState(d);
+  const today = ckObj(fs.logs[T]);
+  const week = [];
+  for (let i = 0; i < 7; i++) week.push(ckObj(fs.logs[ymd(addDays(parseYmd(T), -i))]));
+  const dailyN = week.filter((x) => x.daily).length, splitN = week.filter((x) => x.split).length;
+  const plan = (id, label) => h('div', { class: 'card flex-plan' },
+    h('div', { class: 'row', style: 'gap:10px;flex-wrap:wrap' }, h('div', { style: 'flex:1;min-width:180px' }, h('b', null, FLEX_PLANS[id].title), h('div', { class: 'hint', style: 'margin:2px 0 0' }, `${FLEX_PLANS[id].sub}・約 ${flexMinutes(id)} 分・${label}`)),
+      h('button', { class: 'btn-primary', type: 'button', onclick: () => startFlex(id, { routineId: id === 'daily' ? (d.routines || []).find((r) => r.guide === 'flex')?.id : null }) }, today[id] ? 'もう一度' : '始める')),
+    today[id] ? h('div', { class: 'rt-done', style: 'margin-top:10px' }, icon('check'), '今日は済み') : null,
+    h('div', { class: 'hint flex-list' }, FLEX_PLANS[id].moves.map((m) => FLEX_MOVES[m].name).join('・') + (FLEX_PLANS[id].pnf ? '・縮めてから伸ばす（ハーフスプリット）' : '')));
+  return [
+    plan('daily', `この 7 日で ${dailyN} 日（目安は週 5 日以上）`),
+    plan('split', `この 7 日で ${splitN} 回（目安は週 2 回）`),
+    flexTestCard(d, T),
+    h('div', { class: 'card' }, h('div', { class: 'chart-h' }, '筋トレ前の準備（部位ごと・約 2〜4 分）'),
+      h('p', { class: 'hint', style: 'margin:0' }, '筋トレの画面の「準備運動」からも始められます。長い静的ストレッチは筋トレのあとか夜に回します'),
+      h('div', { class: 'row', style: 'gap:8px;flex-wrap:wrap;margin-top:10px' }, [1, 2, 3, 4].map((n) => h('button', { type: 'button', onclick: () => startFlex(`warm${n}`) }, `${gymDay(n)?.title || ['胸・三頭', '背中・二頭', '脚', '肩'][n - 1]}（${flexMinutes(`warm${n}`)} 分）`)))),
+    h('div', { class: 'chart-h', style: 'margin-top:18px' }, 'やり方（押すと手順と見本）'),
+    ...Object.keys(FLEX_MOVES).map(flexMoveCard),
+    h('p', { class: 'hint' }, '伸びる感じは「気持ちよく張る」くらいまで。鋭い痛み・しびれ・股関節の詰まる感じが出たら、浅くするか中止します。開脚の角度は人によって限界が違うので、無理に 180 度を目指しません'),
+  ];
+}
+// テスト（2 週に 1 回）。最初の記録からの変化を見る
+const FLEX_TESTS = [
+  ['reach', '長座前屈', 'cm', '壁に背中をつけて長座し、両手をそろえて前へ。つま先までの距離（越えたら＋、届かなければ−）', 1],
+  ['straddle', '開脚の幅', 'cm', '座って痛くない範囲で脚を開き、かかととかかとの間を測る', 1],
+  ['frontR', '前後開脚の高さ（右脚が前）', 'cm', '前後開脚で止まったところで、床から股までの高さ（低いほどよい）', -1],
+  ['frontL', '前後開脚の高さ（左脚が前）', 'cm', '同じく左脚が前', -1],
+  ['ankleR', '足首（右）', 'cm', '壁で足首と同じ形で、かかとを浮かせずに膝が壁につく、つま先から壁までの最大の距離', 1],
+  ['ankleL', '足首（左）', 'cm', '同じく左', 1],
+  ['shoulderR', '肩（右手が上）', 'cm', '右手を上から、左手を下から背中に回し、指先の間の距離（重なれば＋、離れていれば−）', 1],
+  ['shoulderL', '肩（左手が上）', 'cm', '同じく左手が上', 1],
+];
+function flexTestCard(d, T) {
+  const tests = Object.entries(flexState(d).tests).filter(([k]) => YMD_ONLY.test(k)).sort((a, b) => cmp(a[0], b[0]));
+  const last = tests[tests.length - 1];
+  const due = !last || daysBetween(last[0], T) >= 14;
+  const rows = FLEX_TESTS.map(([k, label, unit, , better]) => {
+    const vals = tests.map(([day, t]) => ({ day, v: t[k] })).filter((x) => Number.isFinite(x.v));
+    if (!vals.length) return null;
+    const first = vals[0], now = vals[vals.length - 1];
+    const diff = Math.round((now.v - first.v) * 10) / 10;
+    const good = diff * better > 0;
+    return h('div', { class: 'flex-test-row' }, h('span', null, label), h('b', null, `${g1(now.v)} ${unit}`),
+      h('span', { class: 'hint' + (good ? ' flex-up' : ''), style: 'margin:0' }, vals.length > 1 ? `最初（${fmtShort(first.day)}）から ${diff > 0 ? '+' : diff < 0 ? '−' : '±'}${g1(Math.abs(diff))}` : '1 回目'));
+  }).filter(Boolean);
+  return h('div', { class: 'card' },
+    h('div', { class: 'row' }, h('div', { class: 'chart-h', style: 'flex:1;margin:0' }, '伸びたかを測る（2 週に 1 回）'), h('button', { class: due ? 'btn-primary' : 'link-btn', type: 'button', onclick: () => openFlexTest(T) }, due ? '測る' : '測り直す')),
+    rows.length ? h('div', { class: 'flex-tests' }, rows) : h('p', { class: 'hint' }, '最初に一度測っておくと、2 週ごとにどれだけ伸びたかが分かります'),
+    last && !due ? h('p', { class: 'hint' }, `次は ${fmtShort(ymd(addDays(parseYmd(last[0]), 14)))} ごろ`) : null);
+}
+function openFlexTest(T) {
+  const cur = ckObj(flexState(DATA).tests[T]);
+  const el = Object.fromEntries(FLEX_TESTS.map(([k, label]) => [k, fxNum('ft-' + k, label, { value: cur[k] ?? '', inputmode: 'text' })]));
+  formSheet(`柔軟性のテスト（${fmtShort(T)}）`, '保存', 'flextest', [
+    h('p', { class: 'hint' }, '体が温まってから（入浴後など）測ると比べやすくなります。測れないものは空欄で'),
+    ...FLEX_TESTS.map(([k, label, unit, how]) => h('label', { class: 'ev-field' }, `${label}（${unit}）`, el[k], h('small', { class: 'hint', style: 'margin:0' }, how))),
+  ], (fail) => {
+    const v = {};
+    for (const [k] of FLEX_TESTS) {
+      const s = toHalf(el[k].value).trim().replace(/^−/, '-');
+      if (!s) continue;
+      const n = Number(s);
+      if (!Number.isFinite(n) || Math.abs(n) > 300) return fail('cm の数字で入れてください（マイナスは −10 のように）');
+      v[k] = Math.round(n * 10) / 10;
+    }
+    if (!Object.keys(v).length) return fail('どれか 1 つは入れてください');
+    mutate({ t: 'flexTest', day: T, test: v });
+    closeSheet();
+    toast('記録しました。2 週間後にまた測ります');
+  });
 }
 
 function openRoutines() { openSheet(h('div', { id: 'rtEditor' }, routineEditorBody()), { kind: 'routines', label: 'ルーティンの編集' }); }
