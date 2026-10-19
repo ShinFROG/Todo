@@ -646,6 +646,33 @@
   .ft-sec { margin-top: 12px; }
   .ft-sec summary { padding: 6px 0; }
   .fx-why .fx-p { margin: 6px 0 0; font-size: 14px; line-height: 1.6; }
+  /* 体の図 */
+  :root { --bone: #efe6d3; --bone-line: #a5967a; --muscle: #c9473d; --muscle-line: #a23a31; --muscle-hot: #7a130c; --tendon: #ddd6c8; --nerve: #e3b000; --nerve-under: #6f5300; --skin: #ece8e2; --skin-line: #cfc8bf; }
+  @media (prefers-color-scheme: dark) { :root { --bone: #575142; --bone-line: #948a72; --muscle: #e05f55; --muscle-line: #f08a80; --muscle-hot: #ffd2cc; --tendon: #8d877b; --nerve: #ffd54a; --nerve-under: #2a2000; --skin: #2b2a27; --skin-line: #48463f; } }
+  .bmf-views { margin-top: 12px; }
+  .bmf { width: 100%; height: auto; max-height: 470px; display: block; margin: 8px auto 0; }
+  .bmf-map { max-height: 560px; }
+  .bmf-bone { fill: var(--bone); stroke: var(--bone-line); stroke-width: 1.2; }
+  .bmf-socket { fill: none; stroke: var(--bone-line); stroke-width: 2.4; opacity: .7; }
+  .bmf-hole { fill: var(--card); stroke: var(--bone-line); stroke-width: 1; }
+  .bmf-far { opacity: .38; }
+  .bmf-m, .bmf-n { cursor: pointer; }
+  .bmf-tendon { fill: none; stroke: var(--tendon); stroke-linecap: round; stroke-linejoin: round; }
+  .bmf-belly, .bmf-region { fill: var(--muscle); stroke: var(--muscle-line); stroke-width: 1; stroke-opacity: .55; }
+  .bmf-m.deep .bmf-belly, .bmf-m.deep .bmf-region { stroke-dasharray: 4 3; stroke-opacity: .8; }
+  .bmf-m.hot .bmf-belly, .bmf-m.hot .bmf-region { stroke: var(--muscle-hot); stroke-width: 3; stroke-opacity: 1; }
+  .bmf-n-under { fill: none; stroke: var(--nerve-under); stroke-width: 4.6; stroke-linecap: round; stroke-linejoin: round; stroke-opacity: .55; }
+  .bmf-n-line { fill: none; stroke: var(--nerve); stroke-width: 2.6; stroke-linecap: round; stroke-linejoin: round; }
+  .bmf-n-under.thin { stroke-width: 3.2; }
+  .bmf-n-line.thin { stroke-width: 1.7; }
+  .bmf-n.hot .bmf-n-line { stroke-width: 4; }
+  .bmf-skin { fill: var(--skin); stroke: var(--skin-line); stroke-width: 1; }
+  .bmf-lab text { fill: var(--text); paint-order: stroke; stroke: var(--card); stroke-width: .28em; stroke-linejoin: round; }
+  .bmf-lab text.hot { fill: var(--muscle-hot); font-weight: 700; }
+  .bmf-lead { stroke: var(--muted); stroke-width: 1.2; }
+  .bmf-cap { font-size: 14px; fill: var(--muted); }
+  .bmf-pick { margin: 6px 0 0; font-size: 14px; min-height: 1.4em; font-weight: 600; }
+  .bmf-legend { font-size: 12px; color: var(--muted); margin: 4px 0 0; }
   .flex-move { padding: 0; overflow: hidden; }
   .flex-move .flex-body { margin: 0 14px 12px; }
   .flex-steps { margin: 0; padding-left: 22px; font-size: 15px; }
@@ -5598,6 +5625,381 @@ function flexDose(d, T) {
   }
   return out;
 }
+/* ---------- 体の図（モデルを絵で見る） ----------
+ * 骨と筋の通り道（横・前）：骨盤を基準に、モデルの関節の角度で骨を動かし、筋と腱・神経を「付く場所から付く場所まで」描く。
+ *   骨を通り抜けるときだけ骨の外側を回る（膝の裏など）。色の濃さはモデルの指数（100% で止まる）。線の長さは模式で、伸びの値はモデルの計算
+ * 体の地図（前・後ろ）：筋の場所に、指数で色を付ける
+ * 座標は cm（x：前（横の図）／見る人の右（前の図）、y：上）
+ */
+const BMF_NS = 'http://www.w3.org/2000/svg';
+function bmSv(tag, attrs = {}, ...kids) {
+  const e = document.createElementNS(BMF_NS, tag);
+  for (const [k, v] of Object.entries(attrs)) if (v != null && v !== false) e.setAttribute(k, String(v));
+  for (const k of kids.flat(Infinity)) if (k != null && k !== false) e.append(k);
+  return e;
+}
+const bmRot = (p, deg) => { const r = deg * Math.PI / 180, c = Math.cos(r), s = Math.sin(r); return [p[0] * c - p[1] * s, p[0] * s + p[1] * c]; };
+const bmAt = (fr, p) => { const v = bmRot([p[0] * (fr.m || 1), p[1]], fr.a); return [fr.o[0] + v[0], fr.o[1] + v[1]]; };
+// 点の並びをなめらかな曲線に（Catmull-Rom → 3 次ベジェ）。closed で閉じた形
+function bmSmooth(pts, closed, f = (p) => p) {
+  const P = pts.map(f), n = P.length;
+  if (n < 2) return '';
+  const g = (i) => (closed ? P[(i + n) % n] : P[Math.max(0, Math.min(n - 1, i))]);
+  const r = (v) => Math.round(v * 100) / 100;
+  let d = `M${r(P[0][0])},${r(P[0][1])}`;
+  for (let i = 0; i < (closed ? n : n - 1); i++) {
+    const p0 = g(i - 1), p1 = g(i), p2 = g(i + 1), p3 = g(i + 2);
+    const c1 = [p1[0] + (p2[0] - p0[0]) / 6, p1[1] + (p2[1] - p0[1]) / 6], c2 = [p2[0] - (p3[0] - p1[0]) / 6, p2[1] - (p3[1] - p1[1]) / 6];
+    d += `C${r(c1[0])},${r(c1[1])} ${r(c2[0])},${r(c2[1])} ${r(p2[0])},${r(p2[1])}`;
+  }
+  return d + (closed ? 'Z' : '');
+}
+// 通り道の点：[枠, x, y]。'c' つきの点（[枠, x, y, 'c', nx, ny]）は、まっすぐ通すと骨の中を通るとき（点が外向き n の側にはみ出す）だけ使う
+function bmPath(pts, fr) {
+  const raw = pts.map((p) => ({ g: bmAt(fr[p[0]], [p[1], p[2]]), c: p[3] === 'c', n: p[3] === 'c' ? bmRot([p[4] * (fr[p[0]].m || 1), p[5]], fr[p[0]].a) : null }));
+  const out = [];
+  raw.forEach((p, i) => {
+    if (!p.c) return out.push(p.g);
+    const a = out[out.length - 1], b = raw.slice(i + 1).find((x) => !x.c)?.g;
+    if (!a || !b) return;
+    const ab = [b[0] - a[0], b[1] - a[1]], L2 = ab[0] ** 2 + ab[1] ** 2 || 1;
+    const t = Math.max(0, Math.min(1, ((p.g[0] - a[0]) * ab[0] + (p.g[1] - a[1]) * ab[1]) / L2));
+    const q = [a[0] + ab[0] * t, a[1] + ab[1] * t];
+    if ((p.g[0] - q[0]) * p.n[0] + (p.g[1] - q[1]) * p.n[1] > 0) out.push(p.g);
+  });
+  return out;
+}
+// 折れ線を等間隔に打ち直す（筋の太さの形を作るため）
+function bmResample(pts, n = 28) {
+  const seg = [], L = [0];
+  for (let i = 1; i < pts.length; i++) { const d = Math.hypot(pts[i][0] - pts[i - 1][0], pts[i][1] - pts[i - 1][1]); seg.push(d); L.push(L[i - 1] + d); }
+  const tot = L[L.length - 1] || 1, out = [];
+  for (let k = 0; k <= n; k++) {
+    const s = tot * k / n;
+    let i = 1;
+    while (i < L.length - 1 && L[i] < s) i++;
+    const u = seg[i - 1] ? (s - L[i - 1]) / seg[i - 1] : 0;
+    out.push([pts[i - 1][0] + (pts[i][0] - pts[i - 1][0]) * u, pts[i - 1][1] + (pts[i][1] - pts[i - 1][1]) * u]);
+  }
+  return out;
+}
+// 筋の腹（紡錘形）：通り道に沿って、腹の範囲 [s0, s1] で太さ w の形を作る
+function bmBelly(pts, w, belly) {
+  const P = bmResample(pts), n = P.length - 1, L = [], R = [];
+  for (let k = 0; k <= n; k++) {
+    const s = k / n;
+    if (s < belly[0] - 1e-9 || s > belly[1] + 1e-9) continue;
+    const a = P[Math.max(0, k - 1)], b = P[Math.min(n, k + 1)], d = Math.hypot(b[0] - a[0], b[1] - a[1]) || 1;
+    const nx = -(b[1] - a[1]) / d, ny = (b[0] - a[0]) / d;
+    const u = (s - belly[0]) / Math.max(1e-6, belly[1] - belly[0]);
+    const half = (w / 2) * Math.max(0.12, Math.pow(Math.sin(Math.PI * u), 0.6));
+    L.push([P[k][0] + nx * half, P[k][1] + ny * half]);
+    R.push([P[k][0] - nx * half, P[k][1] - ny * half]);
+  }
+  return [...L, ...R.reverse()];
+}
+const BMF_LABEL = { iliacus: '腸骨筋', psoas: '大腰筋', piri: '梨状筋', amPost: '大内転筋', al: '長内転筋など', grac: '薄筋', gmed: '中殿筋', gmax: '大殿筋', bf: 'もも裏（外）', stsm: 'もも裏（内）',
+  rf: '大腿直筋', vasti: '広筋', sart: '縫工筋', tfl: '大腿筋膜張筋', gastroc: '腓腹筋', soleus: 'ヒラメ筋', ta: '前脛骨筋', sciatic: '坐骨神経', femoral: '大腿神経', obturator: '閉鎖神経',
+  amAnt: '大内転筋（前）', ab: '短内転筋', pect: '恥骨筋', itb: '腸脛靱帯' };
+
+/* ---- 横から見た図（右脚を右から。前が右） ---- */
+const BMF_SIDE = {
+  pelvis: [[5.0, 7.5], [4.0, 5.8], [4.2, 4.2], [3.0, 2.6], [3.2, 0.5], [2.8, -1.5], [5.0, -3.0], [5.4, -4.0], [5.0, -5.5], [2.0, -7.0], [-1.0, -7.5], [-3.5, -7.2], [-4.8, -5.8], [-4.4, -3.8], [-5.4, -2.0], [-4.6, -1.0], [-4.2, 0.5], [-4.5, 2.5], [-6.8, 5.0], [-7.6, 7.6], [-5.5, 10.5], [-2.0, 12.3], [1.5, 11.5]],
+  sacrum: [[-3.8, 10.8], [-7.6, 10.2], [-9.0, 7.0], [-9.2, 3.0], [-8.2, -0.5], [-7.0, -2.5], [-6.0, -3.6], [-6.6, -1.5], [-6.9, 2.0], [-5.8, 6.0]],
+  femur: [[1.6, -3.5], [1.8, -0.8], [0.0, 1.2], [-2.5, 1.0], [-3.4, -0.8], [-2.4, -3.0], [-2.9, -5.2], [-2.0, -6.2], [-1.9, -10], [-1.8, -25], [-2.0, -36], [-3.2, -39.5], [-3.4, -41.8], [-2.0, -43.6], [0.5, -44.0], [2.4, -42.8], [2.9, -40.5], [2.2, -37.5], [1.6, -30], [2.0, -20], [1.8, -10]],
+  tibia: [[-2.8, -0.6], [2.4, -0.4], [2.6, -2.0], [2.8, -6.0], [2.2, -10], [1.6, -25], [1.7, -35], [2.0, -38.5], [1.2, -39.6], [0.6, -41.2], [-0.6, -41.0], [-1.8, -39.2], [-2.0, -38.8], [-1.6, -36], [-1.4, -25], [-2.0, -8], [-2.6, -2.5]],
+  fibula: [[-3.6, -2.2], [-2.2, -2.6], [-1.9, -5], [-1.2, -30], [-0.4, -39.5], [-0.3, -41.6], [-1.2, -42.0], [-1.6, -40], [-2.4, -30], [-3.0, -6], [-3.8, -3.6]],
+  foot: [[-1.6, 0.6], [0, 1.2], [1.8, 0.6], [2.5, 0.2], [4.0, -0.6], [8.0, -2.0], [12.0, -3.6], [16.0, -3.8], [17.8, -4.6], [16.5, -5.2], [12.5, -5.0], [5.0, -4.2], [1.0, -3.8], [-3.0, -4.6], [-5.6, -4.4], [-6.4, -2.6], [-5.8, -0.4], [-2.2, -0.6]],
+};
+// 筋と腱：t（色に使うモデルの組織）・w（腹の太さ cm）・belly（腹の範囲）・p（通り道）・deep（奥の筋）
+const BMF_SIDE_M = [
+  { id: 'iliacus', t: ['iliacus'], w: 1.7, belly: [0, 0.8], deep: true, p: [['P', -0.5, 9.5], ['P', 2.4, 5.6], ['P', 3.7, 0.9], ['F', 2.6, -1.2, 'c', 1, 0], ['F', -2.6, -5.4]] },
+  { id: 'psoas', t: ['psoas'], w: 1.9, belly: [0, 0.84], deep: true, p: [['L1', 2.1, 0], ['L3', 2.4, 0], ['L5', 2.5, 0], ['P', 3.9, 1.3], ['F', 2.7, -1.0, 'c', 1, 0], ['F', -2.6, -5.4]] },
+  { id: 'piri', t: ['piri'], w: 0.9, belly: [0, 0.8], deep: true, p: [['P', -6.6, 4.4], ['P', -4.6, 1.8], ['F', -1.4, 0.9]] },
+  { id: 'amPost', t: ['amPost', 'amAnt'], w: 1.7, belly: [0.04, 0.92], deep: true, p: [['P', -3.6, -6.4], ['F', -1.2, -20], ['F', -0.6, -38.6]] },
+  { id: 'al', t: ['al', 'ab', 'pect'], w: 1.2, belly: [0.03, 0.95], deep: true, p: [['P', 4.6, -4.2], ['F', -1.0, -18]] },
+  { id: 'grac', t: ['grac'], w: 0.7, belly: [0.02, 0.72], p: [['P', 4.2, -5.6], ['F', -1.2, -30], ['F', -2.8, -41.2, 'c', -1, 0], ['T', 0.6, -6.5]] },
+  { id: 'gmed', t: ['gmedA', 'gmedP'], w: 2.6, belly: [0, 0.86], p: [['P', -2.0, 11.4], ['P', -1.2, 6.0], ['F', -0.8, 0.6]] },
+  { id: 'gmax', t: ['gmaxU', 'gmaxL'], w: 3.0, belly: [0, 0.9], p: [['P', -8.8, 6.0], ['P', -8.6, 0.4], ['F', -3.8, -1.2, 'c', -1, 0], ['F', -2.2, -10]] },
+  { id: 'stsm', t: ['st', 'sm'], w: 1.5, belly: [0.08, 0.86], p: [['P', -4.0, -6.6], ['F', -2.5, -25], ['F', -3.4, -40.5, 'c', -1, 0], ['T', -1.2, -4.0]] },
+  { id: 'bf', t: ['bflh'], w: 1.3, belly: [0.08, 0.9], p: [['P', -4.4, -6.2], ['F', -3.2, -25], ['F', -3.9, -40.0, 'c', -1, 0], ['T', -2.8, -3.0]] },
+  { id: 'vasti', t: ['vasti'], w: 2.6, belly: [0, 0.9], p: [['F', 2.2, -12], ['F', 3.6, -30], ['Pt', 0, 2.0]] },
+  { id: 'rf', t: ['rf'], w: 1.4, belly: [0.04, 0.6], p: [['P', 4.2, 4.2], ['F', 3.4, -6.0, 'c', 1, 0], ['F', 4.0, -24], ['Pt', 0.4, 2.2], ['Pt', 0.6, -2.0], ['T', 2.8, -6.0]] },
+  { id: 'sart', t: ['sart'], w: 0.6, belly: [0.02, 0.82], p: [['P', 5.0, 7.4], ['F', 2.6, -12], ['F', 0.2, -28], ['F', -2.4, -40.6, 'c', -1, 0], ['T', 0.8, -6.2]] },
+  { id: 'tfl', t: ['tfl'], w: 1.3, belly: [0.04, 1.0], p: [['P', 4.6, 7.0], ['F', 1.8, -10]] },
+  { id: 'itb', t: ['tfl'], w: 0, belly: [0, 0], tendon: 0.35, p: [['F', 1.8, -10], ['F', 0.8, -38], ['T', 1.2, -2.0]] },
+  { id: 'soleus', t: ['soleus'], w: 1.7, belly: [0.05, 0.7], p: [['T', -2.4, -8], ['T', -2.7, -28], ['A', -6.0, -1.6]] },
+  { id: 'gastroc', t: ['gastroc'], w: 1.9, belly: [0.08, 0.55], p: [['F', -2.8, -39.6], ['F', -4.0, -41.4, 'c', -1, 0], ['T', -3.8, -12], ['T', -3.0, -30], ['A', -6.0, -1.6]] },
+  { id: 'ta', t: ['ta'], w: 1.1, belly: [0.02, 0.6], p: [['T', 2.3, -8], ['T', 2.1, -35], ['T', 2.5, -39.4, 'c', 1, 0], ['A', 6.0, -2.0]] },
+];
+const BMF_SIDE_N = [
+  { id: 'sciatic', t: ['sciatic'], p: [['L5', -2.4, -1.0], ['P', -5.4, 3.0], ['P', -4.6, -2.0], ['F', -2.8, -8], ['F', -2.9, -25], ['F', -3.6, -40.6, 'c', -1, 0], ['T', -2.1, -10], ['T', -1.7, -36], ['A', -1.7, -1.2, 'c', -1, 0], ['A', 3.0, -3.4]] },
+  { id: 'femoral', t: ['femoral'], p: [['L3', -0.6, 0], ['P', 0.6, 6.2], ['P', 4.5, 1.6], ['F', 2.8, -2.0, 'c', 1, 0], ['F', 2.6, -10]] },
+];
+function bmSideFrames(q, off = [0, 0]) {
+  const o = (p) => [p[0] + off[0], p[1] + off[1]];
+  const fr = { P: { o: [0, 0], a: 0 } };
+  fr.F = { o: o([0, 0]), a: q.hipFlex || 0 };
+  fr.T = { o: bmAt(fr.F, [0, -42.5]), a: (q.hipFlex || 0) - (q.knee || 0) };
+  fr.A = { o: bmAt(fr.T, [0, -40]), a: fr.T.a + (q.ankle || 0) };
+  const kk = Math.max(0, q.knee || 0), Cc = [-0.4, -41.6], r0 = bmRot([3.7, 3.6], -0.65 * kk);
+  fr.Pt = { o: bmAt(fr.F, [Cc[0] + r0[0], Cc[1] + r0[1]]), a: fr.F.a - 0.65 * kk };
+  // 腰の骨：仙骨の上（S1）から 5 つ。前へ 35° 傾いた面から、1 つごとに後ろへ 10°（前弯 50°）。腰を丸めると 5 つに分けて前へ
+  let base = [-5.2, 10.4];
+  const flex = q.lumbar || 0;
+  ['L5', 'L4', 'L3', 'L2', 'L1'].forEach((k, i) => {
+    const ang = 35 - 10 * i + flex * (i + 1) / 5, dir = [Math.sin(ang * Math.PI / 180), Math.cos(ang * Math.PI / 180)];
+    const c = [base[0] + dir[0] * 1.85, base[1] + dir[1] * 1.85];
+    fr[k] = { o: c, a: -ang };
+    base = [base[0] + dir[0] * 3.7, base[1] + dir[1] * 3.7];
+  });
+  return fr;
+}
+function bmVertebra(fr, k) {
+  const body = [[-2.1, -1.4], [2.1, -1.4], [2.2, 1.4], [-2.1, 1.4]].map((p) => bmAt(fr[k], p));
+  const sp = [[-2.1, 0.9], [-3.0, 1.1], [-5.6, 0.2], [-5.9, -0.6], [-5.2, -1.0], [-3.0, -0.6], [-2.1, -0.8]].map((p) => bmAt(fr[k], p));
+  return [body, sp];
+}
+
+/* ---- 前から見た図（右脚は見る人の左） ---- */
+const BMF_FRONT = {
+  pelvisR: [[-4.6, 10.4], [-7.0, 13.4], [-10.6, 14.6], [-14.2, 13.2], [-15.4, 10.4], [-13.4, 7.6], [-12.6, 6.8], [-12.2, 4.6], [-12.8, 1.4], [-12.4, -1.8], [-10.4, -5.4], [-8.6, -8.2], [-6.4, -8.6], [-3.6, -7.8], [-1.2, -6.4], [-0.8, -3.6], [-2.6, -2.8], [-5.8, -1.8], [-8.2, 1.4], [-8.8, 5.0], [-7.4, 8.4]],
+  sacrum: [[-4.6, 10.6], [4.6, 10.6], [3.6, 4], [1.6, -1.0], [0, -2.4], [-1.6, -1.0], [-3.6, 4]],
+  femur: [[-1.2, 2.0], [-4.4, 1.4], [-5.8, 1.6], [-7.0, 0.2], [-6.8, -3.0], [-5.6, -8], [-4.6, -20], [-3.8, -34], [-4.6, -39.5], [-4.4, -43.2], [-2.6, -44.2], [-0.6, -43.2], [1.4, -44.4], [3.4, -43.4], [3.6, -40.0], [1.4, -34], [-0.6, -20], [-1.6, -11], [-0.4, -6.8], [-1.2, -5.6], [-0.8, -2.2]],
+  tibia: [[-4.4, -0.4], [4.0, -0.4], [3.8, -2.4], [2.2, -6], [1.4, -20], [1.6, -36], [2.6, -39.6], [1.8, -41.2], [0.2, -40.4], [-1.8, -40.2], [-1.6, -36], [-1.4, -20], [-2.4, -6], [-4.4, -2.4]],
+  fibula: [[-5.0, -2.6], [-3.8, -3.2], [-3.0, -8], [-2.4, -36], [-2.2, -40.6], [-3.0, -41.8], [-3.6, -40.4], [-3.8, -36], [-4.4, -8]],
+};
+const BMF_FRONT_M = [
+  { id: 'iliacus', t: ['iliacus'], w: 1.8, belly: [0, 0.8], deep: true, p: [['P', -9.6, 9.6], ['P', -8.8, 2.8], ['P', -7.2, -1.2], ['F', -0.6, -6.8]] },
+  { id: 'psoas', t: ['psoas'], w: 1.9, belly: [0, 0.84], deep: true, p: [['L1', -2.2, 0], ['L4', -2.8, 0], ['P', -6.0, 2.0], ['P', -7.2, -1.2], ['F', -0.6, -6.8]] },
+  { id: 'gmed', t: ['gmedA', 'gmedP'], w: 3.0, belly: [0, 0.86], p: [['P', -13.6, 11.0], ['P', -14.4, 6.0], ['F', -6.6, 0.8]] },
+  { id: 'amPost', t: ['amPost', 'amAnt'], w: 2.0, belly: [0.04, 0.92], p: [['P', -7.4, -7.6], ['F', 0.6, -22], ['F', 2.8, -38.6]] },
+  { id: 'al', t: ['al', 'ab', 'pect'], w: 1.8, belly: [0.03, 0.95], p: [['P', -2.4, -4.4], ['F', -0.2, -19]] },
+  { id: 'pect', t: ['pect'], w: 1.2, belly: [0, 0.95], p: [['P', -4.6, -2.4], ['F', -0.8, -7.2]] },
+  { id: 'grac', t: ['grac'], w: 0.9, belly: [0.02, 0.72], p: [['P', -1.3, -6.6], ['F', 3.2, -30], ['F', 3.8, -40], ['T', 2.6, -5.8]] },
+  { id: 'stsm', t: ['st', 'sm'], w: 1.6, belly: [0.08, 0.86], deep: true, p: [['P', -7.8, -7.8], ['F', 1.6, -26], ['F', 3.0, -40.5], ['T', 2.0, -4.6]] },
+  { id: 'tfl', t: ['tfl'], w: 1.6, belly: [0.04, 1.0], p: [['P', -12.6, 7.4], ['F', -6.6, -8]] },
+  { id: 'itb', t: ['tfl'], w: 0, belly: [0, 0], tendon: 0.4, p: [['F', -6.6, -8], ['F', -5.0, -38], ['T', -3.6, -2.8]] },
+  { id: 'vasti', t: ['vasti'], w: 2.6, belly: [0, 0.9], p: [['F', -5.0, -10], ['F', -3.6, -34], ['F', -1.4, -38]] },
+  { id: 'rf', t: ['rf'], w: 1.6, belly: [0.04, 0.78], p: [['P', -11.4, 4.8], ['F', -2.8, -16], ['F', -1.4, -37], ['T', -0.8, -5.0]] },
+  { id: 'sart', t: ['sart'], w: 0.8, belly: [0.02, 0.85], p: [['P', -12.6, 7.4], ['F', -3.4, -12], ['F', 1.6, -28], ['F', 3.8, -39], ['T', 2.4, -6.4]] },
+];
+const BMF_FRONT_N = [
+  { id: 'femoral', t: ['femoral'], p: [['L3', -2.0, 0], ['P', -7.6, 4.0], ['P', -9.8, -1.0], ['F', -3.2, -10]] },
+  { id: 'obturator', t: [], p: [['L3', -1.6, -1.0], ['P', -5.4, 2.0], ['P', -6.2, -4.2], ['F', -0.6, -15]] },
+];
+function bmFrontFrames(qR, qL) {
+  const fr = { P: { o: [0, 0], a: 0 }, P2: { o: [0, 0], a: 0, m: -1 } };
+  fr.F = { o: [-9, 0], a: -(qR.hipAbd || 0) };
+  fr.T = { o: bmAt(fr.F, [0, -43]), a: fr.F.a };
+  fr.F2 = { o: [9, 0], a: qL.hipAbd || 0, m: -1 };
+  fr.T2 = { o: bmAt(fr.F2, [0, -43]), a: fr.F2.a, m: -1 };
+  ['L5', 'L4', 'L3', 'L2', 'L1'].forEach((k, i) => { fr[k] = { o: [0, 12.6 + 3.7 * i], a: 0 }; fr[k + 'b'] = { o: [0, 12.6 + 3.7 * i], a: 0, m: -1 }; });
+  return fr;
+}
+
+/* ---- 体の地図（前・後ろ）。右半身を描き、左右を反転して左半身。前の図は右半身が見る人の左、後ろの図は右 ---- */
+const BMF_BODY = [[100, 58], [88, 60], [86, 76], [60, 86], [44, 92], [36, 102], [34, 118], [30, 150], [27, 196], [22, 240], [21, 282], [18, 300], [20, 318], [24, 322], [28, 316], [29, 296], [30, 282], [34, 240], [40, 198], [46, 160], [52, 132], [54, 160], [58, 215], [52, 262], [50, 300], [56, 350], [60, 390], [58, 420], [62, 470], [66, 492], [60, 510], [72, 516], [82, 512], [82, 492], [86, 440], [84, 410], [88, 392], [94, 340], [98, 302], [100, 300]];
+// v：front／back、t：色に使う組織、p：点の並び（右半身。前の図は x < 100、後ろの図は x > 100）、deep：奥の筋（点線）
+const BMF_MAP = [
+  { v: 'front', id: 'pecC', name: '大胸筋（鎖骨部）', t: ['pecC'], p: [[97, 100], [80, 97], [62, 101], [55, 110], [58, 116], [75, 112], [97, 112]] },
+  { v: 'front', id: 'pecS', name: '大胸筋（胸肋部）', t: ['pecS'], p: [[97, 113], [75, 113], [58, 117], [54, 127], [60, 141], [72, 155], [88, 160], [97, 156]] },
+  { v: 'front', id: 'pmin', name: '小胸筋', t: ['pmin'], deep: true, p: [[82, 118], [70, 120], [61, 128], [66, 140], [80, 136]] },
+  { v: 'front', id: 'adelt', name: '三角筋（前部）', t: ['adelt'], p: [[60, 92], [48, 94], [38, 104], [36, 120], [42, 134], [50, 128], [56, 112], [62, 100]] },
+  { v: 'front', id: 'blh', name: '上腕二頭筋', t: ['blh'], p: [[48, 136], [40, 140], [36, 160], [37, 184], [42, 194], [46, 182], [48, 158]] },
+  { v: 'front', id: 'ra', name: '腹直筋', t: ['ra'], p: [[99, 166], [87, 168], [85, 200], [86, 240], [89, 282], [99, 288]] },
+  { v: 'front', id: 'iliop', name: '腸腰筋', t: ['psoas', 'iliacus'], deep: true, p: [[83, 262], [75, 266], [71, 280], [77, 293], [85, 290], [87, 276]] },
+  { v: 'front', id: 'tfl', name: '大腿筋膜張筋', t: ['tfl'], p: [[60, 262], [52, 268], [50, 290], [54, 304], [60, 296], [62, 276]] },
+  { v: 'front', id: 'add', name: '長内転筋・短内転筋・恥骨筋', t: ['al', 'ab', 'pect'], p: [[97, 292], [87, 290], [81, 300], [83, 322], [89, 340], [95, 330], [98, 306]] },
+  { v: 'front', id: 'grac', name: '薄筋', t: ['grac'], p: [[98, 308], [95, 332], [91, 360], [90, 389], [93, 390], [96, 360], [99, 322]] },
+  { v: 'front', id: 'rf', name: '大腿直筋', t: ['rf'], p: [[70, 282], [64, 302], [64, 340], [70, 372], [76, 377], [80, 345], [80, 306], [76, 284]] },
+  { v: 'front', id: 'vl', name: '広筋（外側）', t: ['vasti'], p: [[57, 300], [52, 330], [56, 364], [64, 384], [68, 370], [63, 340], [63, 306]] },
+  { v: 'front', id: 'vm', name: '広筋（内側）', t: ['vasti'], p: [[82, 340], [80, 360], [80, 380], [86, 390], [90, 380], [88, 355]] },
+  { v: 'front', id: 'sart', name: '縫工筋', t: ['sart'], p: [[63, 264], [68, 266], [80, 318], [89, 366], [91, 390], [87, 391], [83, 368], [75, 320]] },
+  { v: 'front', id: 'ta', name: '前脛骨筋', t: ['ta'], p: [[67, 400], [62, 420], [64, 450], [70, 470], [73, 460], [72, 430], [70, 405]] },
+  { v: 'back', id: 'pdelt', name: '三角筋（後部）', t: ['pcuff'], p: [[142, 94], [156, 102], [162, 120], [156, 132], [148, 124], [144, 108]] },
+  { v: 'back', id: 'infra', name: '棘下筋・小円筋', t: ['pcuff'], p: [[106, 114], [126, 108], [142, 114], [146, 128], [138, 148], [124, 156], [110, 148]] },
+  { v: 'back', id: 'tmaj', name: '大円筋', t: ['tmaj'], p: [[130, 154], [142, 148], [152, 138], [155, 146], [145, 158], [132, 164]] },
+  { v: 'back', id: 'tlh', name: '上腕三頭筋', t: ['tlh'], p: [[154, 132], [160, 136], [166, 160], [166, 188], [160, 198], [156, 178], [152, 150]] },
+  { v: 'back', id: 'lat', name: '広背筋', t: ['lat'], p: [[102, 168], [118, 162], [134, 166], [150, 146], [154, 152], [146, 176], [140, 205], [134, 235], [120, 252], [102, 256]] },
+  { v: 'back', id: 'es', name: '脊柱起立筋', t: ['es'], p: [[101, 140], [110, 142], [112, 200], [114, 250], [112, 278], [101, 282]] },
+  { v: 'back', id: 'ql', name: '腰方形筋', t: ['ql'], deep: true, p: [[113, 232], [124, 236], [126, 262], [115, 266]] },
+  { v: 'back', id: 'gmed', name: '中殿筋', t: ['gmedA', 'gmedP'], p: [[118, 256], [138, 253], [150, 266], [148, 284], [132, 280], [120, 272]] },
+  { v: 'back', id: 'gmax', name: '大殿筋', t: ['gmaxU', 'gmaxL'], p: [[102, 272], [122, 268], [142, 276], [150, 292], [146, 314], [130, 322], [110, 320], [102, 306]] },
+  { v: 'back', id: 'rot', name: '梨状筋・外旋筋', t: ['piri', 'deepER'], deep: true, p: [[106, 284], [128, 281], [144, 287], [142, 294], [126, 292], [106, 293]] },
+  { v: 'back', id: 'amag', name: '大内転筋', t: ['amPost', 'amAnt'], p: [[101, 306], [109, 318], [111, 350], [106, 366], [101, 360]] },
+  { v: 'back', id: 'stsm', name: 'もも裏（半腱様筋・半膜様筋）', t: ['st', 'sm'], p: [[110, 322], [121, 326], [123, 360], [120, 391], [112, 391], [110, 360], [108, 332]] },
+  { v: 'back', id: 'bf', name: 'もも裏（大腿二頭筋）', t: ['bflh'], p: [[124, 322], [134, 326], [138, 360], [134, 391], [127, 393], [125, 360], [121, 330]] },
+  { v: 'back', id: 'gastM', name: '腓腹筋（内側）', t: ['gastroc'], p: [[110, 396], [118, 398], [120, 430], [114, 452], [108, 440], [106, 412]] },
+  { v: 'back', id: 'gastL', name: '腓腹筋（外側）', t: ['gastroc'], p: [[121, 398], [131, 396], [134, 414], [130, 440], [122, 448], [120, 424]] },
+  { v: 'back', id: 'sol', name: 'ヒラメ筋', t: ['soleus'], p: [[107, 446], [114, 458], [122, 452], [133, 444], [131, 468], [122, 481], [112, 479]] },
+];
+const BMF_MAP_N = [
+  { v: 'back', id: 'sciatic', name: '坐骨神経', t: ['sciatic'], p: [[115, 286], [117, 330], [117, 392], [116, 430], [116, 478]] },
+  { v: 'front', id: 'femoral', name: '大腿神経', t: ['femoral'], p: [[78, 262], [76, 280], [74, 300]] },
+  { v: 'front', id: 'median', name: '正中神経', t: ['median'], p: [[52, 134], [44, 165], [40, 198], [32, 240], [26, 282]] },
+];
+
+/* ---- 描く ---- */
+const bmfAlpha = (idx) => (idx == null ? 0.1 : 0.14 + 0.86 * Math.max(0, Math.min(1, (idx - 0.25) / 0.7)));
+const bmfIdx = (map, ids, side) => { let v = null; for (const id of ids) { const x = map.get(`${id}:${side}`) ?? map.get(`${id}:C`); if (x != null) v = v == null ? x : Math.max(v, x); } return v; };
+// view：side（横）・front（前）・map（体の地図）。pose はモデルの姿勢（右が狙いの側）、list はその指数。
+// mirrored：左で行うとき（モデルの右＝体の左）。onPick(名前, 側, 指数)：押したとき
+function bmFigure(view, pose, list, mirrored, onPick) {
+  const map = new Map(list.map((x) => [`${x.id}:${x.side}`, x.idx]));
+  const real = (s) => (mirrored ? bmSwap(s) : s); // モデルの側 → 体の側
+  const pick = (name, side, idx) => (ev) => { ev.stopPropagation(); onPick?.(name, side, idx); };
+  const tip = (name, side, idx) => bmSv('title', {}, `${name}${side ? `（${bmSideName(side)}）` : ''} ${idx == null ? '—' : Math.round(idx * 100) + '%'}`);
+  if (view === 'map') return bmfMap(map, mirrored, pick, tip);
+  const S = 6; // 1 cm を 6 単位に
+  const T = (p) => [p[0] * S, -p[1] * S];
+  const gBack = bmSv('g', { class: 'bmf-far' }), gMain = bmSv('g'), gLab = bmSv('g', { class: 'bmf-lab' });
+  const pts = [];
+  const bone = (g, list2, fr, closed = true) => { const P = list2.map((p) => bmAt(fr, p)); pts.push(...P); g.append(bmSv('path', { class: 'bmf-bone', d: bmSmooth(P, closed, T) })); };
+  const labels = [];
+  const muscle = (g, m, fr, side, minIdx = 0) => {
+    const idx = m.t.length ? bmfIdx(map, m.t, side) : null;
+    if ((m.deep && (idx == null || idx < 0.35)) || (minIdx && (idx == null || idx < minIdx))) return; // 奥の筋は伸びているときだけ描く
+    const P = bmPath(m.p, fr);
+    if (P.length < 2) return;
+    pts.push(...P);
+    const name = BMF_LABEL[m.id] || m.id;
+    const gg = bmSv('g', { class: `bmf-m${idx != null && idx >= 0.995 ? ' hot' : ''}${m.deep ? ' deep' : ''}`, onclick: null }, tip(name, real(side), idx));
+    gg.addEventListener('click', pick(name, real(side), idx));
+    gg.append(bmSv('path', { class: 'bmf-tendon', d: bmSmooth(P, false, T), 'stroke-width': (m.tendon || 0.3) * S }));
+    if (m.w) gg.append(bmSv('path', { class: 'bmf-belly', d: bmSmooth(bmBelly(P, m.w * 1.5, m.belly), true, T), 'fill-opacity': bmfAlpha(idx) }));
+    g.append(gg);
+    if (idx != null && m.w) {
+      const R2 = bmResample(P, 20), k = Math.round(20 * (m.belly[0] + m.belly[1]) / 2), a = R2[Math.max(0, k - 1)], b = R2[Math.min(20, k + 1)], d = Math.hypot(b[0] - a[0], b[1] - a[1]) || 1;
+      labels.push({ name, side: real(side), idx, at: R2[k], n: [-(b[1] - a[1]) / d, (b[0] - a[0]) / d], w: m.w * 1.5 });
+    }
+  };
+  const nerve = (g, n, fr, side) => {
+    const idx = n.t.length ? bmfIdx(map, n.t, side) : null;
+    if (idx == null || (n.id !== 'sciatic' && idx < 0.4)) return; // モデルにない神経と、張っていない神経は描かない
+    const P = bmPath(n.p, fr);
+    pts.push(...P);
+    const name = BMF_LABEL[n.id];
+    const gg = bmSv('g', { class: `bmf-n${idx != null && idx >= 0.995 ? ' hot' : ''}` }, tip(name, real(side), idx));
+    gg.addEventListener('click', pick(name, real(side), idx));
+    gg.append(bmSv('path', { class: 'bmf-n-under', d: bmSmooth(P, false, T) }), bmSv('path', { class: 'bmf-n-line', d: bmSmooth(P, false, T), 'stroke-opacity': idx == null ? 0.55 : 0.5 + 0.5 * Math.min(1, idx) }));
+    g.append(gg);
+    if (idx != null && idx >= 0.6) { const R2 = bmResample(P, 20), a = R2[11], b = R2[13], d = Math.hypot(b[0] - a[0], b[1] - a[1]) || 1; labels.push({ name, side: real(side), idx, at: R2[12], n: [-(b[1] - a[1]) / d, (b[0] - a[0]) / d], w: 0.6, nerve: true }); }
+  };
+  const vert = (g, fr, k) => { const [b, sp] = bmVertebra(fr, k); pts.push(...b, ...sp); g.append(bmSv('path', { class: 'bmf-bone', d: bmSmooth(sp, true, T) }), bmSv('path', { class: 'bmf-bone', d: bmSmooth(b, true, T) })); };
+  const caps = (fr) => [[bmAt(fr.F, [0, 0]), 2.4], [bmAt(fr.F, [0, 0]), 0]];
+  if (view === 'side') {
+    const qN = bmCoords(pose, 'R'), qF = bmCoords(pose, 'L');
+    const frN = bmSideFrames(qN), frF = bmSideFrames(qF, [-0.6, 0.5]);
+    const same = ['hipFlex', 'hipAbd', 'hipRot', 'knee', 'ankle'].every((k) => Math.abs((qN[k] || 0) - (qF[k] || 0)) < 1);
+    if (!same) { // 奥の脚（反対側）を薄く。左右が同じ形なら重なるので描かない
+      for (const [k, fr] of [['femur', frF.F], ['tibia', frF.T], ['fibula', frF.T], ['foot', frF.A]]) bone(gBack, BMF_SIDE[k], fr);
+      gBack.append(bmSv('ellipse', { class: 'bmf-bone', cx: bmAt(frF.Pt, [0, 0])[0] * S, cy: -bmAt(frF.Pt, [0, 0])[1] * S, rx: 1.1 * S, ry: 2.3 * S, transform: `rotate(${-frF.Pt.a} ${bmAt(frF.Pt, [0, 0])[0] * S} ${-bmAt(frF.Pt, [0, 0])[1] * S})` }));
+      for (const m of BMF_SIDE_M) muscle(gBack, m, frF, 'L', 0.6); // 奥の脚は、はっきり伸びている筋だけ
+    }
+    // 骨盤・腰・手前の脚
+    bone(gMain, BMF_SIDE.sacrum, frN.P);
+    for (const k of ['L5', 'L4', 'L3', 'L2', 'L1']) vert(gMain, frN, k);
+    bone(gMain, BMF_SIDE.pelvis, frN.P);
+    gMain.append(bmSv('circle', { class: 'bmf-socket', cx: 0, cy: 0, r: 2.75 * S }));
+    const head = bmAt(frN.F, [0, 0]);
+    gMain.append(bmSv('circle', { class: 'bmf-bone', cx: head[0] * S, cy: -head[1] * S, r: 2.4 * S }));
+    bone(gMain, BMF_SIDE.femur, frN.F);
+    bone(gMain, BMF_SIDE.fibula, frN.T);
+    bone(gMain, BMF_SIDE.tibia, frN.T);
+    bone(gMain, BMF_SIDE.foot, frN.A);
+    const pc = bmAt(frN.Pt, [0, 0]);
+    gMain.append(bmSv('ellipse', { class: 'bmf-bone', cx: pc[0] * S, cy: -pc[1] * S, rx: 1.1 * S, ry: 2.3 * S, transform: `rotate(${-frN.Pt.a} ${pc[0] * S} ${-pc[1] * S})` }));
+    for (const m of BMF_SIDE_M) muscle(gMain, m, frN, 'R');
+    for (const n of BMF_SIDE_N) nerve(gMain, n, frN, 'R');
+    if (same) for (const l of labels) if (Math.abs((bmfIdx(map, [...(BMF_SIDE_M.find((m) => (BMF_LABEL[m.id] || m.id) === l.name)?.t || [])], 'L') ?? -1) - l.idx) < 0.01) l.side = 'LR';
+    void caps;
+  } else {
+    const sR = mirrored ? 'L' : 'R', sL = mirrored ? 'R' : 'L'; // 体の右（見る人の左）に描く脚のモデルの側
+    const qR = bmCoords(pose, sR), qL = bmCoords(pose, sL);
+    const fr = bmFrontFrames(qR, qL);
+    for (const k of ['L5', 'L4', 'L3', 'L2', 'L1']) { const b = [[-2.5, -1.4], [2.5, -1.4], [2.5, 1.4], [-2.5, 1.4]].map((p) => bmAt(fr[k], p)); const tp = [[-4.4, 0.4], [4.4, 0.4], [4.4, -0.4], [-4.4, -0.4]].map((p) => bmAt(fr[k], p)); pts.push(...b); gMain.append(bmSv('path', { class: 'bmf-bone', d: bmSmooth(tp, true, T) }), bmSv('path', { class: 'bmf-bone', d: bmSmooth(b, true, T) })); }
+    bone(gMain, BMF_FRONT.sacrum, fr.P);
+    bone(gMain, BMF_FRONT.pelvisR, fr.P);
+    bone(gMain, BMF_FRONT.pelvisR, fr.P2);
+    for (const [cx, cy] of [[-6.2, -4.6], [6.2, -4.6]]) gMain.append(bmSv('ellipse', { class: 'bmf-hole', cx: cx * S, cy: -cy * S, rx: 1.8 * S, ry: 2.4 * S }));
+    for (const [Fk, Tk, side] of [['F', 'T', sR], ['F2', 'T2', sL]]) {
+      gMain.append(bmSv('circle', { class: 'bmf-socket', cx: fr[Fk].o[0] * S, cy: -fr[Fk].o[1] * S, r: 2.75 * S }));
+      gMain.append(bmSv('circle', { class: 'bmf-bone', cx: fr[Fk].o[0] * S, cy: -fr[Fk].o[1] * S, r: 2.4 * S }));
+      bone(gMain, BMF_FRONT.femur, fr[Fk]);
+      bone(gMain, BMF_FRONT.fibula, fr[Tk]);
+      bone(gMain, BMF_FRONT.tibia, fr[Tk]);
+      const q = Fk === 'F' ? qR : qL, rot = (q.hipRot || 0) * (Fk === 'F' ? 1 : -1);
+      const pc = bmAt(fr[Fk], [-2.2 * Math.sin(rot * Math.PI / 180) - 0.6, -40.4]);
+      gMain.append(bmSv('ellipse', { class: 'bmf-bone', cx: pc[0] * S, cy: -pc[1] * S, rx: 2.0 * S, ry: 2.4 * S }));
+      const foot = [[-2.4, -40.8], [2.4, -40.8], [3.4, -44.0], [2.6, -45.4], [-2.8, -45.4], [-3.6, -44.0]].map((p) => [p[0] - (p[1] < -42 ? 3 * Math.sin(rot * Math.PI / 180) : 0), p[1]]);
+      bone(gMain, foot, fr[Tk]);
+    }
+    const flipP = (m) => ({ ...m, p: m.p.map((p) => [p[0] === 'P' ? 'P2' : p[0] === 'F' ? 'F2' : p[0] === 'T' ? 'T2' : p[0] + 'b', ...p.slice(1)]) });
+    for (const m of BMF_FRONT_M) { muscle(gMain, m, fr, sR); muscle(gMain, flipP(m), fr, sL); }
+    for (const n of BMF_FRONT_N) { nerve(gMain, n, fr, sR); nerve(gMain, flipP(n), fr, sL); }
+  }
+  const xs = pts.map((p) => p[0] * S), ys = pts.map((p) => -p[1] * S);
+  let x0 = Math.min(...xs) - 12, x1 = Math.max(...xs) + 12;
+  const y0 = Math.min(...ys) - 12, y1 = Math.max(...ys) + 12;
+  // 名前：伸びの大きい順に 6 つまで。字の大きさは図の大きさに合わせる（画面で 12〜13px ほど）
+  const fs = Math.max(18, Math.max(x1 - x0, (y1 - y0) * 0.8) / 19);
+  labels.sort((a, b) => b.idx - a.idx);
+  for (let i = labels.length - 1; i >= 0; i--) { // 左右が同じ値なら 1 つにまとめる
+    const j = labels.findIndex((x, k) => k < i && x.name === labels[i].name && x.side !== labels[i].side && Math.abs(x.idx - labels[i].idx) < 0.01);
+    if (j >= 0) { labels[j].side = 'LR'; labels.splice(i, 1); }
+  }
+  const shown = [];
+  const cx = xs.reduce((a, b) => a + b, 0) / xs.length, cy = ys.reduce((a, b) => a + b, 0) / ys.length;
+  for (const l of labels.filter((x) => x.idx >= 0.5)) {
+    if (shown.length >= 5) break;
+    const p = T(l.at), text = `${l.name}${l.side ? `（${bmSideName(l.side)}）` : ''} ${Math.round(l.idx * 100)}%`, w = text.length * fs * 0.92;
+    let nx = l.n[0], ny = -l.n[1];
+    if ((p[0] - cx) * nx + (p[1] - cy) * ny < 0) { nx = -nx; ny = -ny; } // 図の中心から離れる向きへ
+    const dist = (l.w / 2) * S + fs * 1.6;
+    const ax = p[0] + nx * dist, ay = p[1] + ny * dist;
+    let x = nx >= 0 ? ax : ax - w, y = ay + fs * 0.35;
+    for (let k = 0; k < 6 && shown.some((s) => x < s.x + s.w && s.x < x + w && Math.abs(s.y - y) < fs * 1.25); k++) y += (ny >= 0 ? 1 : -1) * fs * 1.3;
+    shown.push({ x, y, w });
+    gLab.append(bmSv('line', { x1: p[0], y1: p[1], x2: nx >= 0 ? x - fs * 0.2 : x + w + fs * 0.2, y2: y - fs * 0.35, class: 'bmf-lead' }), bmSv('text', { x, y, 'font-size': fs, class: l.idx >= 0.995 ? 'hot' : '' }, text));
+  }
+  const ly = shown.map((s) => s.y);
+  x1 = Math.max(x1, ...shown.map((s) => s.x + s.w + 6));
+  x0 = Math.min(x0, ...shown.map((s) => s.x - 6));
+  const Y0 = Math.min(y0, ...ly.map((y) => y - fs * 1.2)), Y1 = Math.max(y1, ...ly.map((y) => y + fs * 0.6));
+  return bmSv('svg', { class: 'bmf', viewBox: `${Math.round(x0)} ${Math.round(Y0)} ${Math.round(x1 - x0)} ${Math.round(Y1 - Y0)}`, role: 'img', 'aria-label': view === 'side' ? '横から見た骨と筋の図' : '前から見た骨と筋の図' }, gBack, gMain, gLab);
+}
+function bmfMap(map, mirrored, pick, tip) {
+  const mir = (p, v) => [v === 'front' ? 200 - p[0] : 200 - p[0], p[1]];
+  const g = bmSv('g');
+  for (const [v, ox] of [['front', 0], ['back', 220]]) {
+    const gv = bmSv('g', { transform: `translate(${ox} 0)` });
+    const body = [...BMF_BODY, ...BMF_BODY.slice().reverse().map((p) => [200 - p[0], p[1]])];
+    gv.append(bmSv('ellipse', { class: 'bmf-skin', cx: 100, cy: 32, rx: 21, ry: 27 }), bmSv('path', { class: 'bmf-skin', d: bmSmooth(body, true) }));
+    for (const r of BMF_MAP.filter((x) => x.v === v)) for (const side of ['R', 'L']) {
+      const P = side === 'R' ? r.p : r.p.map((p) => mir(p, v));
+      const s2 = mirSide(side), idx = bmfIdx(map, r.t, s2.model);
+      const gg = bmSv('g', { class: `bmf-m${idx != null && idx >= 0.995 ? ' hot' : ''}${r.deep ? ' deep' : ''}` }, tip(r.name, s2.body, idx));
+      gg.addEventListener('click', pick(r.name, s2.body, idx));
+      gg.append(bmSv('path', { class: 'bmf-region', d: bmSmooth(P, true), 'fill-opacity': bmfAlpha(idx) }));
+      gv.append(gg);
+    }
+    for (const n of BMF_MAP_N.filter((x) => x.v === v)) for (const side of ['R', 'L']) {
+      const P = side === 'R' ? n.p : n.p.map((p) => mir(p, v));
+      const s2 = mirSide(side), idx = bmfIdx(map, n.t, s2.model);
+      const gg = bmSv('g', { class: `bmf-n${idx != null && idx >= 0.995 ? ' hot' : ''}` }, tip(n.name, s2.body, idx));
+      gg.addEventListener('click', pick(n.name, s2.body, idx));
+      gg.append(bmSv('path', { class: 'bmf-n-under thin', d: bmSmooth(P, false) }), bmSv('path', { class: 'bmf-n-line thin', d: bmSmooth(P, false), 'stroke-opacity': idx == null ? 0.5 : 0.5 + 0.5 * Math.min(1, idx) }));
+      gv.append(gg);
+    }
+    gv.append(bmSv('text', { class: 'bmf-cap', x: 100, y: 532, 'text-anchor': 'middle' }, v === 'front' ? '前' : '後ろ'));
+    g.append(gv);
+  }
+  // 図の右半身は体の右。左で行うとき、体の右はモデルの左
+  function mirSide(side) { return { model: mirrored ? bmSwap(side) : side, body: side }; }
+  return bmSv('svg', { class: 'bmf bmf-map', viewBox: '0 0 420 540', role: 'img', 'aria-label': '体の前と後ろの図。伸びている筋ほど濃い' }, g);
+}
+
 /* ---------- 画面 ---------- */
 let moveTab = 'flex';
 let flexSub = 'today';
@@ -5778,17 +6180,31 @@ function bmPanel(C, v) {
   const sw = (x) => (mirrored ? { ...x, side: bmSwap(x.side) } : x);
   const out = h('div', { class: 'bm-out', 'aria-live': 'polite' });
   const multi = depth.length > 1 || m.ends;
+  // 図：脚を開く種目は前から、脚の種目は横から、腕と体幹の種目は体の地図を最初に出す
+  const legKeys = ['hipFlex', 'hipAbd', 'hipRot', 'knee', 'ankle'];
+  const moves = (k) => depth.some((dd) => ['R', 'L', 'both'].some((pt) => dd[pt] && Object.keys(dd[pt]).some((x) => k.includes(x))));
+  const view = v.fig || (moves(['hipAbd']) ? 'front' : moves(legKeys) ? 'side' : 'map');
+  const pickLine = h('p', { class: 'bmf-pick', 'aria-live': 'polite' });
+  const onPick = (name, side, idx) => { pickLine.textContent = `${name}${side ? `（${bmSideName(side)}）` : ''}：${idx == null ? 'この形では伸びない' : `${Math.round(idx * 100)}%`}`; };
   const draw = (dd) => {
     let list = lim.list, p = lim.pose;
     if (dd != null && !multi) { p = bmPoseAt(pose, depth[0], dd); list = bmEval(p, caps); }
+    if (m.ends) { p = bmApply(pose, m.ends[0].change); list = bmEval(p, caps); }
     const ang = (mirrored ? bmFlipText : (s) => s)(bmAngles(p, depth[0]).join('・'));
-    const kids = m.ends ? m.ends.map((en) => { const pe = bmApply(pose, en.change); return [h('div', { class: 'bm-sub' }, en.label), bmBars(bmEval(pe, caps).map(sw), 6)]; })
+    pickLine.textContent = '図の筋や神経を押すと、名前と伸び（%）が出ます';
+    const fig = bmFigure(view, p, list, mirrored, onPick);
+    const kids = m.ends ? [m.ends.map((en, i) => { const pe = bmApply(pose, en.change); return [h('div', { class: 'bm-sub' }, en.label), i === 0 ? [fig, pickLine] : null, bmBars(bmEval(pe, caps).map(sw), 6)]; })]
       : [h('div', { class: 'bm-stop' }, h('b', null, '止まる位置：'), bmStopText(lim, depth, mirrored)),
         dd != null && Math.abs(dd - lim.d) > 0.005 ? h('div', { class: 'bm-sub' }, `いまの深さ：${ang}`) : null,
         lim.base.length && lim.d < 0.05 ? h('p', { class: 'hint bm-warn' }, `この形では、深くする前から ${lim.base.slice(0, 2).map((x) => bmTisName(sw(x))).join('・')} が限界に届きます。形を浅くするか、別の種目にします`) : null,
+        fig, pickLine,
         bmBars(list.map(sw))];
     out.replaceChildren(...kids.flat(Infinity).filter(Boolean)); // replaceChildren は配列を展開しない
   };
+  const views = h('div', { class: 'dl-seg bmf-views', role: 'group', 'aria-label': '図の見方' }, [['side', '骨と筋（横）'], ['front', '骨と筋（前）'], ['map', '体の図（前・後ろ）']].map(([k, l]) =>
+    h('button', { type: 'button', class: view === k ? 'on' : '', 'aria-pressed': String(view === k), 'data-fig': k, onclick: () => { bmView = { ...bmView, fig: k }; render(); } }, l)));
+  const legend = h('p', { class: 'bmf-legend' }, view === 'map' ? '赤が濃いほど伸びている。太い縁取りは、その姿勢を止めている筋（100%）。点線は奥の筋、黄色の線は神経'
+    : '骨盤を基準にした図（寝ている・立っている向きは表しません）。赤が濃いほど伸びている。太い縁取りは止めている筋（100%）。点線は奥の筋、黄色の線は神経、白い線は腱。線の長さは模式で、% はモデルの計算');
   const slider = multi ? null : h('input', { type: 'range', class: 'bm-range', min: '0', max: '100', step: '1', value: String(Math.round((v.d ?? lim.d) * 100)), 'aria-label': '深さ', 'data-k': 'bm-depth',
     oninput: (ev) => { bmView.d = +ev.target.value / 100; draw(bmView.d); } });
   draw(v.d);
@@ -5806,6 +6222,7 @@ function bmPanel(C, v) {
       h('button', { type: 'button', class: side === s ? 'on' : '', 'aria-pressed': String(side === s), onclick: () => { bmView = { ...bmView, side: s, d: null }; render(); } }, l))) : null,
     m.vars?.length ? [h('div', { class: 'chart-h', style: 'margin-top:12px' }, '形を変えて比べる'), h('div', { class: 'fchips' }, m.vars.map(chip))] : null,
     slider ? h('label', { class: 'bm-depth' }, h('span', { class: 'hint', style: 'margin:0' }, '深さ（右端が最も深い）'), slider) : null,
+    views, legend,
     out,
     cmpText ? h('p', { class: 'bm-cmp' }, cmpText) : null,
     (m.vars || []).filter((x) => vars.includes(x.id)).map((x) => h('p', { class: 'hint' }, `${x.label}：${x.say}`)),
@@ -5971,6 +6388,7 @@ function flexWhyNodes() {
       '関節の角度（股関節の曲げ伸ばし・開閉・ひねり、膝、足首、背骨、首、肩、肘、手首）から、筋と腱・神経の通り道・靱帯の長さの変化を、角度 × てこの長さ（モーメントアーム）で足し合わせて計算します。てこの長さは、OpenSim の筋骨格モデルや解剖の研究の値を使い、角度で変わるもの（梨状筋・内転筋・お尻の筋の回旋など）は角度ごとに入れています。',
       '各組織の 100% は、標準的な可動域の限界（脚上げ 80°、股関節の伸展 17°、膝・壁 10 cm など）でその組織が伸びる長さです。姿勢を深くしていくと、最初に 100% に届いた組織か骨の当たりで体が止まります。そこが、その姿勢で「伸びる場所」です。',
       'テストの値があると、組織ごとの 100% をあなたの体に置き直し、毎日のメニューは「あなたの体で、狙った部位が実際に止める組織になる形」を選びます。',
+      '「体のモデル」の画面の図：骨と筋の通り道（横・前）は、骨盤を基準に、モデルの関節の角度で骨を動かし、筋と腱・神経を付く場所から付く場所まで描いたもの。体の図（前・後ろ）は、筋の場所に伸びの % で色を付けたもの。どちらも赤が濃いほど伸びていて、太い縁取りがその姿勢を止めている筋です。',
       '限界：数値は文献の近似で、骨の形や筋の付き方の個人差は入っていません。肩は下肢より粗いモデルです。痛み・しびれは、数字より優先します。',
     ], ['rajagopal', 'arnold', 'chen', 'delp']),
     sec('2 つの関節をまたぐ筋', [
